@@ -229,6 +229,28 @@ export default function ChildProfileScreen() {
     (user.role === 'parent' || user.role === 'admin')
   );
 
+  const hasStudentCredentials = Boolean(childData?.profile_id);
+
+  const openStudentCredentialFlow = () => {
+    if (!id) return;
+
+    if (hasStudentCredentials) {
+      Alert.alert(
+        'Student account linked',
+        `${displayName} already has student login credentials. Please login with the student's email/password to open student dashboard.`
+      );
+      return;
+    }
+
+    router.push({
+      pathname: '/signup-student',
+      params: {
+        studentId: String(id),
+        fullName: String(displayName),
+      },
+    });
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -285,6 +307,31 @@ export default function ChildProfileScreen() {
               <ThemedText style={styles.statValue}>{progress.upcomingSessions.length}</ThemedText>
               <ThemedText style={styles.statLabel}>Upcoming</ThemedText>
             </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.studentPortalCard}>
+            <View style={styles.studentPortalHeader}>
+              <Ionicons name="school-outline" size={20} color="#4ECDC4" />
+              <ThemedText style={styles.studentPortalTitle}>Student Portal</ThemedText>
+            </View>
+            <ThemedText style={styles.studentPortalText}>
+              {hasStudentCredentials
+                ? `${displayName} can login as student and view dashboard, upcoming classes, and recorded courses.`
+                : `Create ${displayName}'s student credentials to enable child login and student dashboard.`}
+            </ThemedText>
+            <TouchableOpacity
+              style={[
+                styles.studentPortalButton,
+                hasStudentCredentials ? styles.studentPortalButtonLinked : null,
+              ]}
+              onPress={openStudentCredentialFlow}
+            >
+              <ThemedText style={styles.studentPortalButtonText}>
+                {hasStudentCredentials ? 'Student Login Linked' : 'Create Student Login'}
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -492,6 +539,44 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  studentPortalCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  studentPortalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  studentPortalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  studentPortalText: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  studentPortalButton: {
+    marginTop: 12,
+    backgroundColor: '#4ECDC4',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  studentPortalButtonLinked: {
+    backgroundColor: '#0EA5E9',
+  },
+  studentPortalButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
   },
   emptyState: {
     backgroundColor: '#F9FAFB',

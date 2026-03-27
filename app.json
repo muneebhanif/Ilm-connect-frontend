@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "IlmConnect",
-    "slug": "ilmconnect",
+    "slug": "ilm-connect-m37u6hxad-spozk8nfkby",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -51,8 +51,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f47bcb9a-a29d-4c6a-a91a-592f1cf2a73c"
+        "projectId": "9d1d2a9b-b2d5-4e23-96af-673e5ebd3307"
       }
-    }
+    },
+    "owner": "cruxys-organization"
   }
 }

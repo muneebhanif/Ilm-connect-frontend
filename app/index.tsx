@@ -20,7 +20,11 @@ export default function HomeScreen() {
   useEffect(() => {
     if (loading) return;
     if (!user) return;
-    const target = user.role === 'teacher' ? '/(teacher)/teacher-dashboard' : '/(parent)/dashboard';
+    const target = user.role === 'teacher'
+      ? '/(teacher)/teacher-dashboard'
+      : user.role === 'student'
+        ? '/(student)/dashboard'
+        : '/(parent)/dashboard';
     router.replace(target);
   }, [user, loading]);
 

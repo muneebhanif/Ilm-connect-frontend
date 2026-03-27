@@ -10,8 +10,10 @@ export default function RootLayout() {
         <Stack.Screen name="role-selection" />
         <Stack.Screen name="signup-parent" />
         <Stack.Screen name="signup-teacher" />
+        <Stack.Screen name="signup-student" />
         <Stack.Screen name="(parent)" />
         <Stack.Screen name="(teacher)" />
+        <Stack.Screen name="(student)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </AuthProvider>

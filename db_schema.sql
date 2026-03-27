@@ -84,15 +84,20 @@ CREATE TABLE public.payments (
   method text NOT NULL CHECK (method = ANY (ARRAY['card'::text, 'easypaisa'::text, 'jazzcash'::text, 'bank'::text])),
   transaction_id text UNIQUE,
   status text DEFAULT 'successful'::text CHECK (status = ANY (ARRAY['successful'::text, 'failed'::text, 'refunded'::text])),
+  purpose text NOT NULL DEFAULT 'enrollment'::text CHECK (purpose = ANY (ARRAY['enrollment'::text, 'recording_unlock'::text])),
+  recording_id uuid,
+  student_id uuid,
   paid_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
   CONSTRAINT payments_pkey PRIMARY KEY (id),
-  CONSTRAINT payments_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES public.enrollments(id)
+  CONSTRAINT payments_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES public.enrollments(id),
+  CONSTRAINT payments_recording_id_fkey FOREIGN KEY (recording_id) REFERENCES public.class_recordings(id),
+  CONSTRAINT payments_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
 );
 CREATE TABLE public.profiles (
   id uuid NOT NULL,
   full_name text NOT NULL,
   email text NOT NULL,
-  role text NOT NULL DEFAULT 'parent'::text CHECK (role = ANY (ARRAY['parent'::text, 'teacher'::text, 'admin'::text])),
+  role text NOT NULL DEFAULT 'parent'::text CHECK (role = ANY (ARRAY['parent'::text, 'teacher'::text, 'admin'::text, 'student'::text])),
   avatar_url text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
@@ -102,7 +107,10 @@ CREATE TABLE public.profiles (
 CREATE TABLE public.reviews (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   teacher_id uuid NOT NULL,
-  parent_id uuid NOT NULL,
+  parent_id uuid,
+  reviewer_profile_id uuid NOT NULL,
+  reviewer_type text NOT NULL CHECK (reviewer_type = ANY (ARRAY['parent'::text, 'student'::text])),
+  reviewer_student_id uuid,
   session_id uuid,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
   comment text,
@@ -111,6 +119,8 @@ CREATE TABLE public.reviews (
   CONSTRAINT reviews_pkey PRIMARY KEY (id),
   CONSTRAINT reviews_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.profiles(id),
   CONSTRAINT reviews_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.profiles(id),
+  CONSTRAINT reviews_reviewer_profile_id_fkey FOREIGN KEY (reviewer_profile_id) REFERENCES public.profiles(id),
+  CONSTRAINT reviews_reviewer_student_id_fkey FOREIGN KEY (reviewer_student_id) REFERENCES public.students(id),
   CONSTRAINT reviews_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.class_sessions(id)
 );
 CREATE TABLE public.student_achievements (
@@ -127,6 +137,7 @@ CREATE TABLE public.student_achievements (
 CREATE TABLE public.students (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   parent_id uuid NOT NULL,
+  profile_id uuid,
   name text NOT NULL,
   age integer,
   gender text CHECK (gender = ANY (ARRAY['male'::text, 'female'::text])),
@@ -141,7 +152,39 @@ CREATE TABLE public.students (
   longest_streak integer DEFAULT 0,
   last_class_date timestamp with time zone,
   CONSTRAINT students_pkey PRIMARY KEY (id),
-  CONSTRAINT students_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.parents(id)
+  CONSTRAINT students_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.parents(id),
+  CONSTRAINT students_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.class_recordings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  session_id uuid,
+  teacher_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  storage_path text NOT NULL,
+  duration_seconds integer,
+  status text NOT NULL DEFAULT 'processing'::text CHECK (status = ANY (ARRAY['processing'::text, 'ready'::text, 'failed'::text])),
+  visibility text NOT NULL DEFAULT 'paid'::text CHECK (visibility = ANY (ARRAY['paid'::text, 'free'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  ready_at timestamp with time zone,
+  CONSTRAINT class_recordings_pkey PRIMARY KEY (id),
+  CONSTRAINT class_recordings_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.class_sessions(id),
+  CONSTRAINT class_recordings_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.recording_entitlements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  recording_id uuid NOT NULL,
+  student_id uuid NOT NULL,
+  granted_by uuid,
+  payment_id uuid,
+  access_status text NOT NULL DEFAULT 'granted'::text CHECK (access_status = ANY (ARRAY['granted'::text, 'revoked'::text, 'expired'::text])),
+  granted_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone,
+  CONSTRAINT recording_entitlements_pkey PRIMARY KEY (id),
+  CONSTRAINT recording_entitlements_recording_id_fkey FOREIGN KEY (recording_id) REFERENCES public.class_recordings(id),
+  CONSTRAINT recording_entitlements_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT recording_entitlements_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.profiles(id),
+  CONSTRAINT recording_entitlements_payment_id_fkey FOREIGN KEY (payment_id) REFERENCES public.payments(id)
 );
 CREATE TABLE public.teachers (
   id uuid NOT NULL,

@@ -6,7 +6,7 @@ import { api } from './config';
 interface User {
   id: string;
   email: string;
-  role: 'parent' | 'teacher' | 'admin';
+  role: 'parent' | 'teacher' | 'student' | 'admin';
   full_name: string;
   verification_status?: string;
 }
@@ -16,7 +16,7 @@ interface AuthContextType {
   session: null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, role: 'parent' | 'teacher', fullName: string) => Promise<void>;
+  signUp: (email: string, password: string, role: 'parent' | 'teacher' | 'student', fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -96,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading) return;
     const current = segments[0];
-    const authGroups = ['(parent)', '(teacher)'];
-    const publicPages = [undefined, 'login', 'signup-parent', 'signup-teacher', 'role-selection'];
+    const authGroups = ['(parent)', '(teacher)', '(student)'];
+    const publicPages = [undefined, 'login', 'signup-parent', 'signup-teacher', 'signup-student', 'role-selection'];
 
     // If user is missing but trying to access an auth-only group, send to login
     if (!user && authGroups.includes(current as string)) {
@@ -111,15 +111,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // exist both at root and inside the layout group are accepted.
     const parentPages = ['browse-teachers', 'classes', 'dashboard', 'profile', 'edit-profile', 'teacher-profile', 'child-profile', 'book-teacher', 'class-room', 'chat', 'messages'];
     const teacherPages = ['teacher-dashboard', 'students', 'schedule', 'profile', 'availability', 'edit-profile', 'class-room', 'chat', 'messages', 'parent-profile'];
+    const studentPages = ['dashboard', 'classes', 'recordings', 'profile', 'class-room', 'chat', 'messages'];
 
     // If already inside the correct layout group or a top-level page for the user's role, do nothing.
     if ((current === '(teacher)' || teacherPages.includes(current as string)) && user.role === 'teacher') return;
     if ((current === '(parent)' || parentPages.includes(current as string)) && user.role === 'parent') return;
+    if (studentPages.includes(current as string) && user.role === 'student') return;
+
+    // Allow logged-in parents/admins to open student signup to create child credentials.
+    if (current === 'signup-student' && (user.role === 'parent' || user.role === 'admin')) return;
 
     // If on a public page (or root) redirect into the appropriate layout.
     if (publicPages.includes(current as any)) {
       if (user.role === 'teacher') {
         router.replace('/(teacher)/teacher-dashboard');
+      } else if (user.role === 'student') {
+        router.replace('/(student)/dashboard' as any);
       } else {
         router.replace('/(parent)/dashboard');
       }
@@ -132,7 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (user.role !== 'teacher' && !(current === '(parent)' || parentPages.includes(current as string))) {
+    if (user.role === 'student' && !studentPages.includes(current as string)) {
+      router.replace('/(student)/dashboard' as any);
+      return;
+    }
+
+    if (user.role === 'parent' && !(current === '(parent)' || parentPages.includes(current as string))) {
       router.replace('/(parent)/dashboard');
       return;
     }
@@ -146,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error('Failed to load profile');
       const data = await res.json();
       const profile = data.profile || {};
-      const validRoles: User['role'][] = ['parent', 'teacher', 'admin'];
+      const validRoles: User['role'][] = ['parent', 'teacher', 'student', 'admin'];
       const backendRole = typeof profile.role === 'string' && profile.role.length > 0 ? (profile.role as User['role']) : undefined;
       const resolvedRole = validRoles.includes(backendRole as User['role'])
         ? backendRole as User['role']
@@ -223,8 +235,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     throw new Error('Login failed: user record missing');
   };
 
-  const signUp = async (email: string, password: string, role: 'parent' | 'teacher', fullName: string) => {
-    const endpoint = role === 'parent' ? api.signupParent() : api.signupTeacher();
+  const signUp = async (email: string, password: string, role: 'parent' | 'teacher' | 'student', fullName: string) => {
+    const endpoint = role === 'parent'
+      ? api.signupParent()
+      : role === 'teacher'
+        ? api.signupTeacher()
+        : api.signupStudent();
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

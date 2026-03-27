@@ -134,6 +134,55 @@ export default function RoleSelectionScreen() {
                 </View>
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Student Option */}
+            <TouchableOpacity
+              style={styles.roleCard}
+              onPress={() => router.push('/signup-student')}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['#fff', '#F5F7FF']}
+                style={styles.cardGradient}
+              >
+                <View style={styles.cardContent}>
+                  <View style={styles.iconContainer}>
+                    <LinearGradient
+                      colors={['#6366F1', '#4F46E5']}
+                      style={styles.iconGradient}
+                    >
+                      <Ionicons name="person-circle" size={40} color="#fff" />
+                    </LinearGradient>
+                  </View>
+
+                  <View style={styles.cardTextContent}>
+                    <ThemedText style={styles.roleTitle}>I'm a Student</ThemedText>
+                    <ThemedText style={styles.roleDescription}>
+                      Join your classes, review teachers, and access paid recordings.
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.featuresList}>
+                    <View style={styles.featureItem}>
+                      <Ionicons name="checkmark-circle" size={18} color="#6366F1" />
+                      <ThemedText style={styles.featureText}>Join upcoming classes</ThemedText>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Ionicons name="checkmark-circle" size={18} color="#6366F1" />
+                      <ThemedText style={styles.featureText}>Rate your teacher</ThemedText>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Ionicons name="checkmark-circle" size={18} color="#6366F1" />
+                      <ThemedText style={styles.featureText}>Watch unlocked recordings</ThemedText>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardArrow}>
+                    <Ionicons name="arrow-forward-circle" size={32} color="#6366F1" />
+                  </View>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
           {/* Footer */}

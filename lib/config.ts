@@ -21,6 +21,7 @@ export const api = {
   login: () => `${API_URL}/api/login`,
   signupParent: () => `${API_URL}/api/signup/parent`,
   signupTeacher: () => `${API_URL}/api/signup/teacher`,
+  signupStudent: () => `${API_URL}/api/signup/student`,
   refreshToken: () => `${API_URL}/api/refresh-token`,
   profile: (userId: string) => `${API_URL}/api/profile/${userId}`,
   
@@ -38,6 +39,11 @@ export const api = {
   teacherProfile: (teacherId: string) => `${API_URL}/api/teachers/${teacherId}/profile`,
   teacherSchedule: (teacherId: string) => `${API_URL}/api/teachers/${teacherId}/schedule`,
   teacherNotifications: (teacherId: string) => `${API_URL}/api/teachers/${teacherId}/notifications`,
+
+  // Student endpoints
+  studentProfile: (profileId: string) => `${API_URL}/api/student/${profileId}/profile`,
+  studentClasses: (profileId: string) => `${API_URL}/api/student/${profileId}/classes`,
+  studentRecordings: (profileId: string) => `${API_URL}/api/student/${profileId}/recordings`,
   
   // Booking endpoints
   bookings: () => `${API_URL}/api/bookings`,
@@ -47,6 +53,8 @@ export const api = {
   uploadProfileImage: (userId: string) => `${API_URL}/api/upload/${userId}/profile-image`,
   uploadTeacherDocument: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/document`,
   getTeacherDocuments: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/documents`,
+  uploadClassRecording: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/recording`,
+  recordingAccess: (recordingId: string) => `${API_URL}/api/upload/recording/${recordingId}/access`,
   
   // Review endpoints
   reviews: {
