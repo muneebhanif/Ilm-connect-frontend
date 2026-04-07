@@ -55,6 +55,20 @@ export default function SignUpStudentScreen() {
 
       const data = await response.json();
       if (!response.ok) {
+        const errorText = String(data?.error || '').toLowerCase();
+        if (
+          response.status === 409 ||
+          errorText.includes('already linked') ||
+          errorText.includes('already registered') ||
+          errorText.includes('already exists')
+        ) {
+          Alert.alert(
+            'Student account already exists',
+            'This student is already linked to an account. Please log in with that account.',
+            [{ text: 'Go to Login', onPress: () => router.replace('/login') }]
+          );
+          return;
+        }
         throw new Error(data.error || 'Failed to create student account');
       }
 

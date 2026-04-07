@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl } from 'react-native';
+import { StudentClassesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { RateTeacherModal } from '@/components/rate-teacher-modal';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface ClassSession {
   id: string;
@@ -24,6 +28,7 @@ export default function StudentClassesScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [classes, setClasses] = useState<ClassSession[]>([]);
   const [ratingOpen, setRatingOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
@@ -32,9 +37,17 @@ export default function StudentClassesScreen() {
     loadClasses();
   }, [user?.id]);
 
-  const loadClasses = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && !loading) loadClasses('background');
+    }, [user?.id])
+  );
+
+  const loadClasses = async (mode = 'initial') => {
     if (!user?.id) return;
     try {
+      if (mode === 'initial') setLoading(true);
+      if (mode === 'refresh') setRefreshing(true);
       const response = await authFetch(api.studentClasses(user.id));
       const data = await response.json();
       if (response.ok) setClasses(data.classes || []);
@@ -42,6 +55,7 @@ export default function StudentClassesScreen() {
       console.error('Failed to load student classes', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -62,61 +76,156 @@ export default function StudentClassesScreen() {
     return { upcoming: upcomingClasses, completed: doneClasses };
   }, [classes]);
 
-  const renderRow = (item: ClassSession, allowReview: boolean) => (
-    <View key={item.id} style={styles.card}>
-      <ThemedText style={styles.title}>{item.courses?.title || 'Class'}</ThemedText>
-      <ThemedText style={styles.meta}>Teacher: {item.courses?.teachers?.profiles?.full_name || 'Teacher'}</ThemedText>
-      <ThemedText style={styles.meta}>{new Date(item.scheduled_date).toLocaleString()}</ThemedText>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={() => router.push({ pathname: '/class-room/[id]' as any, params: { id: item.id } })}
-        >
-          <ThemedText style={styles.primaryBtnText}>Join Class</ThemedText>
-        </TouchableOpacity>
-        {allowReview && (
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => {
-              setSelectedClass(item);
-              setRatingOpen(true);
-            }}
-          >
-            <ThemedText style={styles.secondaryBtnText}>Review Teacher</ThemedText>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-
-  if (loading) {
+  const renderClassCard = (item: ClassSession, isPast: boolean) => {
+    const classDate = new Date(item.scheduled_date);
+    const isLive = String(item.live_status || '').toLowerCase() === 'live';
+    
     return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
+      <View key={item.id} style={styles.classCard}>
+        <View style={styles.classCardLeft}>
+          <View style={[styles.dateBox, isLive && styles.dateBoxLive]}>
+            <ThemedText style={[styles.dateDay, isLive && { color: '#FFF' }]}>
+              {classDate.getDate()}
+            </ThemedText>
+            <ThemedText style={[styles.dateMonth, isLive && { color: 'rgba(255,255,255,0.8)' }]}>
+              {classDate.toLocaleDateString('en-US', { month: 'short' })}
+            </ThemedText>
+            {isLive && (
+              <View style={styles.liveDot} />
+            )}
+          </View>
+        </View>
+
+        <View style={styles.classCardMiddle}>
+          <View style={styles.titleRow}>
+            <ThemedText style={styles.classTitle} numberOfLines={1}>
+              {item.courses?.title || 'Class Session'}
+            </ThemedText>
+            {isLive && (
+              <View style={styles.liveBadge}>
+                <ThemedText style={styles.liveText}>LIVE</ThemedText>
+              </View>
+            )}
+          </View>
+          <ThemedText style={styles.teacherName}>
+            {item.courses?.teachers?.profiles?.full_name || 'Teacher'}
+          </ThemedText>
+          <View style={styles.metaRow}>
+            <Ionicons name="time-outline" size={13} color="#6B7280" />
+            <ThemedText style={styles.metaText}>
+              {classDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            </ThemedText>
+            {item.duration_minutes && (
+              <>
+                <ThemedText style={styles.metaDot}>·</ThemedText>
+                <ThemedText style={styles.metaText}>{item.duration_minutes} min</ThemedText>
+              </>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.classCardRight}>
+          {!isPast ? (
+            <TouchableOpacity
+              style={[styles.joinBtn, isLive && styles.joinBtnLive]}
+              onPress={() => router.push({ pathname: '/class-room/[id]' as any, params: { id: item.id } })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="videocam" size={16} color="#FFF" />
+              <ThemedText style={styles.joinBtnText}>
+                {isLive ? 'Join' : 'Enter'}
+              </ThemedText>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.reviewBtn}
+              onPress={() => {
+                setSelectedClass(item);
+                setRatingOpen(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="star-outline" size={16} color="#D97706" />
+              <ThemedText style={styles.reviewBtnText}>Rate</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
+  };
+
+  if (loading) {
+    return <StudentClassesSkeleton />;
   }
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <ThemedText style={styles.sectionTitle}>Upcoming</ThemedText>
-        {upcoming.length === 0 ? <ThemedText style={styles.empty}>No upcoming classes</ThemedText> : upcoming.map((c) => renderRow(c, false))}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => loadClasses('refresh')} tintColor="#14B8A6" />
+        }
+      >
+        {/* Header */}
+        <LinearGradient
+          colors={['#0F766E', '#14B8A6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <ThemedText style={styles.headerTitle}>My Classes</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>Join live sessions & review history</ThemedText>
+          <View style={styles.headerStats}>
+            <View style={styles.headerStat}>
+              <ThemedText style={styles.headerStatValue}>{upcoming.length}</ThemedText>
+              <ThemedText style={styles.headerStatLabel}>Upcoming</ThemedText>
+            </View>
+            <View style={styles.headerStatDivider} />
+            <View style={styles.headerStat}>
+              <ThemedText style={styles.headerStatValue}>{completed.length}</ThemedText>
+              <ThemedText style={styles.headerStatLabel}>Completed</ThemedText>
+            </View>
+          </View>
+        </LinearGradient>
 
-        <ThemedText style={[styles.sectionTitle, { marginTop: 18 }]}>Completed</ThemedText>
-        {completed.length === 0 ? <ThemedText style={styles.empty}>No completed classes</ThemedText> : completed.map((c) => renderRow(c, true))}
+        <View style={styles.contentPad}>
+          {/* Upcoming */}
+          <View style={styles.sectionHeader}>
+            <Ionicons name="time" size={18} color="#059669" />
+            <ThemedText style={styles.sectionTitle}>Upcoming</ThemedText>
+          </View>
+          {upcoming.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="calendar-outline" size={28} color="#D1D5DB" />
+              <ThemedText style={styles.emptyText}>No upcoming classes</ThemedText>
+            </View>
+          ) : (
+            upcoming.map((c) => renderClassCard(c, false))
+          )}
+
+          {/* Completed */}
+          <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+            <Ionicons name="checkmark-circle" size={18} color="#6B7280" />
+            <ThemedText style={styles.sectionTitle}>Completed</ThemedText>
+          </View>
+          {completed.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="time-outline" size={28} color="#D1D5DB" />
+              <ThemedText style={styles.emptyText}>No completed classes yet</ThemedText>
+            </View>
+          ) : (
+            completed.map((c) => renderClassCard(c, true))
+          )}
+        </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       <RateTeacherModal
         visible={ratingOpen}
-        onClose={() => {
-          setRatingOpen(false);
-          setSelectedClass(null);
-        }}
-        onSuccess={() => {
-          setRatingOpen(false);
-          setSelectedClass(null);
-        }}
+        onClose={() => { setRatingOpen(false); setSelectedClass(null); }}
+        onSuccess={() => { setRatingOpen(false); setSelectedClass(null); }}
         teacherId={selectedClass?.courses?.teacher_id || ''}
         teacherName={selectedClass?.courses?.teachers?.profiles?.full_name || 'Teacher'}
         sessionId={selectedClass?.id}
@@ -134,68 +243,214 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scroll: {
+  scrollView: {
     flex: 1,
   },
-  content: {
-    paddingTop: 70,
-    paddingHorizontal: 16,
+  scrollContent: {
     paddingBottom: 40,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 10,
+
+  /* Header */
+  header: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  empty: {
-    color: '#6B7280',
-    marginBottom: 10,
-  },
-  card: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFF',
     marginBottom: 4,
   },
-  meta: {
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 16,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 14,
+    padding: 14,
+  },
+  headerStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerStatValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  headerStatLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+  },
+  headerStatDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: 8,
+  },
+
+  /* Content */
+  contentPad: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+  },
+
+  /* Class Card */
+  classCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  classCardLeft: {
+    marginRight: 14,
+  },
+  dateBox: {
+    width: 52,
+    height: 58,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dateBoxLive: {
+    backgroundColor: '#EF4444',
+  },
+  dateDay: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  dateMonth: {
+    fontSize: 11,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFF',
+    marginTop: 2,
+  },
+  classCardMiddle: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+  },
+  classTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    flex: 1,
+  },
+  liveBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#DC2626',
+  },
+  teacherName: {
     fontSize: 13,
     color: '#6B7280',
-    marginBottom: 2,
+    marginBottom: 6,
   },
-  actions: {
-    marginTop: 10,
+  metaRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  metaDot: {
+    color: '#D1D5DB',
+    fontSize: 12,
+  },
+  classCardRight: {
+    marginLeft: 10,
+  },
+  joinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#14B8A6',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+  joinBtnLive: {
+    backgroundColor: '#EF4444',
+  },
+  joinBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  reviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+  reviewBtnText: {
+    color: '#D97706',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  /* Empty */
+  emptyCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     gap: 8,
   },
-  primaryBtn: {
-    backgroundColor: '#111827',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  primaryBtnText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  secondaryBtn: {
-    backgroundColor: '#E6FFFB',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  secondaryBtnText: {
-    color: '#0F766E',
-    fontWeight: '700',
-    fontSize: 13,
+  emptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
 });

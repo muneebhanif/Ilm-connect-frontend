@@ -38,7 +38,8 @@ export default function EditProfileScreen() {
   const loadProfile = async () => {
     try {
       if (!user?.id) {
-        router.replace('/login');
+        // Auth context handles redirect to /login
+        setLoading(false);
         return;
       }
 
@@ -164,7 +165,6 @@ export default function EditProfileScreen() {
     }
 
     if (!user?.id) {
-      router.replace('/login');
       return;
     }
 

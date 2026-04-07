@@ -62,7 +62,8 @@ export default function AvailabilityScreen() {
     try {
       const userId = await AsyncStorage.getItem('userId');
       if (!userId) {
-        router.replace('/login');
+        // Auth context handles redirect to /login
+        setLoading(false);
         return;
       }
       setTeacherId(userId);

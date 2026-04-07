@@ -48,6 +48,14 @@ export const api = {
   // Booking endpoints
   bookings: () => `${API_URL}/api/bookings`,
   booking: (bookingId: string) => `${API_URL}/api/bookings/${bookingId}`,
+  classSession: (sessionId: string) => `${API_URL}/api/class-session/${sessionId}`,
+  classWindow: (sessionId: string) => `${API_URL}/api/bookings/class-session/${sessionId}/window`,
+  startClass: (sessionId: string) => `${API_URL}/api/bookings/class-session/${sessionId}/start`,
+  endClass: (sessionId: string) => `${API_URL}/api/bookings/class-session/${sessionId}/end`,
+
+  // Agora endpoints
+  agoraToken: (channel: string, uid: string, role: 'HOST' | 'STUDENT') =>
+    `${API_URL}/api/agora?channel=${encodeURIComponent(channel)}&uid=${encodeURIComponent(uid)}&role=${role}`,
   
   // Upload endpoints
   uploadProfileImage: (userId: string) => `${API_URL}/api/upload/${userId}/profile-image`,
@@ -72,5 +80,15 @@ export const api = {
     send: () => `${API_URL}/api/messages/send`,
     markRead: (otherUserId: string) => `${API_URL}/api/messages/read/${otherUserId}`,
     unreadCount: () => `${API_URL}/api/messages/unread-count`,
+  },
+
+  // Course endpoints
+  courses: {
+    browse: () => `${API_URL}/api/courses`,
+    byTeacher: (teacherId: string) => `${API_URL}/api/courses/teacher/${teacherId}`,
+    byId: (courseId: string) => `${API_URL}/api/courses/${courseId}`,
+    create: () => `${API_URL}/api/courses`,
+    update: (courseId: string) => `${API_URL}/api/courses/${courseId}`,
+    delete: (courseId: string) => `${API_URL}/api/courses/${courseId}`,
   },
 };

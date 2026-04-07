@@ -335,30 +335,24 @@ export default function ClassesScreen() {
           <>
             <TouchableOpacity 
               style={[styles.joinButton, !joinable && styles.joinButtonDisabled]}
-              disabled={!joinable}
+              disabled
               activeOpacity={0.8}
-              onPress={() => router.push({
-                pathname: '/class-room/[id]',
-                params: { id: classItem.id }
-              })}
+              onPress={() => Alert.alert('Student account required', 'Only teachers and students can join live classes.')}
             >
               <LinearGradient
-                colors={joinable ? ['#4ECDC4', '#2BCBBA'] : ['#E5E7EB', '##E5E7EB']}
+                colors={['#E5E7EB', '##E5E7EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.joinButtonGradient}
               >
-                <ThemedText style={[styles.joinButtonText, !joinable && styles.joinButtonTextDisabled]}>
-                  {joinable ? 'Join Class Now' : 'Join Not Available'}
+                <ThemedText style={[styles.joinButtonText, styles.joinButtonTextDisabled]}>
+                  Join via Student Account
                 </ThemedText>
-                {joinable && <Ionicons name="videocam" size={18} color="#FFF" />}
               </LinearGradient>
             </TouchableOpacity>
-            {joinWarning !== '' && (
-              <ThemedText style={{ color: '#F59E0B', marginTop: 6, textAlign: 'center', fontSize: 13 }}>
-                {joinWarning}
-              </ThemedText>
-            )}
+            <ThemedText style={{ color: '#F59E0B', marginTop: 6, textAlign: 'center', fontSize: 13 }}>
+              Live class access is available for teacher and student accounts only.
+            </ThemedText>
           </>
         )}
         

@@ -535,14 +535,11 @@ export default function ParentDashboard() {
                    </View>
                    <View style={styles.classCardRight}>
                       <TouchableOpacity 
-                        style={[styles.joinBtn, !joinable && { opacity: 0.5 }]}
-                        disabled={!joinable}
-                        onPress={() => joinable && router.push({
-                          pathname: '/class-room/[id]',
-                          params: { id: classItem.id }
-                        })}
+                        style={[styles.joinBtn, { opacity: 0.5 }]}
+                        disabled
+                        onPress={() => Alert.alert('Student account required', 'Only teachers and students can join live classes.')}
                       >
-                        <ThemedText style={styles.joinBtnText}>{joinable ? 'Join' : 'Wait'}</ThemedText>
+                        <ThemedText style={styles.joinBtnText}>Student</ThemedText>
                       </TouchableOpacity>
                    </View>
                 </View>

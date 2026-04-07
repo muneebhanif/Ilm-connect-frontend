@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // If already inside the correct layout group or a top-level page for the user's role, do nothing.
     if ((current === '(teacher)' || teacherPages.includes(current as string)) && user.role === 'teacher') return;
     if ((current === '(parent)' || parentPages.includes(current as string)) && user.role === 'parent') return;
-    if (studentPages.includes(current as string) && user.role === 'student') return;
+    if ((current === '(student)' || studentPages.includes(current as string)) && user.role === 'student') return;
 
     // Allow logged-in parents/admins to open student signup to create child credentials.
     if (current === 'signup-student' && (user.role === 'parent' || user.role === 'admin')) return;
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (user.role === 'student' && !studentPages.includes(current as string)) {
+    if (user.role === 'student' && !(current === '(student)' || studentPages.includes(current as string))) {
       router.replace('/(student)/dashboard' as any);
       return;
     }

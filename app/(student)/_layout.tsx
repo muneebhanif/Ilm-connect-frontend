@@ -7,20 +7,33 @@ export default function StudentLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#4ECDC4',
+        tabBarActiveTintColor: '#14B8A6',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#F0F0F0',
-          height: Platform.OS === 'ios' ? 80 : 60,
+          height: Platform.OS === 'ios' ? 80 : Platform.OS === 'web' ? 60 : 56,
           paddingTop: 8,
           paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          elevation: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
+        tabBarIconStyle: {
+          marginBottom: 2,
+        },
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        tabBarLabelPosition: 'below-icon',
       }}
     >
       <Tabs.Screen
@@ -28,7 +41,7 @@ export default function StudentLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -37,7 +50,7 @@ export default function StudentLayout() {
         options={{
           title: 'Classes',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -46,7 +59,7 @@ export default function StudentLayout() {
         options={{
           title: 'Recordings',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -55,7 +68,7 @@ export default function StudentLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
           ),
         }}
       />

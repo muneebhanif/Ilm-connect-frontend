@@ -82,6 +82,19 @@ export default function TeacherLayout() {
         }}
       />
       <Tabs.Screen
+        name="courses"
+        options={{
+          title: 'Courses',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'library' : 'library-outline'}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="students"
         options={{
           title: 'Students',

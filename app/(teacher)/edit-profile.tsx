@@ -60,7 +60,8 @@ export default function EditTeacherProfileScreen() {
   const loadProfile = async () => {
     try {
       if (!user?.id) {
-        router.replace('/login');
+        // Auth context handles redirect to /login
+        setLoading(false);
         return;
       }
 
@@ -196,7 +197,6 @@ export default function EditTeacherProfileScreen() {
 
     if (!user?.id) {
       Alert.alert('Error', 'Session expired. Please login again.');
-      router.replace('/login');
       return;
     }
 

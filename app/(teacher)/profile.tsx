@@ -1,4 +1,5 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, Image, Platform } from 'react-native';
+import { SkeletonScreen } from '@/components/ui/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -33,7 +34,8 @@ export default function TeacherProfileScreen() {
   const loadProfile = async () => {
     try {
       if (!user?.id) {
-        router.replace('/login');
+        // Auth context handles redirect to /login
+        setLoading(false);
         return;
       }
 
@@ -74,11 +76,7 @@ export default function TeacherProfileScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
-      </View>
-    );
+    return <SkeletonScreen />;
   }
 
   return (
