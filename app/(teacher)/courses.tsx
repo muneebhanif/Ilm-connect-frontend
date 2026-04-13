@@ -9,7 +9,7 @@ import { authFetch } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface Course {
   id: string;
@@ -99,13 +99,10 @@ export default function TeacherCoursesScreen() {
     }
   };
 
-  const inferLessonType = (fileName: string, mimeType?: string): CourseLesson['content_type'] => {
+  const isVideoFile = (fileName: string, mimeType?: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
     const mime = String(mimeType || '').toLowerCase();
-    if (mime.startsWith('video/') || ['mp4', 'mov', 'm4v', 'webm'].includes(ext)) return 'video';
-    if (mime.startsWith('audio/') || ['mp3', 'wav', 'm4a'].includes(ext)) return 'audio';
-    if (ext === 'pdf' || mime === 'application/pdf') return 'pdf';
-    return 'document';
+    return mime.startsWith('video/') || ['mp4', 'mov', 'm4v', 'webm'].includes(ext);
   };
 
   const loadCourseLessons = async (courseId: string) => {
@@ -138,11 +135,15 @@ export default function TeacherCoursesScreen() {
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
         multiple: false,
-        type: '*/*',
+        type: 'video/*',
       });
 
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
+      if (!isVideoFile(asset.name || '', asset.mimeType)) {
+        setNotification({ type: 'error', message: 'Only video files are allowed (mp4, mov, m4v, webm)' });
+        return;
+      }
       setSelectedFile({
         uri: asset.uri,
         name: asset.name || `content-${Date.now()}`,
@@ -183,7 +184,7 @@ export default function TeacherCoursesScreen() {
           content: `data:${mime};base64,${base64}`,
           fileExtension: ext,
           fileName: selectedFile.name,
-          content_type: inferLessonType(selectedFile.name, selectedFile.mimeType),
+          content_type: 'video',
           is_preview: lessonPreview,
         }),
       });
@@ -548,7 +549,7 @@ export default function TeacherCoursesScreen() {
               <TouchableOpacity style={styles.filePickBtn} onPress={pickContentFile}>
                 <Ionicons name="attach" size={18} color="#111827" />
                 <ThemedText style={styles.filePickText}>
-                  {selectedFile?.name ? `Selected: ${selectedFile.name}` : 'Choose file (video/pdf/audio/doc)'}
+                  {selectedFile?.name ? `Selected: ${selectedFile.name}` : 'Choose video file (mp4/mov/m4v/webm)'}
                 </ThemedText>
               </TouchableOpacity>
 
