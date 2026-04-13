@@ -220,9 +220,22 @@ export default function ClassRoomScreen() {
       joinedRef.current = true;
 
       // ── Chat: Listen for incoming data stream messages ──
-      client.on('stream-message', (_uid: any, data: Uint8Array) => {
+      client.on('stream-message', (_uid: any, data: any) => {
         try {
-          const decoded = new TextDecoder().decode(data);
+          let decoded = '';
+          if (typeof data === 'string') {
+            decoded = data;
+          } else if (data instanceof Uint8Array) {
+            decoded = new TextDecoder().decode(data);
+          } else if (data instanceof ArrayBuffer) {
+            decoded = new TextDecoder().decode(new Uint8Array(data));
+          } else if (data?.buffer instanceof ArrayBuffer) {
+            decoded = new TextDecoder().decode(new Uint8Array(data.buffer));
+          } else {
+            decoded = String(data ?? '');
+          }
+
+          if (!decoded) return;
           const msg = JSON.parse(decoded);
           if (msg.type === 'chat') {
             setChatMessages((prev) => [...prev, {
@@ -346,11 +359,28 @@ export default function ClassRoomScreen() {
 
     // Send to other participants via Agora data stream
     const client = rtcClientRef.current;
-    if (client && dataStreamIdRef.current !== null) {
+    if (client) {
       try {
+        if (dataStreamIdRef.current === null) {
+          await setupDataStream();
+        }
+        if (dataStreamIdRef.current === null) {
+          throw new Error('Chat stream not ready yet. Please try again.');
+        }
+
         const payload = JSON.stringify({ type: 'chat', senderName, text, at: now });
-        const encoded = new TextEncoder().encode(payload);
-        await client.sendStreamMessage(dataStreamIdRef.current, encoded);
+        try {
+          // String transport is supported and avoids binary decoding mismatch across clients.
+          await client.sendStreamMessage(dataStreamIdRef.current, payload);
+        } catch {
+          // Fallback to binary payload for clients expecting Uint8Array.
+          if (typeof TextEncoder !== 'undefined') {
+            const encoded = new TextEncoder().encode(payload);
+            await client.sendStreamMessage(dataStreamIdRef.current, encoded);
+          } else {
+            throw new Error('Text encoder not available for chat transport');
+          }
+        }
       } catch (e) {
         console.warn('Failed to send stream message:', e);
       }
