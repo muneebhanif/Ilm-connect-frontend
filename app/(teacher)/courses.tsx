@@ -5,8 +5,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
+import { authFetch } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 interface Course {
   id: string;
@@ -21,6 +24,20 @@ interface Course {
   created_at: string;
 }
 
+interface CourseLesson {
+  id: string;
+  title: string;
+  description?: string;
+  content_type: 'video' | 'pdf' | 'audio' | 'document' | 'link';
+  content_url: string;
+  file_name?: string;
+  file_size_bytes?: number;
+  is_preview?: boolean;
+  sort_order?: number;
+  status?: string;
+  created_at?: string;
+}
+
 const SUBJECTS = ['Quran Memorization', 'Tajweed', 'Arabic Language', 'Islamic Studies', 'Fiqh', 'Hadith', 'Seerah'];
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
 
@@ -33,6 +50,15 @@ export default function TeacherCoursesScreen() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [contentModalOpen, setContentModalOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [lessons, setLessons] = useState<CourseLesson[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
+  const [uploadingContent, setUploadingContent] = useState(false);
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [lessonDescription, setLessonDescription] = useState('');
+  const [lessonPreview, setLessonPreview] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string; mimeType?: string } | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -62,7 +88,7 @@ export default function TeacherCoursesScreen() {
       if (mode === 'initial') setLoading(true);
       if (mode === 'refresh') setRefreshing(true);
 
-      const response = await fetch(api.courses.byTeacher(user.id));
+      const response = await authFetch(api.courses.byTeacher(user.id));
       const data = await response.json();
       if (response.ok) setCourses(data.courses || []);
     } catch (e) {
@@ -70,6 +96,142 @@ export default function TeacherCoursesScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const inferLessonType = (fileName: string, mimeType?: string): CourseLesson['content_type'] => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const mime = String(mimeType || '').toLowerCase();
+    if (mime.startsWith('video/') || ['mp4', 'mov', 'm4v', 'webm'].includes(ext)) return 'video';
+    if (mime.startsWith('audio/') || ['mp3', 'wav', 'm4a'].includes(ext)) return 'audio';
+    if (ext === 'pdf' || mime === 'application/pdf') return 'pdf';
+    return 'document';
+  };
+
+  const loadCourseLessons = async (courseId: string) => {
+    if (!user?.id) return;
+    try {
+      setLoadingLessons(true);
+      const response = await authFetch(api.courses.lessons(courseId, user.id));
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to load course content');
+      setLessons(data.lessons || []);
+    } catch (e: any) {
+      setNotification({ type: 'error', message: e?.message || 'Failed to load course content' });
+    } finally {
+      setLoadingLessons(false);
+    }
+  };
+
+  const openContentModal = async (course: Course) => {
+    setSelectedCourse(course);
+    setLessonTitle('');
+    setLessonDescription('');
+    setLessonPreview(false);
+    setSelectedFile(null);
+    setContentModalOpen(true);
+    await loadCourseLessons(course.id);
+  };
+
+  const pickContentFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: '*/*',
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setSelectedFile({
+        uri: asset.uri,
+        name: asset.name || `content-${Date.now()}`,
+        mimeType: asset.mimeType,
+      });
+      if (!lessonTitle.trim()) {
+        setLessonTitle((asset.name || 'Lesson Content').replace(/\.[^/.]+$/, ''));
+      }
+    } catch (e: any) {
+      setNotification({ type: 'error', message: e?.message || 'Failed to pick file' });
+    }
+  };
+
+  const uploadLessonContent = async () => {
+    if (!user?.id || !selectedCourse?.id) return;
+    if (!lessonTitle.trim()) {
+      setNotification({ type: 'error', message: 'Lesson title is required' });
+      return;
+    }
+    if (!selectedFile?.uri) {
+      setNotification({ type: 'error', message: 'Please choose a file to upload' });
+      return;
+    }
+
+    setUploadingContent(true);
+    try {
+      const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, { encoding: 'base64' });
+      const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'bin';
+      const mime = selectedFile.mimeType || 'application/octet-stream';
+
+      const response = await authFetch(api.courses.uploadLesson(selectedCourse.id), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacher_id: user.id,
+          title: lessonTitle.trim(),
+          description: lessonDescription.trim() || null,
+          content: `data:${mime};base64,${base64}`,
+          fileExtension: ext,
+          fileName: selectedFile.name,
+          content_type: inferLessonType(selectedFile.name, selectedFile.mimeType),
+          is_preview: lessonPreview,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to upload content');
+
+      setNotification({ type: 'success', message: 'Course content uploaded successfully' });
+      setLessonTitle('');
+      setLessonDescription('');
+      setLessonPreview(false);
+      setSelectedFile(null);
+      await loadCourseLessons(selectedCourse.id);
+      await loadCourses('refresh');
+    } catch (e: any) {
+      setNotification({ type: 'error', message: e?.message || 'Failed to upload content' });
+    } finally {
+      setUploadingContent(false);
+    }
+  };
+
+  const deleteLesson = async (lesson: CourseLesson) => {
+    if (!user?.id || !selectedCourse?.id) return;
+
+    const run = async () => {
+      try {
+        const response = await authFetch(api.courses.deleteLesson(selectedCourse.id, lesson.id), {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teacher_id: user.id }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Failed to delete lesson');
+        setNotification({ type: 'success', message: 'Content deleted' });
+        await loadCourseLessons(selectedCourse.id);
+        await loadCourses('refresh');
+      } catch (e: any) {
+        setNotification({ type: 'error', message: e?.message || 'Failed to delete lesson' });
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete content "${lesson.title}"?`)) await run();
+    } else {
+      Alert.alert('Delete Content', `Delete "${lesson.title}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => void run() },
+      ]);
     }
   };
 
@@ -122,13 +284,13 @@ export default function TeacherCoursesScreen() {
 
       let response;
       if (editingCourse) {
-        response = await fetch(api.courses.update(editingCourse.id), {
+        response = await authFetch(api.courses.update(editingCourse.id), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
       } else {
-        response = await fetch(api.courses.create(), {
+        response = await authFetch(api.courses.create(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -152,7 +314,7 @@ export default function TeacherCoursesScreen() {
   const handleDelete = (course: Course) => {
     const doDelete = async () => {
       try {
-        const response = await fetch(api.courses.delete(course.id), {
+        const response = await authFetch(api.courses.delete(course.id), {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ teacher_id: user?.id }),
@@ -286,6 +448,9 @@ export default function TeacherCoursesScreen() {
                     <ThemedText style={styles.courseSubject}>{course.subject}</ThemedText>
                   </View>
                   <View style={styles.courseActions}>
+                    <TouchableOpacity style={styles.contentBtn} onPress={() => openContentModal(course)}>
+                      <Ionicons name="cloud-upload-outline" size={18} color="#2563EB" />
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(course)}>
                       <Ionicons name="create-outline" size={18} color="#6B7280" />
                     </TouchableOpacity>
@@ -331,6 +496,98 @@ export default function TeacherCoursesScreen() {
           </LinearGradient>
         </TouchableOpacity>
       )}
+
+      {/* Course Content Modal */}
+      <Modal visible={contentModalOpen} animationType="slide" transparent onRequestClose={() => setContentModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.modalHeader}>
+                <View>
+                  <ThemedText style={styles.modalTitle}>Course Content</ThemedText>
+                  <ThemedText style={styles.modalSubtitle} numberOfLines={1}>
+                    {selectedCourse?.title || 'Selected course'}
+                  </ThemedText>
+                </View>
+                <TouchableOpacity onPress={() => setContentModalOpen(false)}>
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <ThemedText style={styles.inputLabel}>Lesson Title *</ThemedText>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Lesson 1 - Introduction"
+                placeholderTextColor="#9CA3AF"
+                value={lessonTitle}
+                onChangeText={setLessonTitle}
+              />
+
+              <ThemedText style={styles.inputLabel}>Description</ThemedText>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Optional lesson description"
+                placeholderTextColor="#9CA3AF"
+                value={lessonDescription}
+                onChangeText={setLessonDescription}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+
+              <View style={styles.toggleRow}>
+                <ThemedText style={styles.inputLabel}>Preview lesson (free)</ThemedText>
+                <TouchableOpacity
+                  style={[styles.toggle, lessonPreview && styles.toggleActive]}
+                  onPress={() => setLessonPreview(!lessonPreview)}
+                >
+                  <View style={[styles.toggleDot, lessonPreview && styles.toggleDotActive]} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.filePickBtn} onPress={pickContentFile}>
+                <Ionicons name="attach" size={18} color="#111827" />
+                <ThemedText style={styles.filePickText}>
+                  {selectedFile?.name ? `Selected: ${selectedFile.name}` : 'Choose file (video/pdf/audio/doc)'}
+                </ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.saveButton, uploadingContent && { opacity: 0.6 }]}
+                onPress={uploadLessonContent}
+                disabled={uploadingContent}
+              >
+                {uploadingContent ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <ThemedText style={styles.saveButtonText}>Upload Content</ThemedText>
+                )}
+              </TouchableOpacity>
+
+              <ThemedText style={styles.sectionLabel}>Uploaded Content</ThemedText>
+              {loadingLessons ? (
+                <ActivityIndicator size="small" color="#FF6B6B" style={{ marginTop: 12 }} />
+              ) : lessons.length === 0 ? (
+                <ThemedText style={styles.emptyInlineText}>No lessons uploaded yet.</ThemedText>
+              ) : (
+                lessons.map((lesson) => (
+                  <View key={lesson.id} style={styles.lessonCard}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.lessonTitle}>{lesson.title}</ThemedText>
+                      <ThemedText style={styles.lessonMeta}>
+                        {String(lesson.content_type || '').toUpperCase()} • {lesson.file_name || 'Content'}
+                      </ThemedText>
+                    </View>
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteLesson(lesson)}>
+                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Create/Edit Modal */}
       <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
@@ -609,6 +866,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  contentBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   deleteBtn: {
     width: 34,
     height: 34,
@@ -747,6 +1012,60 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     color: '#111827',
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  emptyInlineText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    marginTop: 8,
+  },
+  filePickBtn: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  filePickText: {
+    color: '#111827',
+    fontSize: 13,
+    flex: 1,
+  },
+  lessonCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  lessonTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  lessonMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   inputLabel: {
     fontSize: 13,

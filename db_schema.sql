@@ -189,6 +189,23 @@ CREATE TABLE public.students (
   CONSTRAINT students_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.parents(id),
   CONSTRAINT students_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id)
 );
+CREATE TABLE public.teacher_courses (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  teacher_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  subject text NOT NULL,
+  level text NOT NULL DEFAULT 'beginner'::text CHECK (level = ANY (ARRAY['beginner'::text, 'intermediate'::text, 'advanced'::text])),
+  thumbnail_url text,
+  price numeric NOT NULL DEFAULT 0,
+  is_free boolean NOT NULL DEFAULT false,
+  status text NOT NULL DEFAULT 'published'::text CHECK (status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])),
+  total_lessons integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teacher_courses_pkey PRIMARY KEY (id),
+  CONSTRAINT teacher_courses_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.profiles(id)
+);
 CREATE TABLE public.teachers (
   id uuid NOT NULL,
   bio text,
@@ -217,21 +234,4 @@ CREATE TABLE public.todos (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT todos_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.teacher_courses (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  teacher_id uuid NOT NULL,
-  title text NOT NULL,
-  description text,
-  subject text NOT NULL,
-  level text NOT NULL DEFAULT 'beginner'::text CHECK (level = ANY (ARRAY['beginner'::text, 'intermediate'::text, 'advanced'::text])),
-  thumbnail_url text,
-  price numeric NOT NULL DEFAULT 0,
-  is_free boolean NOT NULL DEFAULT false,
-  status text NOT NULL DEFAULT 'published'::text CHECK (status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])),
-  total_lessons integer NOT NULL DEFAULT 0,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT teacher_courses_pkey PRIMARY KEY (id),
-  CONSTRAINT teacher_courses_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
