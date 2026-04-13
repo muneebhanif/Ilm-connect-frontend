@@ -32,6 +32,16 @@ const STORAGE_KEYS = {
   REFRESH_TOKEN: 'refresh_token',
 };
 
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 12000) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -154,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       // Fetch authoritative profile
-      const res = await fetch(api.profile(userId));
+      const res = await fetchWithTimeout(api.profile(userId));
       if (!res.ok) throw new Error('Failed to load profile');
       const data = await res.json();
       const profile = data.profile || {};
@@ -178,6 +188,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Avoid leaving stale user/role in memory when profile load fails.
       setUser(null);
       await clearUserProfile();
+      if ((error as any)?.name === 'AbortError') {
+        throw new Error('Request timed out. Please check backend connection and try again.');
+      }
       throw error;
     } finally {
       setLoading(false);
@@ -207,13 +220,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearUserProfile();
     setUser(null);
 
-    const response = await fetch(api.login(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(api.login(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        throw new Error('Login request timed out. Is backend running on port 3000?');
+      }
+      throw new Error('Unable to reach server. Please check your network/backend.');
+    }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error || 'Login failed');
     }
