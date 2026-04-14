@@ -87,13 +87,17 @@ export default function LoginScreen() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled={Platform.OS === 'ios'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         style={styles.keyboardView}
       >
         <ScrollView 
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         >
           <View style={styles.content}>
             {/* Top Navigation */}
@@ -175,7 +179,7 @@ export default function LoginScreen() {
                {/* Footer */}
                <View style={styles.footer}>
                   <ThemedText style={styles.footerText}>Don't have an account? </ThemedText>
-                  <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+                  <TouchableOpacity onPress={() => router.push('/role-selection')}>
                      <ThemedText style={styles.signUpLink}>Sign up</ThemedText>
                   </TouchableOpacity>
                </View>

@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Platform, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Platform, ActivityIndicator, RefreshControl, KeyboardAvoidingView } from 'react-native';
 import { TeacherCoursesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback } from 'react';
@@ -170,7 +170,21 @@ export default function TeacherCoursesScreen() {
 
     setUploadingContent(true);
     try {
-      const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, { encoding: 'base64' });
+      const base64 = await (async () => {
+        if (Platform.OS === 'web') {
+          const response = await fetch(selectedFile.uri);
+          const blob = await response.blob();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Failed to read selected file'));
+            reader.readAsDataURL(blob);
+          });
+          return dataUrl.replace(/^data:[^;]+;base64,/, '');
+        }
+
+        return FileSystem.readAsStringAsync(selectedFile.uri, { encoding: 'base64' });
+      })();
       const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'bin';
       const mime = selectedFile.mimeType || 'application/octet-stream';
 
@@ -369,6 +383,9 @@ export default function TeacherCoursesScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        scrollEnabled={!showModal && !contentModalOpen}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => loadCourses('refresh')} tintColor="#FF6B6B" />
         }
@@ -501,8 +518,17 @@ export default function TeacherCoursesScreen() {
       {/* Course Content Modal */}
       <Modal visible={contentModalOpen} animationType="slide" transparent onRequestClose={() => setContentModalOpen(false)}>
         <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalKeyboardAvoid}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+          >
           <View style={styles.modalContent}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+            >
               <View style={styles.modalHeader}>
                 <View>
                   <ThemedText style={styles.modalTitle}>Course Content</ThemedText>
@@ -532,6 +558,7 @@ export default function TeacherCoursesScreen() {
                 value={lessonDescription}
                 onChangeText={setLessonDescription}
                 multiline
+                scrollEnabled={false}
                 numberOfLines={3}
                 textAlignVertical="top"
               />
@@ -587,14 +614,24 @@ export default function TeacherCoursesScreen() {
               )}
             </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
       {/* Create/Edit Modal */}
       <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            style={styles.modalKeyboardAvoid}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+          >
           <View style={styles.modalContent}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+            >
               <View style={styles.modalHeader}>
                 <ThemedText style={styles.modalTitle}>
                   {editingCourse ? 'Edit Course' : 'New Course'}
@@ -623,6 +660,7 @@ export default function TeacherCoursesScreen() {
                 value={description}
                 onChangeText={setDescription}
                 multiline
+                scrollEnabled={false}
                 numberOfLines={4}
                 textAlignVertical="top"
               />
@@ -713,6 +751,7 @@ export default function TeacherCoursesScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -996,12 +1035,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  modalKeyboardAvoid: {
+    width: '100%',
+  },
   modalContent: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
     maxHeight: '90%',
+    paddingBottom: Platform.OS === 'android' ? 18 : 24,
   },
   modalHeader: {
     flexDirection: 'row',

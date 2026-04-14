@@ -399,13 +399,17 @@ export default function SignUpTeacherScreen() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled={Platform.OS === 'ios'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         style={styles.keyboardView}
       >
         <ScrollView 
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         >
           <View style={styles.content}>
             <View style={styles.topNav}>
@@ -524,7 +528,6 @@ export default function SignUpTeacherScreen() {
                       accentColor="#FF6B6B"
                       error={phoneError}
                       defaultCountryCode="PK"
-                      containerStyle={styles.phoneInputOverride}
                    />
                  </View>
               </View>

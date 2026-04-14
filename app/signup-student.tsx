@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { BackButton } from '@/components/back-button';
@@ -86,7 +86,17 @@ export default function SignUpStudentScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView
+        enabled={Platform.OS === 'ios'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        style={{ flex: 1 }}
+      >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      >
         <BackButton />
         <ThemedText style={styles.title}>Student Sign Up</ThemedText>
         <ThemedText style={styles.subtitle}>Create your learning portal account</ThemedText>
@@ -126,6 +136,7 @@ export default function SignUpStudentScreen() {
           {loading ? <ActivityIndicator color="#FFF" /> : <ThemedText style={styles.buttonText}>Create Student Account</ThemedText>}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
