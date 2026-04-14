@@ -1,4 +1,4 @@
-import { Modal, View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { Modal, View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ThemedText } from './themed-text';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -100,7 +100,11 @@ export function RateTeacherModal({
       animationType="slide"
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
+      >
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
@@ -191,7 +195,7 @@ export function RateTeacherModal({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

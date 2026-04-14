@@ -1,4 +1,4 @@
-import { StyleSheet, View, TextInput, TouchableOpacity, Modal, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, Modal, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -91,7 +91,11 @@ export function AddChildModal({ visible, onClose, onSuccess }: AddChildModalProp
       animationType="slide"
       transparent={true}
       onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.header}>
             <ThemedText style={styles.title}>Add Child</ThemedText>
@@ -100,7 +104,13 @@ export function AddChildModal({ visible, onClose, onSuccess }: AddChildModalProp
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.form}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            contentContainerStyle={styles.formContent}
+          >
             <View style={styles.inputContainer}>
               <ThemedText style={styles.label}>Child's Name *</ThemedText>
               <TextInput
@@ -151,7 +161,7 @@ export function AddChildModal({ visible, onClose, onSuccess }: AddChildModalProp
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -196,6 +206,9 @@ const styles = StyleSheet.create({
   },
   form: {
     paddingHorizontal: 24,
+  },
+  formContent: {
+    paddingBottom: 8,
   },
   inputContainer: {
     marginBottom: 20,
