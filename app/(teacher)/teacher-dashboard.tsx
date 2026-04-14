@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -59,6 +59,7 @@ export default function TeacherDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
   const [stats, setStats] = useState<TeacherStats>({
@@ -106,11 +107,14 @@ export default function TeacherDashboard() {
     }
   };
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (mode: 'initial' | 'refresh' = 'initial') => {
     try {
       if (!user?.id) {
         return;
       }
+
+      if (mode === 'initial') setLoading(true);
+      if (mode === 'refresh') setRefreshing(true);
 
       const [profileRes, docsRes] = await Promise.all([
         fetch(api.teacherProfile(user.id)),
@@ -146,7 +150,12 @@ export default function TeacherDashboard() {
       console.error('Error loading dashboard:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    loadDashboardData('refresh');
   };
 
   const getDocumentForType = (type: string): UploadedDocument | undefined => {
@@ -305,6 +314,7 @@ export default function TeacherDashboard() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header Section */}
         <View style={styles.header}>

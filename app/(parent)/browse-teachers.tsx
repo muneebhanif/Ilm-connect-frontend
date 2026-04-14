@@ -1,4 +1,4 @@
-import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, Image, Platform, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -32,6 +32,7 @@ export default function BrowseTeachersScreen() {
   const [selectedSubject, setSelectedSubject] = useState<string | null>('All');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const subjects = ['All', 'Quran Memorization', 'Tajweed', 'Arabic Language', 'Islamic Studies', 'Fiqh', 'Hadith'];
 
@@ -39,9 +40,10 @@ export default function BrowseTeachersScreen() {
     fetchTeachers();
   }, [selectedSubject]);
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = async (mode: 'initial' | 'refresh' = 'initial') => {
     try {
-      setLoading(true);
+      if (mode === 'initial') setLoading(true);
+      if (mode === 'refresh') setRefreshing(true);
       let url = api.teachers();
       
       const params = new URLSearchParams();
@@ -60,7 +62,12 @@ export default function BrowseTeachersScreen() {
       console.error('Error fetching teachers:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    fetchTeachers('refresh');
   };
 
   const filteredTeachers = teachers.filter(teacher => {
@@ -121,6 +128,7 @@ export default function BrowseTeachersScreen() {
         style={styles.scrollView} 
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {loading ? (
           <SkeletonScreen />

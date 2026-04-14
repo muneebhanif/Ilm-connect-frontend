@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, Image, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, Image, Platform, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -25,6 +25,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<ParentProfile | null>(null);
   const [stats, setStats] = useState<ParentStats>({
     children: 0,
@@ -36,13 +37,16 @@ export default function ProfileScreen() {
     loadProfile();
   }, []);
 
-  const loadProfile = async () => {
+  const loadProfile = async (mode: 'initial' | 'refresh' = 'initial') => {
     try {
       if (!user?.id) {
         // Auth context handles redirect to /login
         setLoading(false);
         return;
       }
+
+      if (mode === 'initial') setLoading(true);
+      if (mode === 'refresh') setRefreshing(true);
 
       const accessToken = await AsyncStorage.getItem('access_token');
       if (!accessToken) throw new Error('No token');
@@ -67,7 +71,12 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Failed to load profile data');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    loadProfile('refresh');
   };
 
   const handleLogout = async () => {
@@ -113,7 +122,10 @@ export default function ProfileScreen() {
         <ThemedText style={styles.headerTitle}>Profile</ThemedText>
       </View>
       
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             {profile?.avatar_url ? (

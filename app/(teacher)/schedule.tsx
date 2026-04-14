@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, Alert, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -29,6 +29,7 @@ export default function ScheduleScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [todayClasses, setTodayClasses] = useState<ClassSession[]>([]);
   const [upcomingClasses, setUpcomingClasses] = useState<ClassSession[]>([]);
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
@@ -73,9 +74,12 @@ export default function ScheduleScreen() {
     }
   }, [user?.id, teacherTz]);
 
-  const loadSchedule = async () => {
+  const loadSchedule = async (mode: 'initial' | 'refresh' = 'initial') => {
     try {
       if (!user?.id) return;
+
+      if (mode === 'initial') setLoading(true);
+      if (mode === 'refresh') setRefreshing(true);
 
       const response = await fetch(api.teacherSchedule(user.id));
       
@@ -148,7 +152,12 @@ export default function ScheduleScreen() {
       Alert.alert('Error', 'Unable to load schedule. Please pull to refresh.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    loadSchedule('refresh');
   };
 
   const formatTime = (dateStr: string) => {
@@ -365,6 +374,7 @@ export default function ScheduleScreen() {
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {displayClasses.length === 0 ? (
           <View style={styles.emptyState}>

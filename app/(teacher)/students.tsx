@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Modal, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Modal, Alert, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
@@ -67,6 +67,7 @@ export default function StudentsScreen() {
   const [activeTab, setActiveTab] = useState('All'); // All, Active, Paused
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attendanceModalVisible, setAttendanceModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -81,9 +82,10 @@ export default function StudentsScreen() {
     fetchStudents();
   }, [user]);
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (mode: 'initial' | 'refresh' = 'initial') => {
     if (!user?.id) return;
-    setLoading(true);
+    if (mode === 'initial') setLoading(true);
+    if (mode === 'refresh') setRefreshing(true);
     setError(null);
     try {
       const res = await fetch(api.teacherById(user.id) + '/students');
@@ -94,7 +96,12 @@ export default function StudentsScreen() {
       setError(err.message || 'Failed to fetch students');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    fetchStudents('refresh');
   };
 
   const openAttendanceModal = async (student: any) => {
@@ -304,6 +311,7 @@ export default function StudentsScreen() {
           style={styles.scrollView} 
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           {filteredStudents.length > 0 ? (
             filteredStudents.map(renderStudentCard)

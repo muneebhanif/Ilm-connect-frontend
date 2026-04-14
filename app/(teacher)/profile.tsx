@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, Image, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, Image, Platform, RefreshControl } from 'react-native';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
@@ -25,19 +25,23 @@ export default function TeacherProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
 
   useEffect(() => {
     loadProfile();
   }, []);
 
-  const loadProfile = async () => {
+  const loadProfile = async (mode: 'initial' | 'refresh' = 'initial') => {
     try {
       if (!user?.id) {
         // Auth context handles redirect to /login
         setLoading(false);
         return;
       }
+
+      if (mode === 'initial') setLoading(true);
+      if (mode === 'refresh') setRefreshing(true);
 
       const response = await fetch(api.teacherProfile(user.id));
       const data = await response.json();
@@ -51,7 +55,12 @@ export default function TeacherProfileScreen() {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => {
+    loadProfile('refresh');
   };
 
   const handleLogout = async () => {
@@ -96,6 +105,7 @@ export default function TeacherProfileScreen() {
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         
         {/* Profile Card Section */}
