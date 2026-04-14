@@ -108,7 +108,7 @@ export function AddChildModal({ visible, onClose, onSuccess }: AddChildModalProp
             style={styles.form}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
             contentContainerStyle={styles.formContent}
           >
             <View style={styles.inputContainer}>

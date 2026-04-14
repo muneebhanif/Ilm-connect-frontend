@@ -118,7 +118,6 @@ export function PhoneInput({
 }: PhoneInputProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
 
   // Find default country
   const defaultCountry = useMemo(() => 
@@ -204,7 +203,6 @@ export function PhoneInput({
       
       <View style={[
         styles.inputContainer,
-        isFocused && { borderColor: accentColor, backgroundColor: '#fff' },
         error && styles.inputContainerError,
       ]}>
         {/* Country Selector */}
@@ -229,8 +227,6 @@ export function PhoneInput({
           placeholderTextColor="#999"
           keyboardType="phone-pad"
           maxLength={15}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
         />
       </View>
 

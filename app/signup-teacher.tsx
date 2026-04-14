@@ -115,7 +115,6 @@ function SubjectsDropdown({ value, onSelect, label, required }: SubjectsDropdown
 export default function SignUpTeacherScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | undefined>();
   const [isPhoneValid, setIsPhoneValid] = useState(false);
   const { user } = useAuth();
@@ -350,7 +349,6 @@ export default function SignUpTeacherScreen() {
     <View>
       <View style={[
         styles.filledInputContainer,
-        focusedInput === key && styles.filledInputFocused,
         options?.multiline && styles.multilineContainer,
         formErrors[key] && styles.inputError
       ]}>
@@ -367,8 +365,6 @@ export default function SignUpTeacherScreen() {
               setFormData((prev) => ({ ...prev, [key]: text }));
               clearError(key);
             }}
-            onFocus={() => setFocusedInput(key)}
-            onBlur={() => setFocusedInput(null)}
             autoCapitalize={options?.autoCapitalize}
             keyboardType={options?.keyboardType}
             secureTextEntry={options?.secureTextEntry && !showPassword}
@@ -409,7 +405,7 @@ export default function SignUpTeacherScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
         >
           <View style={styles.content}>
             <View style={styles.topNav}>
@@ -479,7 +475,6 @@ export default function SignUpTeacherScreen() {
               <View>
                 <View style={[
                   styles.filledInputContainer,
-                  focusedInput === 'confirmPassword' && styles.filledInputFocused,
                   formErrors.confirmPassword && styles.inputError
                 ]}>
                   <ThemedText style={styles.tinyLabel}>
@@ -495,8 +490,6 @@ export default function SignUpTeacherScreen() {
                         setFormData((prev) => ({ ...prev, confirmPassword: text }));
                         clearError('confirmPassword');
                       }}
-                      onFocus={() => setFocusedInput('confirmPassword')}
-                      onBlur={() => setFocusedInput(null)}
                       secureTextEntry={!showConfirmPassword}
                     />
                     <TouchableOpacity 
@@ -771,22 +764,13 @@ const styles = StyleSheet.create({
   
   /* Filled Input Styles (Shared by TextInput and Dropdown Trigger) */
   filledInputContainer: {
-    backgroundColor: '#F5F7FA', // Light gray background
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 10,
     borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  filledInputFocused: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FF6B6B', // Teacher Theme Color (Coral)
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#E5E7EB',
   },
   multilineContainer: {
     paddingBottom: 16,
@@ -811,7 +795,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
     fontWeight: '500',
-    paddingVertical: 2,
+    paddingVertical: Platform.OS === 'android' ? 4 : 2,
+    minHeight: 24,
   },
   multilineInput: {
     minHeight: 60,

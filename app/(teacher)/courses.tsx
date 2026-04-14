@@ -384,7 +384,7 @@ export default function TeacherCoursesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
         scrollEnabled={!showModal && !contentModalOpen}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => loadCourses('refresh')} tintColor="#FF6B6B" />

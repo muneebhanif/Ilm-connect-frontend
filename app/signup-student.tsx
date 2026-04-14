@@ -95,7 +95,7 @@ export default function SignUpStudentScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
       >
         <BackButton />
         <ThemedText style={styles.title}>Student Sign Up</ThemedText>

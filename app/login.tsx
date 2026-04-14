@@ -19,7 +19,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleLogin = async () => {
@@ -44,15 +43,9 @@ export default function LoginScreen() {
     value: string,
     setValue: (text: string) => void,
     placeholder: string,
-    fieldKey: string,
     isPassword = false
   ) => (
-    <View 
-      style={[
-        styles.inputContainer,
-        focusedInput === fieldKey && styles.inputContainerFocused
-      ]}
-    >
+    <View style={styles.inputContainer}>
       <ThemedText style={styles.inputLabel}>{label}</ThemedText>
       <View style={styles.inputRow}>
         <TextInput
@@ -61,8 +54,6 @@ export default function LoginScreen() {
           placeholderTextColor="#9CA3AF"
           value={value}
           onChangeText={setValue}
-          onFocus={() => setFocusedInput(fieldKey)}
-          onBlur={() => setFocusedInput(null)}
           autoCapitalize="none"
           keyboardType={isPassword ? 'default' : 'email-address'}
           secureTextEntry={isPassword && !showPassword}
@@ -97,7 +88,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
         >
           <View style={styles.content}>
             {/* Top Navigation */}
@@ -118,9 +109,9 @@ export default function LoginScreen() {
 
             {/* Form Section */}
             <View style={styles.formContainer}>
-               {renderInput('Email', email, setEmail, 'alina@example.com', 'email')}
+               {renderInput('Email', email, setEmail, 'alina@example.com')}
                <View style={{ height: 16 }} />
-               {renderInput('Password', password, setPassword, '••••••••', 'password', true)}
+               {renderInput('Password', password, setPassword, '••••••••', true)}
 
                {/* Remember Me & Forgot Password Row */}
                <View style={styles.optionsRow}>
@@ -262,22 +253,13 @@ const styles = StyleSheet.create({
   
   /* Input Styles - Matches the "Filled" look */
   inputContainer: {
-    backgroundColor: '#F3F4F6', // Light gray background
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 10,
     borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  inputContainerFocused: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#4ECDC4', // Theme color border on focus
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#E5E7EB',
   },
   inputLabel: {
     fontSize: 12,
@@ -289,13 +271,14 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 24, // Fixed height for input text area
+    minHeight: 32,
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: '#111827',
-    padding: 0, // Remove default padding to fit tight layout
+    paddingVertical: Platform.OS === 'android' ? 4 : 2,
+    paddingHorizontal: 0,
     fontWeight: '500',
   },
   eyeIcon: {

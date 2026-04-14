@@ -20,7 +20,6 @@ export default function SignUpParentScreen() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const [serverProgress, setServerProgress] = useState<number | null>(null);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | undefined>();
   const [isPhoneValid, setIsPhoneValid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -217,7 +216,6 @@ export default function SignUpParentScreen() {
     <View>
       <View style={[
         styles.filledInputContainer,
-        focusedInput === key && styles.filledInputFocused,
         formErrors[key] && styles.inputError
       ]}>
         <ThemedText style={styles.tinyLabel}>
@@ -233,8 +231,6 @@ export default function SignUpParentScreen() {
               setFormData((prev) => ({ ...prev, [key]: text }));
               clearError(key);
             }}
-            onFocus={() => setFocusedInput(key)}
-            onBlur={() => setFocusedInput(null)}
             autoCapitalize={options?.autoCapitalize}
             keyboardType={options?.keyboardType}
             secureTextEntry={options?.secureTextEntry && !showPassword}
@@ -272,7 +268,7 @@ export default function SignUpParentScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
         >
           <View style={styles.content}>
             <View style={styles.topNav}>
@@ -342,7 +338,6 @@ export default function SignUpParentScreen() {
               <View>
                 <View style={[
                   styles.filledInputContainer,
-                  focusedInput === 'confirmPassword' && styles.filledInputFocused,
                   formErrors.confirmPassword && styles.inputError
                 ]}>
                   <ThemedText style={styles.tinyLabel}>
@@ -358,8 +353,6 @@ export default function SignUpParentScreen() {
                         setFormData((prev) => ({ ...prev, confirmPassword: text }));
                         clearError('confirmPassword');
                       }}
-                      onFocus={() => setFocusedInput('confirmPassword')}
-                      onBlur={() => setFocusedInput(null)}
                       secureTextEntry={!showConfirmPassword}
                     />
                     <TouchableOpacity 
@@ -574,22 +567,13 @@ const styles = StyleSheet.create({
   
   /* NEW Filled Input Styles - Matches Reference Image */
   filledInputContainer: {
-    backgroundColor: '#F5F7FA', // Light gray background
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,           // Rounded corners
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 10,
     borderWidth: 1,
-    borderColor: 'transparent', // No border by default
-  },
-  filledInputFocused: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#4ECDC4', // Theme color border on focus
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#E5E7EB',
   },
   tinyLabel: {
     fontSize: 11,
@@ -611,7 +595,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
     fontWeight: '500',
-    paddingVertical: 2, // Tight padding to fit
+    paddingVertical: Platform.OS === 'android' ? 4 : 2,
+    minHeight: 24,
   },
   iconButton: {
     padding: 4,
