@@ -1,19 +1,31 @@
 // API Configuration
+const normalizeBaseUrl = (url: string) => url.replace(/\/$/, '');
+
+const envApiUrl = (process.env.EXPO_PUBLIC_API_URL || '').trim();
+const CLOUD_API_URL = 'https://backend-ilm.vercel.app';
+
+const resolveDevApiUrl = () => {
+  if (envApiUrl) return normalizeBaseUrl(envApiUrl);
+
+  // Permanent default for device builds and Expo Go: always use hosted backend.
+  // This avoids localhost/LAN mismatch issues on Android devices.
+  return CLOUD_API_URL;
+};
 
 
 const ENV = {
   development: {
-    API_URL: 'http://127.0.0.1:3000',
+    API_URL: resolveDevApiUrl(),
   },
   production: {
-    API_URL: 'https://backend-ilm.vercel.app', 
+    API_URL: CLOUD_API_URL, 
   },
 };
 
 // Set to 'production' when deploying
 const currentEnv = __DEV__ ? 'development' : 'production';
 
-export const API_URL = ENV[currentEnv].API_URL;
+export const API_URL = normalizeBaseUrl(envApiUrl || ENV[currentEnv].API_URL);
 
 // Helper function to build API endpoints
 export const api = {

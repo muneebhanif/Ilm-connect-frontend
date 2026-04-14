@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error?.name === 'AbortError') {
         throw new Error('Login request timed out. Is backend running on port 3000?');
       }
-      throw new Error('Unable to reach server. Please check your network/backend.');
+      throw new Error(`Unable to reach server (${api.login()}). Please check your network/backend.`);
     }
 
     const data = await response.json().catch(() => ({}));
