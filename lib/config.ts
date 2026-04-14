@@ -73,6 +73,8 @@ export const api = {
   uploadProfileImage: (userId: string) => `${API_URL}/api/upload/${userId}/profile-image`,
   uploadTeacherDocument: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/document`,
   getTeacherDocuments: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/documents`,
+  uploadTeacherPortfolioMedia: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/portfolio-media`,
+  deleteTeacherPortfolioMedia: (teacherId: string, mediaId: string) => `${API_URL}/api/upload/teacher/${teacherId}/portfolio-media/${mediaId}`,
   uploadClassRecording: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/recording`,
   recordingAccess: (recordingId: string) => `${API_URL}/api/upload/recording/${recordingId}/access`,
   

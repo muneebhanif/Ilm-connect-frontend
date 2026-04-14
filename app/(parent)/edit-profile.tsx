@@ -18,7 +18,7 @@ interface ProfileData {
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
@@ -292,6 +292,8 @@ export default function EditProfileScreen() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update profile');
       }
+
+      await refreshUserProfile();
 
       if (Platform.OS === 'web') {
         setNotification({ type: 'success', message: 'Profile updated successfully!' });

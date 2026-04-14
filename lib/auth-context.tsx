@@ -8,6 +8,7 @@ interface User {
   email: string;
   role: 'parent' | 'teacher' | 'student' | 'admin';
   full_name: string;
+  avatar_url?: string;
   verification_status?: string;
 }
 
@@ -19,6 +20,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, role: 'parent' | 'teacher' | 'student', fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -179,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: profile.email || '',
         role: resolvedRole,
         full_name: profile.full_name || '',
+        avatar_url: profile.avatar_url || undefined,
         verification_status: profile.verification_status || undefined,
       };
       setUser(userData);
@@ -317,6 +320,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshUserProfile = async () => {
+    if (!user?.id) return;
+    await loadUserProfile(user.id);
+  };
+
   // Keep this for backward compatibility with existing API calls
   const legacySignIn = async (email: string, password: string) => {
     try {
@@ -343,7 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session: null, loading, signIn, signUp, signOut, refreshSession }}>
+    <AuthContext.Provider value={{ user, session: null, loading, signIn, signUp, signOut, refreshSession, refreshUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

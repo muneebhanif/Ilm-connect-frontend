@@ -6,9 +6,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
 import { ThemedText } from '@/components/themed-text';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ParentLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'web' ? 0 : insets.bottom;
+  const tabBarBaseHeight = Platform.OS === 'web' ? 60 : 56;
 
   const fetchUnreadCount = async () => {
     try {
@@ -57,9 +61,9 @@ export default function ParentLayout() {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#F0F0F0',
-          height: Platform.OS === 'ios' ? 80 : Platform.OS === 'web' ? 60 : 56,
+          height: tabBarBaseHeight + Math.max(bottomInset, 8),
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          paddingBottom: Math.max(bottomInset, 8),
           elevation: 0,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },

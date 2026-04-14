@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Image, Platform, Modal } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Image, Platform, Modal, Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -20,6 +20,13 @@ interface TeacherProfileData {
   hourly_rate: number;
   languages: string[];
   gender: string;
+  portfolio_media: Array<{
+    id: string;
+    type: 'image' | 'video';
+    url: string;
+    storage_path?: string;
+    uploaded_at?: string;
+  }>;
 }
 
 const AVAILABLE_SUBJECTS = [
@@ -35,7 +42,7 @@ const AVAILABLE_SUBJECTS = [
 
 export default function EditTeacherProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<TeacherProfileData>({
@@ -48,6 +55,7 @@ export default function EditTeacherProfileScreen() {
     hourly_rate: 0,
     languages: [],
     gender: 'male',
+    portfolio_media: [],
   });
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -79,6 +87,7 @@ export default function EditTeacherProfileScreen() {
           hourly_rate: data.profile.hourly_rate || 0,
           languages: data.profile.languages || [],
           gender: data.profile.gender || 'male',
+          portfolio_media: data.profile.portfolio_media || [],
         });
         if (data.profile.avatar_url) {
           setImageUri(data.profile.avatar_url);
@@ -172,6 +181,136 @@ export default function EditTeacherProfileScreen() {
         ? prev.subjects.filter(s => s !== subject)
         : [...prev.subjects, subject],
     }));
+  };
+
+  const uploadPortfolioMedia = async (uri: string, mediaType: 'image' | 'video') => {
+    if (!user?.id) {
+      Alert.alert('Error', 'Session expired. Please login again.');
+      return;
+    }
+
+    const accessToken = await AsyncStorage.getItem('access_token');
+    if (!accessToken) {
+      Alert.alert('Error', 'Session expired. Please login again.');
+      return;
+    }
+
+    try {
+      let base64: string;
+      let extension = mediaType === 'video' ? 'mp4' : 'jpg';
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const mimeType = blob.type || '';
+        extension = mimeType.split('/')[1] || extension;
+        base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+        const extracted = uri.split('.').pop();
+        if (extracted) extension = extracted;
+      }
+
+      const response = await fetch(api.uploadTeacherPortfolioMedia(user.id), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          file: base64,
+          fileExtension: extension,
+          mediaType,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      setProfile((prev) => ({
+        ...prev,
+        portfolio_media: data.portfolio_media || prev.portfolio_media,
+      }));
+
+      if (Platform.OS === 'web') {
+        setNotification({ type: 'success', message: `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded successfully` });
+        setTimeout(() => setNotification(null), 2500);
+      } else {
+        Alert.alert('Success', `${mediaType === 'video' ? 'Video' : 'Photo'} uploaded`);
+      }
+    } catch (error: any) {
+      const msg = error?.message || 'Failed to upload media';
+      if (Platform.OS === 'web') {
+        setNotification({ type: 'error', message: msg });
+        setTimeout(() => setNotification(null), 3500);
+      } else {
+        Alert.alert('Upload Error', msg);
+      }
+    }
+  };
+
+  const pickPortfolioMedia = async (mediaType: 'image' | 'video') => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission required', 'Permission to access media library is required!');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: mediaType === 'video' ? ['videos'] : ['images'],
+        allowsEditing: mediaType === 'image',
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]?.uri) {
+        await uploadPortfolioMedia(result.assets[0].uri, mediaType);
+      }
+    } catch (error) {
+      console.error('Error picking portfolio media:', error);
+      Alert.alert('Error', 'Failed to select media');
+    }
+  };
+
+  const removePortfolioMedia = async (mediaId: string) => {
+    if (!user?.id) return;
+
+    const accessToken = await AsyncStorage.getItem('access_token');
+    if (!accessToken) {
+      Alert.alert('Error', 'Session expired. Please login again.');
+      return;
+    }
+
+    try {
+      const response = await fetch(api.deleteTeacherPortfolioMedia(user.id, mediaId), {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to remove media');
+      }
+
+      setProfile((prev) => ({
+        ...prev,
+        portfolio_media: data.portfolio_media || prev.portfolio_media.filter((m) => m.id !== mediaId),
+      }));
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to remove media');
+    }
   };
 
   const handleSave = async () => {
@@ -365,6 +504,8 @@ export default function EditTeacherProfileScreen() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update profile');
       }
+
+      await refreshUserProfile();
 
       // Show success notification
       if (Platform.OS === 'web') {
@@ -578,6 +719,50 @@ export default function EditTeacherProfileScreen() {
               />
               <ThemedText style={styles.perHour}>/hour</ThemedText>
             </View>
+          </View>
+        </View>
+
+        {/* Portfolio Media */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Portfolio Media</ThemedText>
+          <ThemedText style={styles.portfolioHint}>
+            Upload photos and short videos to showcase your teaching quality.
+          </ThemedText>
+
+          <View style={styles.portfolioActionRow}>
+            <TouchableOpacity style={styles.portfolioAddButton} onPress={() => pickPortfolioMedia('image')}>
+              <Ionicons name="image-outline" size={18} color="#4ECDC4" />
+              <ThemedText style={styles.portfolioAddText}>Add Photo</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.portfolioAddButton} onPress={() => pickPortfolioMedia('video')}>
+              <Ionicons name="videocam-outline" size={18} color="#4ECDC4" />
+              <ThemedText style={styles.portfolioAddText}>Add Video</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.portfolioGrid}>
+            {profile.portfolio_media?.length ? (
+              profile.portfolio_media.map((item) => (
+                <View key={item.id} style={styles.portfolioCard}>
+                  {item.type === 'image' ? (
+                    <Image source={{ uri: item.url }} style={styles.portfolioImage} />
+                  ) : (
+                    <TouchableOpacity style={styles.portfolioVideoPlaceholder} onPress={() => Linking.openURL(item.url)}>
+                      <Ionicons name="play-circle" size={34} color="#4ECDC4" />
+                      <ThemedText style={styles.portfolioVideoText}>Open Video</ThemedText>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={styles.portfolioDeleteButton}
+                    onPress={() => removePortfolioMedia(item.id)}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <ThemedText style={styles.emptyPortfolioText}>No portfolio media uploaded yet.</ThemedText>
+            )}
           </View>
         </View>
 
@@ -873,6 +1058,78 @@ const styles = StyleSheet.create({
   perHour: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  portfolioHint: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  portfolioActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  portfolioAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#4ECDC4',
+    borderRadius: 10,
+    paddingVertical: 10,
+    gap: 8,
+    backgroundColor: '#F0FDFA',
+  },
+  portfolioAddText: {
+    color: '#0F766E',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  portfolioGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  portfolioCard: {
+    width: '48%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    position: 'relative',
+  },
+  portfolioImage: {
+    width: '100%',
+    height: 130,
+  },
+  portfolioVideoPlaceholder: {
+    height: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#ECFEFF',
+  },
+  portfolioVideoText: {
+    fontSize: 12,
+    color: '#0F766E',
+    fontWeight: '600',
+  },
+  portfolioDeleteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyPortfolioText: {
+    color: '#6B7280',
+    fontSize: 13,
   },
   bottomPadding: {
     height: 40,

@@ -27,6 +27,11 @@ interface TeacherProfile {
   gender: string;
   availability?: Record<string, string[]>;
   intro_video_url?: string;
+  portfolio_media?: Array<{
+    id: string;
+    type: 'image' | 'video';
+    url: string;
+  }>;
   documents?: Array<{
     type: string;
     url: string;
@@ -270,6 +275,34 @@ export default function MyProfileScreen() {
               ))
             ) : (
               <ThemedText style={styles.emptyText}>No languages added</ThemedText>
+            )}
+          </View>
+        </View>
+
+        {/* Portfolio */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Portfolio</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/(teacher)/edit-profile')}>
+              <ThemedText style={styles.seeAllText}>Manage</ThemedText>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.portfolioGrid}>
+            {profile?.portfolio_media?.length ? (
+              profile.portfolio_media.slice(0, 6).map((item) => (
+                <View key={item.id} style={styles.portfolioCard}>
+                  {item.type === 'image' ? (
+                    <Image source={{ uri: item.url }} style={styles.portfolioImage} />
+                  ) : (
+                    <View style={styles.portfolioVideoPlaceholder}>
+                      <Ionicons name="play-circle" size={30} color="#4ECDC4" />
+                      <ThemedText style={styles.portfolioVideoText}>Video</ThemedText>
+                    </View>
+                  )}
+                </View>
+              ))
+            ) : (
+              <ThemedText style={styles.emptyText}>No portfolio media uploaded</ThemedText>
             )}
           </View>
         </View>
@@ -596,6 +629,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  portfolioGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  portfolioCard: {
+    width: '48%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  portfolioImage: {
+    width: '100%',
+    height: 120,
+  },
+  portfolioVideoPlaceholder: {
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#ECFEFF',
+  },
+  portfolioVideoText: {
+    color: '#0F766E',
+    fontSize: 12,
+    fontWeight: '600',
   },
   availabilityGrid: {
     flexDirection: 'row',

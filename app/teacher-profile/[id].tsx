@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/themed-text';
 import { BackButton } from '@/components/back-button';
@@ -30,6 +30,11 @@ interface TeacherProfile {
   gender: string;
   availability: Record<string, string[]>;
   intro_video_url?: string;
+  portfolio_media?: Array<{
+    id: string;
+    type: 'image' | 'video';
+    url: string;
+  }>;
   reviews?: Review[];
   profiles: {
     full_name: string;
@@ -156,7 +161,7 @@ export default function TeacherProfileScreen() {
           {teacher.intro_video_url && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Introduction</ThemedText>
-              <TouchableOpacity style={styles.videoCard}>
+              <TouchableOpacity style={styles.videoCard} onPress={() => teacher.intro_video_url && Linking.openURL(teacher.intro_video_url)}>
                 <LinearGradient
                   colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.8)']}
                   style={styles.videoOverlay}
@@ -167,6 +172,27 @@ export default function TeacherProfileScreen() {
                   <ThemedText style={styles.videoLabel}>Watch Video</ThemedText>
                 </LinearGradient>
               </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Portfolio */}
+          {!!teacher.portfolio_media?.length && (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Portfolio</ThemedText>
+              <View style={styles.portfolioGrid}>
+                {teacher.portfolio_media.map((item) => (
+                  <TouchableOpacity key={item.id} style={styles.portfolioCard} onPress={() => Linking.openURL(item.url)}>
+                    {item.type === 'image' ? (
+                      <Image source={{ uri: item.url }} style={styles.portfolioImage} />
+                    ) : (
+                      <View style={styles.portfolioVideoPlaceholder}>
+                        <Ionicons name="play-circle" size={34} color="#4ECDC4" />
+                        <ThemedText style={styles.portfolioVideoText}>Play Video</ThemedText>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           )}
 
@@ -472,6 +498,36 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '600',
     fontSize: 14,
+  },
+
+  portfolioGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  portfolioCard: {
+    width: '48%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  portfolioImage: {
+    width: '100%',
+    height: 135,
+  },
+  portfolioVideoPlaceholder: {
+    height: 135,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFEFF',
+    gap: 8,
+  },
+  portfolioVideoText: {
+    fontSize: 12,
+    color: '#0F766E',
+    fontWeight: '600',
   },
 
   /* Availability Preview */
