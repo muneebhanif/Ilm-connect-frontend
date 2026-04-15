@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface ClassItem {
   id: string;
@@ -93,6 +94,7 @@ function ProgressRing({ progress, size, strokeWidth, color, label, value }: {
 
 export default function StudentDashboardScreen() {
   const { user, signOut } = useAuth();
+  const { topPadding } = useSafePadding();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -212,7 +214,7 @@ export default function StudentDashboardScreen() {
           colors={['#0F766E', '#14B8A6', '#2DD4BF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { paddingTop: topPadding }]}
         >
           <View style={styles.headerTopRow}>
             <View style={{ flex: 1 }}>
@@ -503,7 +505,6 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
-    paddingTop: 60,
     paddingBottom: 24,
     paddingHorizontal: 24,
     borderBottomLeftRadius: 28,

@@ -9,8 +9,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
 import { TeacherDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface TeacherStats {
   totalStudents: number;
@@ -58,6 +59,7 @@ const formatTime12h = (time24: string) => {
 export default function TeacherDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -317,7 +319,7 @@ export default function TeacherDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header Section */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: topPadding }]}>
           <View style={styles.headerTopRow}>
             <View>
               <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
@@ -715,7 +717,6 @@ const styles = StyleSheet.create({
   /* Header Styles */
   header: {
     paddingHorizontal: 24,
-    paddingTop: 60,
     paddingBottom: 20,
     backgroundColor: '#FFF',
     borderBottomLeftRadius: 24,

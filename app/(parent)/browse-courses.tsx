@@ -1,12 +1,14 @@
+import { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
 import { BrowseCoursesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
-import { useState, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
+import { useRouter } from 'expo-router';
 
 interface Course {
   id: string;
@@ -28,6 +30,8 @@ const SUBJECTS = ['All', 'Quran Memorization', 'Tajweed', 'Arabic Language', 'Is
 const LEVELS = ['All', 'beginner', 'intermediate', 'advanced'];
 
 export default function BrowseCoursesScreen() {
+  const router = useRouter();
+  const { topPadding } = useSafePadding();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -104,7 +108,7 @@ export default function BrowseCoursesScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <View style={styles.headerTop}>
           <ThemedText style={styles.headerTitle}>Browse Courses</ThemedText>
           <TouchableOpacity
@@ -183,7 +187,12 @@ export default function BrowseCoursesScreen() {
           </View>
         ) : (
           filteredCourses.map(course => (
-            <View key={course.id} style={styles.courseCard}>
+            <TouchableOpacity
+              key={course.id}
+              style={styles.courseCard}
+              onPress={() => router.push(`/course-detail/${course.id}` as any)}
+              activeOpacity={0.7}
+            >
               {/* Course Header */}
               <View style={styles.courseTop}>
                 <View style={[styles.courseIconWrap, { backgroundColor: `${getLevelColor(course.level)}15` }]}>
@@ -229,7 +238,7 @@ export default function BrowseCoursesScreen() {
                   <ThemedText style={styles.lessonsText}>{course.total_lessons} lessons</ThemedText>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
         <View style={{ height: 40 }} />
@@ -247,7 +256,6 @@ const styles = StyleSheet.create({
   /* Header */
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 60,
     paddingBottom: 12,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,

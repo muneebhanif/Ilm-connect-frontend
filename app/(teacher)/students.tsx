@@ -5,8 +5,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
+import { TeacherStudentsBodySkeleton } from '@/components/ui/dashboard-skeletons';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AttendanceRecord {
@@ -63,6 +65,7 @@ const formatSessionDate = (value: string): string => {
 export default function StudentsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding } = useSafePadding();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('All'); // All, Active, Paused
   const [students, setStudents] = useState<any[]>([]);
@@ -260,7 +263,7 @@ export default function StudentsScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <View style={styles.headerTop}>
           <ThemedText style={styles.headerTitle}>My Students</ThemedText>
           {/* Add button hidden - students are added via course enrollment */}
@@ -295,9 +298,7 @@ export default function StudentsScreen() {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 }}>
-          <ActivityIndicator size="large" color="#FF6B6B" />
-        </View>
+        <TeacherStudentsBodySkeleton />
       ) : error ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconBg}>
@@ -440,7 +441,6 @@ const styles = StyleSheet.create({
   /* Header & Search */
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,

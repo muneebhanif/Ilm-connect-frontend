@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface TeacherProfile {
   full_name: string;
@@ -24,6 +25,7 @@ interface TeacherProfile {
 export default function TeacherProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -92,7 +94,7 @@ export default function TeacherProfileScreen() {
     <View style={styles.container}>
       
       {/* Header with Background */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <View style={styles.headerContent}>
            <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
            <TouchableOpacity onPress={() => router.push('/(teacher)/edit-profile')}>
@@ -275,7 +277,6 @@ const styles = StyleSheet.create({
   /* Header */
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 24,
     // No shadow here, letting content overlap or just flow

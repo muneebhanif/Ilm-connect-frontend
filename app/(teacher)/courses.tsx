@@ -135,7 +135,7 @@ export default function TeacherCoursesScreen() {
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
         multiple: false,
-        type: 'video/*',
+        type: ['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/webm'],
       });
 
       if (result.canceled || !result.assets?.[0]) return;
@@ -144,6 +144,19 @@ export default function TeacherCoursesScreen() {
         setNotification({ type: 'error', message: 'Only video files are allowed (mp4, mov, m4v, webm)' });
         return;
       }
+
+      // Check file size on native
+      if (Platform.OS !== 'web') {
+        const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+        if (fileInfo.exists && fileInfo.size) {
+          const sizeMB = fileInfo.size / (1024 * 1024);
+          if (sizeMB > 50) {
+            setNotification({ type: 'error', message: `Video is too large (${sizeMB.toFixed(1)}MB). Maximum size is 50MB.` });
+            return;
+          }
+        }
+      }
+
       setSelectedFile({
         uri: asset.uri,
         name: asset.name || `content-${Date.now()}`,
@@ -170,6 +183,19 @@ export default function TeacherCoursesScreen() {
 
     setUploadingContent(true);
     try {
+      // File size validation (50MB max for videos)
+      if (Platform.OS !== 'web') {
+        const fileInfo = await FileSystem.getInfoAsync(selectedFile.uri);
+        if (fileInfo.exists && fileInfo.size) {
+          const sizeMB = fileInfo.size / (1024 * 1024);
+          if (sizeMB > 50) {
+            setNotification({ type: 'error', message: `Video is too large (${sizeMB.toFixed(1)}MB). Maximum size is 50MB.` });
+            setUploadingContent(false);
+            return;
+          }
+        }
+      }
+
       const base64 = await (async () => {
         if (Platform.OS === 'web') {
           const response = await fetch(selectedFile.uri);

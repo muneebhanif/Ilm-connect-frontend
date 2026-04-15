@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Validation constants
 const MAX_MESSAGE_LENGTH = 2000;

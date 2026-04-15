@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { RateTeacherModal } from '@/components/rate-teacher-modal';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useFocusEffect } from '@react-navigation/native';
 
 interface ClassSession {
@@ -27,6 +28,7 @@ interface ClassSession {
 export default function StudentClassesScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [classes, setClasses] = useState<ClassSession[]>([]);
@@ -173,7 +175,7 @@ export default function StudentClassesScreen() {
           colors={['#0F766E', '#14B8A6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { paddingTop: topPadding }]}
         >
           <ThemedText style={styles.headerTitle}>My Classes</ThemedText>
           <ThemedText style={styles.headerSubtitle}>Join live sessions & review history</ThemedText>
@@ -252,7 +254,6 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
-    paddingTop: 60,
     paddingBottom: 24,
     paddingHorizontal: 24,
     borderBottomLeftRadius: 28,

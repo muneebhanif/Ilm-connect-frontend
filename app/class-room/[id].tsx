@@ -8,9 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { authFetch, authFetchJson } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser';
 
 const isWeb = Platform.OS === 'web';
+const MobileWebView: any = !isWeb ? require('react-native-webview').WebView : null;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 interface ClassDetails {
@@ -51,6 +51,7 @@ export default function ClassRoomScreen() {
   const [remoteUids, setRemoteUids] = useState<string[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [participantCount, setParticipantCount] = useState(1);
+  const [mobileClassUrl, setMobileClassUrl] = useState<string | null>(null);
 
   const rtcClientRef = useRef<any>(null);
   const AgoraRTCRef = useRef<any>(null);
@@ -207,21 +208,6 @@ export default function ClassRoomScreen() {
     return `${webBase}/class-room/${encodeURIComponent(String(id))}`;
   };
 
-  const openMobileClassroom = async () => {
-    const targetUrl = getMobileClassroomUrl();
-    if (!targetUrl) {
-      throw new Error('No mobile classroom URL available. Set meeting_url on session or EXPO_PUBLIC_CLASSROOM_WEB_URL in app config.');
-    }
-
-    const result = await WebBrowser.openBrowserAsync(targetUrl, {
-      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      showTitle: true,
-      controlsColor: '#14B8A6',
-    });
-
-    return result;
-  };
-
   const joinClass = async () => {
     if (!id || !user?.id) return;
 
@@ -236,14 +222,13 @@ export default function ClassRoomScreen() {
           if (!sr.ok) throw new Error(sd?.error || 'Unable to start class');
         }
 
-        await openMobileClassroom();
+        const targetUrl = getMobileClassroomUrl();
+        if (!targetUrl) {
+          throw new Error('No mobile classroom URL available. Set meeting_url on session or EXPO_PUBLIC_CLASSROOM_WEB_URL in app config.');
+        }
 
-        Alert.alert(
-          'Classroom opened',
-          user.role === 'teacher'
-            ? 'Live class opened in browser. Return to schedule when you finish.'
-            : 'Live class opened in browser.'
-        );
+        setMobileClassUrl(targetUrl);
+        setJoined(true);
       } catch (e: any) {
         console.error('Mobile join failed:', e);
         setError(e?.message || 'Failed to open class on mobile');
@@ -553,7 +538,7 @@ export default function ClassRoomScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {!isWeb && <ThemedText style={st.webHint}>On Android/iOS, class opens in browser</ThemedText>}
+          {!isWeb && <ThemedText style={st.webHint}>On Android/iOS, class runs inside app</ThemedText>}
         </View>
       </View>
     );
@@ -665,15 +650,28 @@ export default function ClassRoomScreen() {
               </div>
             </div>
           </>
+        ) : mobileClassUrl && MobileWebView ? (
+          <MobileWebView
+            source={{ uri: mobileClassUrl }}
+            style={st.mobileWebView}
+            javaScriptEnabled
+            domStorageEnabled
+            mediaPlaybackRequiresUserAction={false}
+            allowsInlineMediaPlayback
+            allowsFullscreenVideo
+            startInLoadingState
+          />
         ) : (
           <View style={st.centered}>
-            <ThemedText style={st.webHint}>Web-only in this build</ThemedText>
+            <ThemedText style={st.webHint}>Unable to load mobile classroom</ThemedText>
           </View>
         )}
       </View>
 
       {/* ── Bottom Controls — Single Row, Zoom-like ── */}
       <View style={st.bottomBar}>
+        {isWeb ? (
+          <>
         {/* Mic */}
         <TouchableOpacity
           onPress={toggleMic}
@@ -719,10 +717,25 @@ export default function ClassRoomScreen() {
             style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined}
           />
         </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            onPress={user?.role === 'teacher' ? handleEndClass : goBackWithoutEnding}
+            style={st.endBtn}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={user?.role === 'teacher' ? 'call' : 'exit-outline'}
+              size={24}
+              color="#FFF"
+              style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── Chat Panel — Slide from right ── */}
-      {chatOpen && (
+      {isWeb && chatOpen && (
         <View style={st.chatPanel}>
           <View style={st.chatHeader}>
             <ThemedText style={st.chatTitle}>Chat</ThemedText>
@@ -889,6 +902,7 @@ const st = StyleSheet.create({
 
   /* ── Video Area ── */
   videoArea: { flex: 1, position: 'relative' },
+  mobileWebView: { flex: 1, backgroundColor: '#0B1120' },
 
   /* ── Bottom Bar — Zoom-like single row ── */
   bottomBar: {

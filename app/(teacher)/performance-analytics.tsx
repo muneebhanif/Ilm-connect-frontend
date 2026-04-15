@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { Fonts } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
+import { PerformanceAnalyticsSkeleton } from '@/components/ui/dashboard-skeletons';
 
 type SessionStatus = 'upcoming' | 'completed' | 'cancelled';
 
@@ -58,6 +60,7 @@ const getEffectiveStatus = (session: ScheduleSession): SessionStatus => {
 export default function PerformanceAnalyticsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
@@ -196,16 +199,12 @@ export default function PerformanceAnalyticsScreen() {
   }, [sessions, students, profileData]);
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
-      </View>
-    );
+    return <PerformanceAnalyticsSkeleton />;
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
@@ -219,20 +218,40 @@ export default function PerformanceAnalyticsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
-            <ThemedText style={styles.metricValue}>{analytics.total30}</ThemedText>
+          <View style={[styles.metricCard, { borderLeftColor: '#4ECDC4', borderLeftWidth: 4 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <ThemedText style={styles.metricValue}>{analytics.total30}</ThemedText>
+              <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#F0FDFA', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="calendar" size={18} color="#4ECDC4" />
+              </View>
+            </View>
             <ThemedText style={styles.metricLabel}>Classes (30d)</ThemedText>
           </View>
-          <View style={styles.metricCard}>
-            <ThemedText style={styles.metricValue}>{analytics.completionRate}%</ThemedText>
+          <View style={[styles.metricCard, { borderLeftColor: '#10B981', borderLeftWidth: 4 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <ThemedText style={styles.metricValue}>{analytics.completionRate}%</ThemedText>
+              <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              </View>
+            </View>
             <ThemedText style={styles.metricLabel}>Completion Rate</ThemedText>
           </View>
-          <View style={styles.metricCard}>
-            <ThemedText style={styles.metricValue}>{analytics.activeStudents}</ThemedText>
+          <View style={[styles.metricCard, { borderLeftColor: '#6366F1', borderLeftWidth: 4 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <ThemedText style={styles.metricValue}>{analytics.activeStudents}</ThemedText>
+              <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="people" size={18} color="#6366F1" />
+              </View>
+            </View>
             <ThemedText style={styles.metricLabel}>Active Students</ThemedText>
           </View>
-          <View style={styles.metricCard}>
-            <ThemedText style={styles.metricValue}>{analytics.avgProgress}%</ThemedText>
+          <View style={[styles.metricCard, { borderLeftColor: '#F59E0B', borderLeftWidth: 4 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <ThemedText style={styles.metricValue}>{analytics.avgProgress}%</ThemedText>
+              <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#FFFBEB', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="trending-up" size={18} color="#F59E0B" />
+              </View>
+            </View>
             <ThemedText style={styles.metricLabel}>Avg Progress</ThemedText>
           </View>
         </View>
@@ -297,17 +316,35 @@ export default function PerformanceAnalyticsScreen() {
         </View>
 
         <View style={styles.summaryCard}>
-          <View style={styles.summaryItem}>
-            <Ionicons name="star" size={18} color="#F59E0B" />
-            <ThemedText style={styles.summaryText}>Rating: {analytics.rating > 0 ? analytics.rating.toFixed(1) : 'New'}</ThemedText>
-          </View>
-          <View style={styles.summaryItem}>
-            <Ionicons name="cash-outline" size={18} color="#10B981" />
-            <ThemedText style={styles.summaryText}>Hourly Rate: ${analytics.hourlyRate || 0}</ThemedText>
-          </View>
-          <View style={styles.summaryItem}>
-            <Ionicons name="people-outline" size={18} color="#3B82F6" />
-            <ThemedText style={styles.summaryText}>Total Students: {analytics.totalStudentsStat || analytics.activeStudents}</ThemedText>
+          <ThemedText style={styles.cardTitle}>Overview</ThemedText>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: '#FFFBEB', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="star" size={20} color="#F59E0B" />
+              </View>
+              <View>
+                <ThemedText style={styles.summaryValue}>{analytics.rating > 0 ? analytics.rating.toFixed(1) : 'New'}</ThemedText>
+                <ThemedText style={styles.summaryLabel}>Rating</ThemedText>
+              </View>
+            </View>
+            <View style={styles.summaryItem}>
+              <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="cash-outline" size={20} color="#10B981" />
+              </View>
+              <View>
+                <ThemedText style={styles.summaryValue}>${analytics.hourlyRate || 0}</ThemedText>
+                <ThemedText style={styles.summaryLabel}>Hourly Rate</ThemedText>
+              </View>
+            </View>
+            <View style={styles.summaryItem}>
+              <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="people-outline" size={20} color="#3B82F6" />
+              </View>
+              <View>
+                <ThemedText style={styles.summaryValue}>{analytics.totalStudentsStat || analytics.activeStudents}</ThemedText>
+                <ThemedText style={styles.summaryLabel}>Total Students</ThemedText>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -330,7 +367,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: '#FFF',
@@ -362,11 +398,14 @@ const styles = StyleSheet.create({
   metricCard: {
     width: '48.5%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   metricValue: {
     fontSize: 22,
@@ -382,10 +421,13 @@ const styles = StyleSheet.create({
   chartCard: {
     marginTop: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   cardTitle: {
     fontSize: 15,
@@ -486,17 +528,34 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     marginTop: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    padding: 14,
-    gap: 10,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   summaryItem: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    textAlign: 'center',
   },
   summaryText: {
     fontSize: 13,

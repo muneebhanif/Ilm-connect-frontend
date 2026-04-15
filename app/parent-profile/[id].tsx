@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { BackButton } from '@/components/back-button';
+import { SimpleProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 import { api } from '@/lib/config';
 
 interface ParentProfile {
@@ -59,11 +60,7 @@ export default function ParentProfileScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
-      </View>
-    );
+    return <SimpleProfileSkeleton />;
   }
 
   if (error || !profile) {

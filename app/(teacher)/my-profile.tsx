@@ -8,9 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
+import { TeacherMyProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface TeacherProfile {
   full_name: string;
@@ -59,6 +61,7 @@ interface Review {
 export default function MyProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -131,17 +134,13 @@ export default function MyProfileScreen() {
   };
 
   if (loading && !profile) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
-      </View>
-    );
+    return <TeacherMyProfileSkeleton />;
   }
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
         <TouchableOpacity 
           style={styles.editButton}
@@ -282,7 +281,16 @@ export default function MyProfileScreen() {
         {/* Portfolio */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>Portfolio</ThemedText>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ThemedText style={styles.sectionTitle}>Portfolio</ThemedText>
+              {profile?.portfolio_media?.length ? (
+                <View style={{ backgroundColor: '#4ECDC4', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <ThemedText style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>
+                    {profile.portfolio_media.length}
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
             <TouchableOpacity onPress={() => router.push('/(teacher)/edit-profile')}>
               <ThemedText style={styles.seeAllText}>Manage</ThemedText>
             </TouchableOpacity>
@@ -295,14 +303,24 @@ export default function MyProfileScreen() {
                     <Image source={{ uri: item.url }} style={styles.portfolioImage} />
                   ) : (
                     <View style={styles.portfolioVideoPlaceholder}>
-                      <Ionicons name="play-circle" size={30} color="#4ECDC4" />
+                      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(78,205,196,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+                        <Ionicons name="play" size={24} color="#4ECDC4" />
+                      </View>
                       <ThemedText style={styles.portfolioVideoText}>Video</ThemedText>
                     </View>
                   )}
+                  <View style={{ position: 'absolute', bottom: 6, left: 6, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <ThemedText style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>
+                      {item.type === 'image' ? '📷' : '🎥'}
+                    </ThemedText>
+                  </View>
                 </View>
               ))
             ) : (
-              <ThemedText style={styles.emptyText}>No portfolio media uploaded</ThemedText>
+              <View style={{ alignItems: 'center', padding: 30, width: '100%' }}>
+                <Ionicons name="images-outline" size={40} color="#D1D5DB" />
+                <ThemedText style={[styles.emptyText, { marginTop: 8 }]}>No portfolio media uploaded</ThemedText>
+              </View>
             )}
           </View>
         </View>
@@ -436,7 +454,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: '#FFF',
@@ -637,22 +654,25 @@ const styles = StyleSheet.create({
   },
   portfolioCard: {
     width: '48%',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   portfolioImage: {
     width: '100%',
-    height: 120,
+    height: 140,
   },
   portfolioVideoPlaceholder: {
-    height: 120,
+    height: 140,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    backgroundColor: '#ECFEFF',
+    gap: 6,
+    backgroundColor: '#F0FDFA',
   },
   portfolioVideoText: {
     color: '#0F766E',

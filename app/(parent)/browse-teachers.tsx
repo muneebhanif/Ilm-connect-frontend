@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 
 interface Teacher {
@@ -28,6 +29,7 @@ interface Teacher {
 
 export default function BrowseTeachersScreen() {
   const router = useRouter();
+  const { topPadding } = useSafePadding();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string | null>('All');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -84,7 +86,7 @@ export default function BrowseTeachersScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <View style={styles.headerTop}>
            <ThemedText style={styles.headerTitle}>Find a Teacher</ThemedText>
            <TouchableOpacity style={styles.filterBtn}>
@@ -239,7 +241,6 @@ const styles = StyleSheet.create({
   /* Header */
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 60,
     paddingBottom: 16,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,

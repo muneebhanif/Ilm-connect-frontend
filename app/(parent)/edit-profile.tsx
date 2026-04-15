@@ -1,13 +1,14 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Image, Platform, Modal } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Image, Platform, Modal, KeyboardAvoidingView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface ProfileData {
   full_name: string;
@@ -19,6 +20,7 @@ interface ProfileData {
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, refreshUserProfile } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
@@ -343,7 +345,7 @@ export default function EditProfileScreen() {
         </View>
       )}
       
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
@@ -357,6 +359,11 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.avatarSection}>
           <TouchableOpacity onPress={showImageOptions} style={styles.avatarContainer}>
@@ -413,6 +420,7 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={showImageModal}
@@ -472,7 +480,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',

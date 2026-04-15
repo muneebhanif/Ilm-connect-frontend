@@ -10,11 +10,20 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ilmconnect.app"
+      "bundleIdentifier": "com.ilmconnect.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "IlmConnect needs camera access for live classes.",
+        "NSMicrophoneUsageDescription": "IlmConnect needs microphone access for live classes."
+      }
     },
     "android": {
       "package": "com.ilmconnect.app",
       "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -43,7 +52,8 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@stripe/stripe-react-native"
     ],
     "experiments": {
       "typedRoutes": true,

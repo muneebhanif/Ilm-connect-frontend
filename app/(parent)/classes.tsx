@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 import { RateTeacherModal } from '@/components/rate-teacher-modal';
@@ -34,6 +35,7 @@ interface ClassSession {
 export default function ClassesScreen() {
   const router = useRouter();
   const { user, signOut, refreshSession } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [allClasses, setAllClasses] = useState<ClassSession[]>([]);
@@ -378,7 +380,7 @@ export default function ClassesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <ThemedText style={styles.headerTitle}>My Classes</ThemedText>
         <ThemedText style={styles.headerSubtitle}>
           Manage your schedule and history
@@ -480,7 +482,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
-    paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',

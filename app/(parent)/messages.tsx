@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { useFocusEffect } from '@react-navigation/native';
 import { authFetch } from '@/lib/auth-fetch';
+import { MessagesSkeleton } from '@/components/ui/dashboard-skeletons';
 
 interface Conversation {
   id: string;
@@ -153,9 +154,7 @@ export default function MessagesScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4ECDC4" />
-        </View>
+        <MessagesSkeleton />
       ) : (
         <FlatList
           data={conversations}

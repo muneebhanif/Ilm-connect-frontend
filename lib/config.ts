@@ -65,6 +65,12 @@ export const api = {
   startClass: (sessionId: string) => `${API_URL}/api/bookings/class-session/${sessionId}/start`,
   endClass: (sessionId: string) => `${API_URL}/api/bookings/class-session/${sessionId}/end`,
 
+  // Payment endpoints (Stripe)
+  payments: {
+    createIntent: () => `${API_URL}/api/payments/create-intent`,
+    verify: () => `${API_URL}/api/payments/verify`,
+  },
+
   // Agora endpoints
   agoraToken: (channel: string, uid: string, role: 'HOST' | 'STUDENT') =>
     `${API_URL}/api/agora?channel=${encodeURIComponent(channel)}&uid=${encodeURIComponent(uid)}&role=${role}`,

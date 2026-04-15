@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import { DateTime } from 'luxon'; 
 import { SkeletonScreen } from '@/components/ui/skeleton';
 
@@ -28,6 +29,7 @@ interface ClassSession {
 export default function ScheduleScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [todayClasses, setTodayClasses] = useState<ClassSession[]>([]);
@@ -333,7 +335,7 @@ export default function ScheduleScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <View style={styles.headerContent}>
            <ThemedText style={styles.headerTitle}>My Schedule</ThemedText>
            <View style={styles.dateBadge}>
@@ -412,7 +414,6 @@ const styles = StyleSheet.create({
   /* Header */
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 60,
     paddingBottom: 0,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,

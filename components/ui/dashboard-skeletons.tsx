@@ -440,6 +440,250 @@ export function BrowseCoursesSkeleton() {
   );
 }
 
+/**
+ * Teacher My Profile Skeleton
+ */
+export function TeacherMyProfileSkeleton() {
+  const pageBg = '#F9FAFB';
+  const surface = '#FFF';
+
+  return (
+    <View style={[styles.screen, { backgroundColor: pageBg }]}>
+      {/* Header bar */}
+      <View style={{ backgroundColor: surface, paddingTop: 60, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Skeleton height={24} width={120} borderRadius={12} />
+        <Skeleton height={36} width={36} borderRadius={12} />
+      </View>
+      {/* Profile card */}
+      <View style={{ backgroundColor: '#E0F2F1', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24, alignItems: 'center' }}>
+        <Skeleton height={88} width={88} borderRadius={44} />
+        <Skeleton height={22} width={160} borderRadius={11} style={{ marginTop: 14 }} />
+        <Skeleton height={14} width={180} borderRadius={8} style={{ marginTop: 6 }} />
+        <Skeleton height={22} width={100} borderRadius={14} style={{ marginTop: 10 }} />
+        <View style={{ flexDirection: 'row', gap: 14, marginTop: 18 }}>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={{ alignItems: 'center' }}>
+              <Skeleton height={28} width={40} borderRadius={10} />
+              <Skeleton height={12} width={50} borderRadius={6} style={{ marginTop: 4 }} />
+            </View>
+          ))}
+        </View>
+      </View>
+      <View style={styles.body}>
+        {/* About */}
+        <Skeleton height={18} width={90} borderRadius={10} style={{ marginBottom: 10 }} />
+        <View style={[styles.card, { backgroundColor: surface }]}>
+          <Skeleton height={14} width={'90%'} borderRadius={8} />
+          <Skeleton height={14} width={'70%'} borderRadius={8} style={{ marginTop: 8 }} />
+        </View>
+        {/* Subjects */}
+        <Skeleton height={18} width={130} borderRadius={10} style={{ marginBottom: 10 }} />
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+          {[90, 70, 80, 60].map((w, i) => (
+            <Skeleton key={i} height={30} width={w} borderRadius={16} />
+          ))}
+        </View>
+        {/* Reviews */}
+        <Skeleton height={18} width={80} borderRadius={10} style={{ marginBottom: 10 }} />
+        {[1, 2].map(i => (
+          <View key={i} style={[styles.card, { backgroundColor: surface }]}>
+            <View style={styles.cardRow}>
+              <Skeleton height={40} width={40} borderRadius={20} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Skeleton height={14} width={'50%'} borderRadius={8} />
+                <Skeleton height={12} width={80} borderRadius={6} style={{ marginTop: 6 }} />
+              </View>
+            </View>
+            <Skeleton height={12} width={'80%'} borderRadius={6} style={{ marginTop: 10 }} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Performance Analytics Skeleton
+ */
+export function PerformanceAnalyticsSkeleton() {
+  const pageBg = '#F9FAFB';
+  const surface = '#FFF';
+
+  return (
+    <View style={[styles.screen, { backgroundColor: pageBg }]}>
+      {/* Header */}
+      <View style={{ paddingTop: 60, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Skeleton height={24} width={24} borderRadius={12} />
+        <Skeleton height={22} width={190} borderRadius={11} />
+        <View style={{ width: 24 }} />
+      </View>
+      <View style={styles.body}>
+        {/* Metrics grid */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
+          {[1, 2, 3, 4].map(i => (
+            <View key={i} style={{ width: '47%', backgroundColor: surface, borderRadius: 18, padding: 16 }}>
+              <Skeleton height={14} width={80} borderRadius={8} />
+              <Skeleton height={28} width={50} borderRadius={12} style={{ marginTop: 10 }} />
+              <Skeleton height={10} width={60} borderRadius={6} style={{ marginTop: 6 }} />
+            </View>
+          ))}
+        </View>
+        {/* Chart */}
+        <View style={[styles.card, { backgroundColor: surface }]}>
+          <Skeleton height={16} width={160} borderRadius={10} style={{ marginBottom: 16 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 120 }}>
+            {[60, 90, 45, 80, 70, 50, 100].map((h, i) => (
+              <Skeleton key={i} height={h} width={24} borderRadius={6} />
+            ))}
+          </View>
+        </View>
+        {/* Breakdown */}
+        <View style={[styles.card, { backgroundColor: surface }]}>
+          <Skeleton height={16} width={140} borderRadius={10} style={{ marginBottom: 14 }} />
+          {[1, 2, 3].map(i => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <Skeleton height={12} width={80} borderRadius={6} />
+              <View style={{ flex: 1 }}><Skeleton height={10} width={'100%'} borderRadius={5} /></View>
+              <Skeleton height={12} width={30} borderRadius={6} />
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Messages Skeleton (conversation list)
+ */
+export function MessagesSkeleton() {
+  const surface = '#FFF';
+  const pageBg = '#F9FAFB';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: pageBg }}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: surface, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+          <Skeleton height={52} width={52} borderRadius={26} />
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Skeleton height={16} width={'55%'} borderRadius={8} />
+            <Skeleton height={12} width={'75%'} borderRadius={6} style={{ marginTop: 8 }} />
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Skeleton height={10} width={40} borderRadius={5} />
+            <Skeleton height={18} width={18} borderRadius={9} style={{ marginTop: 6 }} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Teacher Students Body Skeleton (replaces content area while header stays)
+ */
+export function TeacherStudentsBodySkeleton() {
+  const surface = '#FFF';
+
+  return (
+    <View style={{ flex: 1, paddingTop: 20, paddingHorizontal: 20 }}>
+      {[1, 2, 3, 4].map(i => (
+        <View key={i} style={{ backgroundColor: surface, borderRadius: 18, padding: 16, marginBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
+          <Skeleton height={52} width={52} borderRadius={26} />
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Skeleton height={16} width={'50%'} borderRadius={8} />
+            <Skeleton height={12} width={'35%'} borderRadius={6} style={{ marginTop: 6 }} />
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <Skeleton height={20} width={60} borderRadius={10} />
+              <Skeleton height={20} width={70} borderRadius={10} />
+            </View>
+          </View>
+          <Skeleton height={34} width={34} borderRadius={10} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Book Teacher Skeleton
+ */
+export function BookTeacherSkeleton() {
+  const surface = '#FFF';
+  const pageBg = '#F9FAFB';
+
+  return (
+    <View style={[styles.screen, { backgroundColor: pageBg }]}>
+      {/* Header */}
+      <View style={{ paddingTop: 60, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Skeleton height={24} width={24} borderRadius={12} />
+        <Skeleton height={22} width={110} borderRadius={11} />
+      </View>
+      <View style={styles.body}>
+        {/* Step 1: Select Child */}
+        <Skeleton height={16} width={120} borderRadius={8} style={{ marginBottom: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 22 }}>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={{ backgroundColor: surface, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Skeleton height={28} width={28} borderRadius={14} />
+              <Skeleton height={14} width={50} borderRadius={7} />
+            </View>
+          ))}
+        </View>
+        {/* Step 2: Select Subject */}
+        <Skeleton height={16} width={130} borderRadius={8} style={{ marginBottom: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
+          {[80, 70, 90, 60].map((w, i) => (
+            <Skeleton key={i} height={36} width={w} borderRadius={20} />
+          ))}
+        </View>
+        {/* Step 3: Select Date */}
+        <Skeleton height={16} width={110} borderRadius={8} style={{ marginBottom: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 22 }}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <View key={i} style={{ backgroundColor: surface, borderRadius: 14, padding: 12, alignItems: 'center', width: 60 }}>
+              <Skeleton height={12} width={30} borderRadius={6} />
+              <Skeleton height={22} width={24} borderRadius={8} style={{ marginTop: 4 }} />
+            </View>
+          ))}
+        </View>
+        {/* Step 4: Select Time */}
+        <Skeleton height={16} width={110} borderRadius={8} style={{ marginBottom: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <Skeleton key={i} height={38} width={90} borderRadius={12} />
+          ))}
+        </View>
+        {/* Footer */}
+        <Skeleton height={52} width={'100%'} borderRadius={16} style={{ marginTop: 8 }} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Simple Profile View Skeleton (for parent-profile, etc.)
+ */
+export function SimpleProfileSkeleton() {
+  const pageBg = '#F9FAFB';
+  const surface = '#FFF';
+
+  return (
+    <View style={[styles.screen, { backgroundColor: pageBg }]}>
+      <View style={{ paddingTop: 60, paddingBottom: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Skeleton height={24} width={24} borderRadius={12} />
+        <Skeleton height={22} width={130} borderRadius={11} />
+      </View>
+      <View style={{ flex: 1, alignItems: 'center', paddingTop: 40 }}>
+        <Skeleton height={96} width={96} borderRadius={48} />
+        <Skeleton height={22} width={160} borderRadius={11} style={{ marginTop: 18 }} />
+        <Skeleton height={14} width={200} borderRadius={8} style={{ marginTop: 8 }} />
+        <Skeleton height={44} width={180} borderRadius={14} style={{ marginTop: 24 }} />
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,

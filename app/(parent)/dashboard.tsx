@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Modal, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Modal, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
 import { ParentDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 // Interfaces remain untouched
 interface Child {
@@ -64,6 +65,7 @@ interface Payment {
 export default function ParentDashboard() {
   const router = useRouter();
   const { user, signOut, refreshSession } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true);
@@ -295,7 +297,7 @@ export default function ParentDashboard() {
         }
       >
         {/* Header Section */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: topPadding }]}>
           <View style={styles.headerTopRow}>
             <View>
               <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
@@ -486,12 +488,45 @@ export default function ParentDashboard() {
           </Modal>
         </View>
 
+        {/* Quick Actions */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
+          </View>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/browse-courses')}>
+              <View style={[styles.quickActionIcon, { backgroundColor: '#E6FFFA' }]}>  
+                <Ionicons name="book-outline" size={22} color="#4ECDC4" />
+              </View>
+              <ThemedText style={styles.quickActionLabel}>Courses</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/messages')}>
+              <View style={[styles.quickActionIcon, { backgroundColor: '#EEF2FF' }]}>  
+                <Ionicons name="chatbubbles-outline" size={22} color="#6366F1" />
+              </View>
+              <ThemedText style={styles.quickActionLabel}>Messages</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => setShowAddChildModal(true)}>
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>  
+                <Ionicons name="person-add-outline" size={22} color="#F59E0B" />
+              </View>
+              <ThemedText style={styles.quickActionLabel}>Add Child</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/profile')}>
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FCE7F3' }]}>  
+                <Ionicons name="settings-outline" size={22} color="#EC4899" />
+              </View>
+              <ThemedText style={styles.quickActionLabel}>Settings</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Upcoming Classes Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
              <ThemedText style={styles.sectionTitle}>Upcoming Classes</ThemedText>
-             <TouchableOpacity>
-               <ThemedText style={styles.seeAllText}>See Schedule</ThemedText>
+             <TouchableOpacity onPress={() => router.push('/(parent)/browse-courses')}>
+               <ThemedText style={styles.seeAllText}>Browse</ThemedText>
              </TouchableOpacity>
           </View>
           {upcomingClasses.length === 0 ? (
@@ -534,13 +569,20 @@ export default function ParentDashboard() {
                       </View>
                    </View>
                    <View style={styles.classCardRight}>
-                      <TouchableOpacity 
-                        style={[styles.joinBtn, { opacity: 0.5 }]}
-                        disabled
-                        onPress={() => Alert.alert('Student account required', 'Only teachers and students can join live classes.')}
-                      >
-                        <ThemedText style={styles.joinBtnText}>Student</ThemedText>
-                      </TouchableOpacity>
+                      {joinable ? (
+                        <View style={styles.statusBadgeLive}>
+                          <View style={styles.liveDot} />
+                          <ThemedText style={styles.statusBadgeLiveText}>Live Now</ThemedText>
+                        </View>
+                      ) : diffMinutes > 0 && diffMinutes <= 60 ? (
+                        <View style={styles.statusBadgeSoon}>
+                          <ThemedText style={styles.statusBadgeSoonText}>{Math.ceil(diffMinutes)}m</ThemedText>
+                        </View>
+                      ) : (
+                        <View style={styles.statusBadgeScheduled}>
+                          <ThemedText style={styles.statusBadgeScheduledText}>Scheduled</ThemedText>
+                        </View>
+                      )}
                    </View>
                 </View>
               );
@@ -591,8 +633,8 @@ export default function ParentDashboard() {
                       </View>
                    </View>
                    <View style={styles.classCardRight}>
-                      <View style={[{ backgroundColor: '#F59E0B', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }]}> 
-                        <ThemedText style={{ color: '#FFF', fontWeight: 'bold', fontSize: 12 }}>{statusLabel}</ThemedText>
+                      <View style={styles.statusBadgeClosed}>
+                        <ThemedText style={styles.statusBadgeClosedText}>{statusLabel}</ThemedText>
                       </View>
                    </View>
                 </View>
@@ -609,11 +651,12 @@ export default function ParentDashboard() {
 
            {messages.length === 0 ? (
              <View style={styles.emptyStateContainerCompact}>
+               <Ionicons name="chatbubble-ellipses-outline" size={22} color="#D1D5DB" style={{ marginBottom: 6 }} />
                <ThemedText style={styles.emptyStateTextCompact}>No new messages</ThemedText>
              </View>
            ) : (
              messages.map((msg) => (
-               <TouchableOpacity key={msg.id} style={styles.messageRow}>
+               <TouchableOpacity key={msg.id} style={styles.messageRow} onPress={() => router.push('/(parent)/messages')}>
                   <View style={styles.messageAvatar}>
                      <Ionicons name="person" size={20} color="#9CA3AF" />
                   </View>
@@ -637,6 +680,7 @@ export default function ParentDashboard() {
            
            {payments.length === 0 ? (
              <View style={styles.emptyStateContainerCompact}>
+               <Ionicons name="wallet-outline" size={22} color="#D1D5DB" style={{ marginBottom: 6 }} />
                <ThemedText style={styles.emptyStateTextCompact}>No recent transactions</ThemedText>
              </View>
            ) : (
@@ -691,7 +735,6 @@ const styles = StyleSheet.create({
   /* Header */
   header: {
     paddingHorizontal: 24,
-    paddingTop: 60,
     paddingBottom: 20,
     backgroundColor: '#FFF',
     borderBottomLeftRadius: 24,
@@ -953,17 +996,6 @@ const styles = StyleSheet.create({
   classCardRight: {
     marginLeft: 12,
   },
-  joinBtn: {
-    backgroundColor: '#4ECDC4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  joinBtnText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
 
   /* Empty States */
   emptyStateContainer: {
@@ -1004,6 +1036,89 @@ const styles = StyleSheet.create({
   emptyStateTextCompact: {
     fontSize: 14,
     color: '#9CA3AF',
+  },
+
+  /* Quick Actions */
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickAction: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickActionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  quickActionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+
+  /* Status Badges */
+  statusBadgeLive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    gap: 5,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
+  },
+  statusBadgeLiveText: {
+    color: '#15803D',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statusBadgeSoon: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  statusBadgeSoonText: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statusBadgeScheduled: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  statusBadgeScheduledText: {
+    color: '#4338CA',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statusBadgeClosed: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  statusBadgeClosedText: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   /* Messages List */
@@ -1059,8 +1174,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 16,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   paymentIcon: {
     width: 40,

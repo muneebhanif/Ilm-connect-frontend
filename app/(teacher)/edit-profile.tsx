@@ -1,14 +1,15 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Image, Platform, Modal, Linking } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Image, Platform, Modal, Linking, KeyboardAvoidingView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguagesMultiSelectDropdown } from '@/components/dropdowns';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface TeacherProfileData {
   full_name: string;
@@ -43,6 +44,7 @@ const AVAILABLE_SUBJECTS = [
 export default function EditTeacherProfileScreen() {
   const router = useRouter();
   const { user, refreshUserProfile } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<TeacherProfileData>({
@@ -60,6 +62,7 @@ export default function EditTeacherProfileScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -188,6 +191,7 @@ export default function EditTeacherProfileScreen() {
       Alert.alert('Error', 'Session expired. Please login again.');
       return;
     }
+    if (uploadingPortfolio) return; // Prevent double-tap
 
     const accessToken = await AsyncStorage.getItem('access_token');
     if (!accessToken) {
@@ -195,7 +199,21 @@ export default function EditTeacherProfileScreen() {
       return;
     }
 
+    setUploadingPortfolio(true);
     try {
+      // File size validation
+      if (Platform.OS !== 'web') {
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        if (fileInfo.exists && fileInfo.size) {
+          const sizeMB = fileInfo.size / (1024 * 1024);
+          const maxSize = mediaType === 'video' ? 50 : 10; // 50MB for video, 10MB for images
+          if (sizeMB > maxSize) {
+            Alert.alert('File Too Large', `${mediaType === 'video' ? 'Video' : 'Image'} must be under ${maxSize}MB. Selected file is ${sizeMB.toFixed(1)}MB.`);
+            return;
+          }
+        }
+      }
+
       let base64: string;
       let extension = mediaType === 'video' ? 'mp4' : 'jpg';
 
@@ -256,6 +274,8 @@ export default function EditTeacherProfileScreen() {
       } else {
         Alert.alert('Upload Error', msg);
       }
+    } finally {
+      setUploadingPortfolio(false);
     }
   };
 
@@ -557,7 +577,7 @@ export default function EditTeacherProfileScreen() {
         </View>
       )}
       
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
@@ -571,6 +591,11 @@ export default function EditTeacherProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Picture */}
         <View style={styles.avatarSection}>
@@ -730,13 +755,33 @@ export default function EditTeacherProfileScreen() {
           </ThemedText>
 
           <View style={styles.portfolioActionRow}>
-            <TouchableOpacity style={styles.portfolioAddButton} onPress={() => pickPortfolioMedia('image')}>
-              <Ionicons name="image-outline" size={18} color="#4ECDC4" />
-              <ThemedText style={styles.portfolioAddText}>Add Photo</ThemedText>
+            <TouchableOpacity
+              style={[styles.portfolioAddButton, uploadingPortfolio && { opacity: 0.5 }]}
+              onPress={() => pickPortfolioMedia('image')}
+              disabled={uploadingPortfolio}
+            >
+              {uploadingPortfolio ? (
+                <ActivityIndicator size="small" color="#4ECDC4" />
+              ) : (
+                <Ionicons name="image-outline" size={18} color="#4ECDC4" />
+              )}
+              <ThemedText style={styles.portfolioAddText}>
+                {uploadingPortfolio ? 'Uploading...' : 'Add Photo'}
+              </ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.portfolioAddButton} onPress={() => pickPortfolioMedia('video')}>
-              <Ionicons name="videocam-outline" size={18} color="#4ECDC4" />
-              <ThemedText style={styles.portfolioAddText}>Add Video</ThemedText>
+            <TouchableOpacity
+              style={[styles.portfolioAddButton, uploadingPortfolio && { opacity: 0.5 }]}
+              onPress={() => pickPortfolioMedia('video')}
+              disabled={uploadingPortfolio}
+            >
+              {uploadingPortfolio ? (
+                <ActivityIndicator size="small" color="#4ECDC4" />
+              ) : (
+                <Ionicons name="videocam-outline" size={18} color="#4ECDC4" />
+              )}
+              <ThemedText style={styles.portfolioAddText}>
+                {uploadingPortfolio ? 'Uploading...' : 'Add Video'}
+              </ThemedText>
             </TouchableOpacity>
           </View>
 
@@ -748,26 +793,38 @@ export default function EditTeacherProfileScreen() {
                     <Image source={{ uri: item.url }} style={styles.portfolioImage} />
                   ) : (
                     <TouchableOpacity style={styles.portfolioVideoPlaceholder} onPress={() => Linking.openURL(item.url)}>
-                      <Ionicons name="play-circle" size={34} color="#4ECDC4" />
-                      <ThemedText style={styles.portfolioVideoText}>Open Video</ThemedText>
+                      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(78,205,196,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+                        <Ionicons name="play" size={26} color="#4ECDC4" />
+                      </View>
+                      <ThemedText style={styles.portfolioVideoText}>Tap to play</ThemedText>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
                     style={styles.portfolioDeleteButton}
                     onPress={() => removePortfolioMedia(item.id)}
                   >
-                    <Ionicons name="trash-outline" size={14} color="#FFF" />
+                    <Ionicons name="close" size={14} color="#FFF" />
                   </TouchableOpacity>
+                  <View style={{ position: 'absolute', bottom: 6, left: 6, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <ThemedText style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>
+                      {item.type === 'image' ? '📷 Photo' : '🎥 Video'}
+                    </ThemedText>
+                  </View>
                 </View>
               ))
             ) : (
-              <ThemedText style={styles.emptyPortfolioText}>No portfolio media uploaded yet.</ThemedText>
+              <View style={{ alignItems: 'center', padding: 30, width: '100%', backgroundColor: '#F9FAFB', borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', borderStyle: 'dashed' }}>
+                <Ionicons name="images-outline" size={40} color="#D1D5DB" />
+                <ThemedText style={[styles.emptyPortfolioText, { marginTop: 8 }]}>No portfolio media yet</ThemedText>
+                <ThemedText style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>Tap "Add Photo" or "Add Video" above</ThemedText>
+              </View>
             )}
           </View>
         </View>
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Image Options Modal for Web */}
       <Modal
@@ -849,7 +906,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1093,23 +1149,26 @@ const styles = StyleSheet.create({
   },
   portfolioCard: {
     width: '48%',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   portfolioImage: {
     width: '100%',
-    height: 130,
+    height: 140,
   },
   portfolioVideoPlaceholder: {
-    height: 130,
+    height: 140,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#ECFEFF',
+    backgroundColor: '#F0FDFA',
   },
   portfolioVideoText: {
     fontSize: 12,

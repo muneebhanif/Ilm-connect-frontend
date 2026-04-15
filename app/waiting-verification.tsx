@@ -16,7 +16,7 @@ import { api } from '@/lib/config';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface Document {
   type: string;
@@ -232,6 +232,16 @@ export default function WaitingVerification() {
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         const ext = asset.name.split('.').pop()?.toLowerCase() || 'pdf';
+
+        // File size validation (10MB max for documents)
+        const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+        if (fileInfo.exists && fileInfo.size) {
+          const sizeMB = fileInfo.size / (1024 * 1024);
+          if (sizeMB > 10) {
+            showNotification('error', `File is too large (${sizeMB.toFixed(1)}MB). Maximum size is 10MB.`);
+            return;
+          }
+        }
         
         const base64Data = await FileSystem.readAsStringAsync(asset.uri, {
           encoding: 'base64',

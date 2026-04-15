@@ -8,7 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
+import { BookTeacherSkeleton } from '@/components/ui/dashboard-skeletons';
 import { DateTime } from 'luxon';
+import { useStripe } from '@/lib/stripe';
 
 /* Safe Platform Resolve */
 const OS = typeof Platform !== 'undefined' ? Platform.OS : 'web';
@@ -39,9 +41,11 @@ interface Package {
 export default function BookTeacherScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [teacherTz, setTeacherTz] = useState<string>('UTC');
   const [children, setChildren] = useState<Child[]>([]);
@@ -238,13 +242,79 @@ export default function BookTeacherScreen() {
         return;
       }
 
+      // ── Payment gate ──────────────────────────────────────────────────────
+      let paymentIntentId: string | null = null;
+
+      if (totalAmount > 0) {
+        // 1. Create PaymentIntent on backend
+        setPaymentLoading(true);
+        const intentRes = await fetch(api.payments.createIntent(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: totalAmount,
+            currency: 'usd',
+            teacherId: teacher?.id,
+            packageType: selectedPackage,
+            subject: selectedSubject,
+            numStudents: selectedChildren.length,
+          }),
+        });
+        const intentData = await intentRes.json();
+        setPaymentLoading(false);
+
+        if (!intentRes.ok || !intentData.clientSecret) {
+          const msg = intentData.error || 'Failed to start payment. Please try again.';
+          setFeedbackMessage(msg);
+          Alert.alert('Payment Error', msg);
+          return;
+        }
+
+        // 2. Initialize Stripe Payment Sheet
+        const { error: initError } = await initPaymentSheet({
+          paymentIntentClientSecret: intentData.clientSecret,
+          merchantDisplayName: 'IlmConnect',
+          defaultBillingDetails: { name: 'Parent' },
+          style: 'automatic',
+          returnURL: 'ilmconnect://payment-complete',
+          // Test mode hint shown in the sheet
+          testEnv: true,
+        });
+
+        if (initError) {
+          const msg = initError.message || 'Unable to load payment sheet.';
+          setFeedbackMessage(msg);
+          Alert.alert('Payment Error', msg);
+          return;
+        }
+
+        // 3. Present the Stripe Payment Sheet
+        const { error: payError } = await presentPaymentSheet();
+
+        if (payError) {
+          if (payError.code === 'Canceled') return; // user dismissed — no alert needed
+          const msg = payError.message || 'Payment was not completed.';
+          setFeedbackMessage(msg);
+          Alert.alert('Payment Failed', msg);
+          return;
+        }
+
+        // Payment succeeded — keep the paymentIntentId to attach to booking
+        paymentIntentId = intentData.paymentIntentId;
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
+      // 4. Create the booking (now with verified paymentIntentId if paid)
       const response = await fetch(api.bookings(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(bookingPayload),
+        body: JSON.stringify({ ...bookingPayload, paymentIntentId }),
       });
 
       const data = await response.json();
@@ -265,6 +335,7 @@ export default function BookTeacherScreen() {
       Alert.alert('Error', msg);
     } finally {
       setSubmitting(false);
+      setPaymentLoading(false);
     }
   };
 
@@ -296,7 +367,7 @@ export default function BookTeacherScreen() {
   }
 
   if (loading) {
-    return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color="#4ECDC4" /></View>;
+    return <BookTeacherSkeleton />;
   }
 
   if (error || !teacher) {
@@ -503,14 +574,16 @@ export default function BookTeacherScreen() {
           <ThemedText style={styles.totalValue}>${totalAmount.toFixed(2)}</ThemedText>
         </View>
         <TouchableOpacity 
-          style={[styles.bookBtn, (submitting || !selectedSubject || !selectedTime || selectedChildren.length === 0) && styles.btnDisabled]}
+          style={[styles.bookBtn, (submitting || paymentLoading || !selectedSubject || !selectedTime || selectedChildren.length === 0) && styles.btnDisabled]}
           onPress={handleBooking}
-          disabled={submitting || !selectedSubject || !selectedTime || selectedChildren.length === 0}
+          disabled={submitting || paymentLoading || !selectedSubject || !selectedTime || selectedChildren.length === 0}
         >
-          {submitting ? (
+          {submitting || paymentLoading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <ThemedText style={styles.bookBtnText}>Confirm Booking</ThemedText>
+            <ThemedText style={styles.bookBtnText}>
+              {totalAmount > 0 ? `Pay $${totalAmount.toFixed(2)}` : 'Book Free Class'}
+            </ThemedText>
           )}
         </TouchableOpacity>
       </View>

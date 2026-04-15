@@ -8,6 +8,7 @@ import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useFocusEffect } from '@react-navigation/native';
 
 interface RecordingItem {
@@ -31,6 +32,7 @@ const formatDuration = (seconds?: number | null) => {
 
 export default function StudentRecordingsScreen() {
   const { user } = useAuth();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export default function StudentRecordingsScreen() {
           colors={['#6366F1', '#8B5CF6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { paddingTop: topPadding }]}
         >
           <View style={styles.headerIconWrap}>
             <Ionicons name="play-circle" size={32} color="#FFF" />
@@ -212,7 +214,6 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
-    paddingTop: 60,
     paddingBottom: 28,
     paddingHorizontal: 24,
     alignItems: 'center',
