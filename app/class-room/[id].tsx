@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { authFetch, authFetchJson } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 
 const isWeb = Platform.OS === 'web';
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -20,6 +21,8 @@ interface ClassDetails {
   duration_minutes: number;
   status?: string;
   live_status?: string;
+  channel_name?: string;
+  meeting_url?: string;
 }
 
 interface ChatMessage {
@@ -138,6 +141,8 @@ export default function ClassRoomScreen() {
           duration_minutes: data.session.duration_minutes || 60,
           status: data.session.status,
           live_status: data.session.live_status,
+          channel_name: data.session.channel_name,
+          meeting_url: data.session.meeting_url,
         });
       } else { setError(data?.error || 'Failed to load class details'); }
     } catch (e) { console.error('Load class failed:', e); setError('Failed to load class details'); }
@@ -193,9 +198,62 @@ export default function ClassRoomScreen() {
     }
   };
 
+  const getMobileClassroomUrl = () => {
+    const directMeetingUrl = String(classDetails?.meeting_url || '').trim();
+    if (/^https?:\/\//i.test(directMeetingUrl)) return directMeetingUrl;
+
+    const webBase = String(process.env.EXPO_PUBLIC_CLASSROOM_WEB_URL || '').trim().replace(/\/$/, '');
+    if (!webBase || !id) return null;
+    return `${webBase}/class-room/${encodeURIComponent(String(id))}`;
+  };
+
+  const openMobileClassroom = async () => {
+    const targetUrl = getMobileClassroomUrl();
+    if (!targetUrl) {
+      throw new Error('No mobile classroom URL available. Set meeting_url on session or EXPO_PUBLIC_CLASSROOM_WEB_URL in app config.');
+    }
+
+    const result = await WebBrowser.openBrowserAsync(targetUrl, {
+      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      showTitle: true,
+      controlsColor: '#14B8A6',
+    });
+
+    return result;
+  };
+
   const joinClass = async () => {
     if (!id || !user?.id) return;
-    if (!isWeb) { Alert.alert('Web only', 'Live class is web-enabled in this build.'); return; }
+
+    if (!isWeb) {
+      setJoining(true);
+      joiningRef.current = true;
+      setError(null);
+      try {
+        if (user.role === 'teacher') {
+          const sr = await authFetch(api.startClass(id), { method: 'POST' });
+          const sd = await sr.json().catch(() => ({}));
+          if (!sr.ok) throw new Error(sd?.error || 'Unable to start class');
+        }
+
+        await openMobileClassroom();
+
+        Alert.alert(
+          'Classroom opened',
+          user.role === 'teacher'
+            ? 'Live class opened in browser. Return to schedule when you finish.'
+            : 'Live class opened in browser.'
+        );
+      } catch (e: any) {
+        console.error('Mobile join failed:', e);
+        setError(e?.message || 'Failed to open class on mobile');
+      } finally {
+        setJoining(false);
+        joiningRef.current = false;
+      }
+      return;
+    }
+
     setJoining(true); joiningRef.current = true; setError(null);
     try {
       if (user.role === 'teacher') {
@@ -495,7 +553,7 @@ export default function ClassRoomScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {!isWeb && <ThemedText style={st.webHint}>Live classes available on web</ThemedText>}
+          {!isWeb && <ThemedText style={st.webHint}>On Android/iOS, class opens in browser</ThemedText>}
         </View>
       </View>
     );
