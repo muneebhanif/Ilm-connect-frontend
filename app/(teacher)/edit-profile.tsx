@@ -250,7 +250,10 @@ export default function EditTeacherProfileScreen() {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
+      if (!data) {
+        throw new Error('Server returned an invalid response. The file may be too large (max ~4MB).');
+      }
       if (!response.ok) {
         throw new Error(data.error || 'Upload failed');
       }

@@ -10,8 +10,25 @@ import { authFetch, authFetchJson } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const isWeb = Platform.OS === 'web';
-const MobileWebView: any = !isWeb ? require('react-native-webview').WebView : null;
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const { width: SCREEN_W } = Dimensions.get('window');
+
+/* ── Native Agora imports (only on Android/iOS) ── */
+let createAgoraRtcEngine: any = null;
+let RtcSurfaceView: any = null;
+let ChannelProfileType: any = null;
+let ClientRoleType: any = null;
+
+if (!isWeb) {
+  try {
+    const agora = require('react-native-agora');
+    createAgoraRtcEngine = agora.createAgoraRtcEngine;
+    RtcSurfaceView = agora.RtcSurfaceView;
+    ChannelProfileType = agora.ChannelProfileType;
+    ClientRoleType = agora.ClientRoleType;
+  } catch (e) {
+    console.warn('react-native-agora not available:', e);
+  }
+}
 
 interface ClassDetails {
   id: string;
@@ -48,18 +65,22 @@ export default function ClassRoomScreen() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [remoteUids, setRemoteUids] = useState<string[]>([]);
+  const [remoteUids, setRemoteUids] = useState<number[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [participantCount, setParticipantCount] = useState(1);
-  const [mobileClassUrl, setMobileClassUrl] = useState<string | null>(null);
 
+  // Web-only refs
   const rtcClientRef = useRef<any>(null);
   const AgoraRTCRef = useRef<any>(null);
   const localTracksRef = useRef<{ audioTrack?: any; videoTrack?: any }>({});
+  const dataStreamIdRef = useRef<number | null>(null);
+
+  // Native-only ref
+  const nativeEngineRef = useRef<any>(null);
+
   const hasEndedRef = useRef(false);
   const joinedRef = useRef(false);
   const joiningRef = useRef(false);
-  const dataStreamIdRef = useRef<number | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const chatScrollRef = useRef<ScrollView>(null);
 
@@ -103,8 +124,9 @@ export default function ClassRoomScreen() {
     loadClassDetails();
   }, [user, authLoading, id]);
 
-  useEffect(() => { return () => { void cleanupAgora(); }; }, []);
+  useEffect(() => { return () => { void cleanup(); }; }, []);
 
+  // Web-only: play local video
   useEffect(() => {
     if (!isWeb || !joined) return;
     const vt = localTracksRef.current.videoTrack;
@@ -116,18 +138,18 @@ export default function ClassRoomScreen() {
     return () => clearTimeout(t);
   }, [joined]);
 
+  // Web-only: play remote video
   useEffect(() => {
     if (!isWeb || !joined || remoteUids.length === 0) return;
-    const t = setTimeout(() => remoteUids.forEach((uid) => renderRemoteVideo(uid)), 0);
+    const t = setTimeout(() => remoteUids.forEach((uid) => renderRemoteVideo(String(uid))), 0);
     return () => clearTimeout(t);
   }, [remoteUids, joined]);
 
-  // Update participant count
   useEffect(() => {
     setParticipantCount(1 + remoteUids.length);
   }, [remoteUids]);
 
-  // ─── Agora Logic ─────────────────────────────────────────
+  // ─── Load Class Details ──────────────────────────────────
   const loadClassDetails = async () => {
     if (!id) { setError('No class ID provided'); setLoading(false); return; }
     try {
@@ -150,7 +172,13 @@ export default function ClassRoomScreen() {
     finally { setLoading(false); }
   };
 
-  const cleanupAgora = async () => {
+  // ─── Cleanup ─────────────────────────────────────────────
+  const cleanup = async () => {
+    if (isWeb) await cleanupWebAgora();
+    else await cleanupNativeAgora();
+  };
+
+  const cleanupWebAgora = async () => {
     try {
       joinedRef.current = false; joiningRef.current = false;
       if (localTracksRef.current.audioTrack) { localTracksRef.current.audioTrack.stop(); localTracksRef.current.audioTrack.close(); }
@@ -160,186 +188,210 @@ export default function ClassRoomScreen() {
         if (typeof rtcClientRef.current.removeAllListeners === 'function') rtcClientRef.current.removeAllListeners();
         await rtcClientRef.current.leave();
       }
-    } catch (e) { console.warn('Cleanup warning:', e); }
+    } catch (e) { console.warn('Web cleanup warning:', e); }
     finally { rtcClientRef.current = null; dataStreamIdRef.current = null; setJoined(false); setRemoteUids([]); }
   };
 
+  const cleanupNativeAgora = async () => {
+    try {
+      joinedRef.current = false; joiningRef.current = false;
+      const engine = nativeEngineRef.current;
+      if (engine) {
+        engine.leaveChannel();
+        engine.release();
+      }
+    } catch (e) { console.warn('Native cleanup warning:', e); }
+    finally { nativeEngineRef.current = null; setJoined(false); setRemoteUids([]); }
+  };
+
+  // ─── Token Renewal ───────────────────────────────────────
   const renewToken = async () => {
-    if (!id || !user?.id || !rtcClientRef.current) return;
+    if (!id || !user?.id) return;
     const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
     const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role));
     if (tr.error || !tr.data?.token) return;
-    await rtcClientRef.current.renewToken(tr.data.token);
+    if (isWeb && rtcClientRef.current) {
+      await rtcClientRef.current.renewToken(tr.data.token);
+    } else if (!isWeb && nativeEngineRef.current) {
+      nativeEngineRef.current.renewToken(tr.data.token);
+    }
   };
 
+  // ─── Web-only helpers ────────────────────────────────────
   const renderRemoteVideo = (uid: string) => {
     const client = rtcClientRef.current;
-    if (!client) return;
+    if (!client || !isWeb) return;
     const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(uid));
-    if (!ru?.videoTrack || !isWeb) return;
+    if (!ru?.videoTrack) return;
     const el = document.getElementById(`remote-player-${uid}`);
     if (el) ru.videoTrack.play(el);
   };
 
-  const addRemoteUid = (uid: string) => {
+  const addRemoteUid = (uid: number) => {
     setRemoteUids((prev) => (prev.includes(uid) ? prev : [...prev, uid]));
-    setTimeout(() => renderRemoteVideo(uid), 0);
+    if (isWeb) setTimeout(() => renderRemoteVideo(String(uid)), 0);
   };
-  const removeRemoteUid = (uid: string) => setRemoteUids((prev) => prev.filter((x) => x !== uid));
+  const removeRemoteUid = (uid: number) => setRemoteUids((prev) => prev.filter((x) => x !== uid));
 
-  // ── Data Stream for Chat ──
   const setupDataStream = async () => {
     const client = rtcClientRef.current;
     if (!client || dataStreamIdRef.current !== null) return;
     try {
       const streamId = await client.createDataStream({ ordered: true, reliable: true });
       dataStreamIdRef.current = streamId;
-    } catch (e) {
-      console.warn('Failed to create data stream:', e);
-    }
+    } catch (e) { console.warn('Failed to create data stream:', e); }
   };
 
-  const getMobileClassroomUrl = () => {
-    const directMeetingUrl = String(classDetails?.meeting_url || '').trim();
-    if (/^https?:\/\//i.test(directMeetingUrl)) return directMeetingUrl;
-
-    const webBase = String(process.env.EXPO_PUBLIC_CLASSROOM_WEB_URL || '').trim().replace(/\/$/, '');
-    if (!webBase || !id) return null;
-    return `${webBase}/class-room/${encodeURIComponent(String(id))}`;
-  };
-
+  // ═══════════════════════════════════════════════════════════
+  //  JOIN CLASS
+  // ═══════════════════════════════════════════════════════════
   const joinClass = async () => {
     if (!id || !user?.id) return;
-
-    if (!isWeb) {
-      setJoining(true);
-      joiningRef.current = true;
-      setError(null);
-      try {
-        if (user.role === 'teacher') {
-          const sr = await authFetch(api.startClass(id), { method: 'POST' });
-          const sd = await sr.json().catch(() => ({}));
-          if (!sr.ok) throw new Error(sd?.error || 'Unable to start class');
-        }
-
-        const targetUrl = getMobileClassroomUrl();
-        if (!targetUrl) {
-          throw new Error('No mobile classroom URL available. Set meeting_url on session or EXPO_PUBLIC_CLASSROOM_WEB_URL in app config.');
-        }
-
-        setMobileClassUrl(targetUrl);
-        setJoined(true);
-      } catch (e: any) {
-        console.error('Mobile join failed:', e);
-        setError(e?.message || 'Failed to open class on mobile');
-      } finally {
-        setJoining(false);
-        joiningRef.current = false;
-      }
-      return;
-    }
-
     setJoining(true); joiningRef.current = true; setError(null);
+
     try {
       if (user.role === 'teacher') {
         const sr = await authFetch(api.startClass(id), { method: 'POST' });
         const sd = await sr.json().catch(() => ({}));
         if (!sr.ok) throw new Error(sd?.error || 'Unable to start class');
       }
-      const AgoraModule = await import('agora-rtc-sdk-ng');
-      const AgoraRTC: any = (AgoraModule as any).default || AgoraModule;
-      AgoraRTCRef.current = AgoraRTC;
-      try { if (typeof AgoraRTC.disableLogUpload === 'function') AgoraRTC.disableLogUpload(); } catch {}
-      try { if (typeof AgoraRTC.setLogLevel === 'function') AgoraRTC.setLogLevel(4); } catch {}
 
       const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
       const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role));
       if (tr.error || !tr.data?.token) throw new Error(tr.error || 'Failed to get Agora token');
       const { token, appId, channel } = tr.data;
 
-      const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-      rtcClientRef.current = client;
-      await client.join(appId, String(channel), token, String(user.id));
+      if (isWeb) {
+        await joinWeb(appId, channel, token);
+      } else {
+        await joinNative(appId, channel, token);
+      }
+
       joinedRef.current = true;
-
-      // ── Chat: Listen for incoming data stream messages ──
-      client.on('stream-message', (_uid: any, data: any) => {
-        try {
-          let decoded = '';
-          if (typeof data === 'string') {
-            decoded = data;
-          } else if (data instanceof Uint8Array) {
-            decoded = new TextDecoder().decode(data);
-          } else if (data instanceof ArrayBuffer) {
-            decoded = new TextDecoder().decode(new Uint8Array(data));
-          } else if (data?.buffer instanceof ArrayBuffer) {
-            decoded = new TextDecoder().decode(new Uint8Array(data.buffer));
-          } else {
-            decoded = String(data ?? '');
-          }
-
-          if (!decoded) return;
-          const msg = JSON.parse(decoded);
-          if (msg.type === 'chat') {
-            setChatMessages((prev) => [...prev, {
-              id: `${Date.now()}-${Math.random()}`,
-              senderName: msg.senderName || 'Participant',
-              text: msg.text,
-              at: msg.at || new Date().toISOString(),
-              mine: false,
-            }]);
-            setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
-          }
-        } catch (e) { console.warn('Failed to parse stream message:', e); }
-      });
-
-      const handleUserPublished = async (remoteUser: any, mediaType: string) => {
-        try {
-          if (!joinedRef.current || client.connectionState !== 'CONNECTED') return;
-          await client.subscribe(remoteUser, mediaType);
-          if (mediaType === 'audio') remoteUser.audioTrack?.play();
-          if (mediaType === 'video') addRemoteUid(String(remoteUser.uid));
-        } catch (subErr: any) {
-          if (!String(subErr?.message || '').includes('not joined')) console.warn('Subscribe:', subErr);
-        }
-      };
-      client.on('user-published', handleUserPublished);
-      client.on('user-unpublished', (ru: any, mt: string) => { if (mt === 'video') removeRemoteUid(String(ru.uid)); });
-      client.on('user-left', (ru: any) => removeRemoteUid(String(ru.uid)));
-      client.on('token-privilege-will-expire', () => void renewToken());
-      client.on('token-privilege-did-expire', () => void renewToken());
-
-      for (const ru of client.remoteUsers || []) {
-        if (ru.hasVideo) await handleUserPublished(ru, 'video');
-        if (ru.hasAudio) await handleUserPublished(ru, 'audio');
-      }
-
-      const canMedia = typeof navigator !== 'undefined' && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
-      if (!canMedia) { setMicOn(false); setCameraOn(false); }
-      else {
-        try {
-          const [at, vt] = await AgoraRTC.createMicrophoneAndCameraTracks();
-          localTracksRef.current = { audioTrack: at, videoTrack: vt };
-          await client.publish([at, vt]);
-          setMicOn(true); setCameraOn(true);
-        } catch { setMicOn(false); setCameraOn(false); }
-      }
-
-      // Setup data stream for chat after joining
-      await setupDataStream();
-
       setJoined(true);
     } catch (e: any) {
       console.error('Join failed:', e);
       setError(String(e?.message || '').toLowerCase().includes('permission')
         ? 'Camera/Microphone permission denied.'
         : e?.message || 'Failed to join class');
-      await cleanupAgora();
+      await cleanup();
     } finally { setJoining(false); joiningRef.current = false; }
   };
 
+  // ─── Native Agora Join ───────────────────────────────────
+  const joinNative = async (appId: string, channel: string, token: string) => {
+    if (!createAgoraRtcEngine) throw new Error('Native Agora SDK not available. Please rebuild the app.');
+
+    const engine = createAgoraRtcEngine();
+    nativeEngineRef.current = engine;
+
+    engine.initialize({
+      appId,
+      channelProfile: ChannelProfileType.ChannelProfileCommunication,
+    });
+
+    engine.addListener('onUserJoined', (_connection: any, remoteUid: number) => {
+      addRemoteUid(remoteUid);
+    });
+    engine.addListener('onUserOffline', (_connection: any, remoteUid: number) => {
+      removeRemoteUid(remoteUid);
+    });
+    engine.addListener('onTokenPrivilegeWillExpire', () => { void renewToken(); });
+
+    engine.enableVideo();
+    engine.enableAudio();
+    engine.startPreview();
+
+    const numericUid = hashStringToUid(user!.id);
+    engine.joinChannel(token, channel, numericUid, {
+      clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+    });
+
+    setMicOn(true);
+    setCameraOn(true);
+  };
+
+  // ─── Web Agora Join ──────────────────────────────────────
+  const joinWeb = async (appId: string, channel: string, token: string) => {
+    const AgoraModule = await import('agora-rtc-sdk-ng');
+    const AgoraRTC: any = (AgoraModule as any).default || AgoraModule;
+    AgoraRTCRef.current = AgoraRTC;
+    try { if (typeof AgoraRTC.disableLogUpload === 'function') AgoraRTC.disableLogUpload(); } catch {}
+    try { if (typeof AgoraRTC.setLogLevel === 'function') AgoraRTC.setLogLevel(4); } catch {}
+
+    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    rtcClientRef.current = client;
+    await client.join(appId, String(channel), token, String(user!.id));
+
+    client.on('stream-message', (_uid: any, data: any) => {
+      try {
+        let decoded = '';
+        if (typeof data === 'string') decoded = data;
+        else if (data instanceof Uint8Array) decoded = new TextDecoder().decode(data);
+        else if (data instanceof ArrayBuffer) decoded = new TextDecoder().decode(new Uint8Array(data));
+        else if (data?.buffer instanceof ArrayBuffer) decoded = new TextDecoder().decode(new Uint8Array(data.buffer));
+        else decoded = String(data ?? '');
+        if (!decoded) return;
+        const msg = JSON.parse(decoded);
+        if (msg.type === 'chat') {
+          setChatMessages((prev) => [...prev, {
+            id: `${Date.now()}-${Math.random()}`,
+            senderName: msg.senderName || 'Participant',
+            text: msg.text,
+            at: msg.at || new Date().toISOString(),
+            mine: false,
+          }]);
+          setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
+        }
+      } catch (e) { console.warn('Failed to parse stream message:', e); }
+    });
+
+    const handleUserPublished = async (remoteUser: any, mediaType: string) => {
+      try {
+        if (!joinedRef.current || client.connectionState !== 'CONNECTED') return;
+        await client.subscribe(remoteUser, mediaType);
+        if (mediaType === 'audio') remoteUser.audioTrack?.play();
+        if (mediaType === 'video') addRemoteUid(Number(remoteUser.uid) || remoteUser.uid);
+      } catch (subErr: any) {
+        if (!String(subErr?.message || '').includes('not joined')) console.warn('Subscribe:', subErr);
+      }
+    };
+    client.on('user-published', handleUserPublished);
+    client.on('user-unpublished', (ru: any, mt: string) => { if (mt === 'video') removeRemoteUid(Number(ru.uid) || ru.uid); });
+    client.on('user-left', (ru: any) => removeRemoteUid(Number(ru.uid) || ru.uid));
+    client.on('token-privilege-will-expire', () => void renewToken());
+    client.on('token-privilege-did-expire', () => void renewToken());
+
+    for (const ru of client.remoteUsers || []) {
+      if (ru.hasVideo) await handleUserPublished(ru, 'video');
+      if (ru.hasAudio) await handleUserPublished(ru, 'audio');
+    }
+
+    const canMedia = typeof navigator !== 'undefined' && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+    if (!canMedia) { setMicOn(false); setCameraOn(false); }
+    else {
+      try {
+        const [at, vt] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        localTracksRef.current = { audioTrack: at, videoTrack: vt };
+        await client.publish([at, vt]);
+        setMicOn(true); setCameraOn(true);
+      } catch { setMicOn(false); setCameraOn(false); }
+    }
+
+    await setupDataStream();
+  };
+
+  /** Hash a UUID string to a positive 32-bit integer for Agora native UID */
+  const hashStringToUid = (str: string): number => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash) % 1000000000 || 1;
+  };
+
   const goBackWithoutEnding = async () => {
-    await cleanupAgora();
+    await cleanup();
     router.replace(user?.role === 'teacher' ? '/(teacher)/schedule' : '/(student)/classes');
   };
 
@@ -349,7 +401,7 @@ export default function ClassRoomScreen() {
       hasEndedRef.current = true;
       try { await authFetch(api.endClass(id), { method: 'POST' }); } catch {}
     }
-    await cleanupAgora();
+    await cleanup();
     router.replace(user.role === 'teacher' ? '/(teacher)/schedule' : '/(student)/classes');
   };
 
@@ -366,67 +418,62 @@ export default function ClassRoomScreen() {
   };
 
   const toggleMic = async () => {
-    try { const t = localTracksRef.current.audioTrack; if (!t) return; await t.setEnabled(!micOn); setMicOn((v) => !v); } catch {}
-  };
-  const toggleCamera = async () => {
-    try { const t = localTracksRef.current.videoTrack; if (!t) return; await t.setEnabled(!cameraOn); setCameraOn((v) => !v); } catch {}
-  };
-  const switchCamera = async () => {
-    try {
-      const AgoraRTC = AgoraRTCRef.current;
-      const vt = localTracksRef.current.videoTrack;
-      if (!AgoraRTC || !vt) return;
-      const cams = await AgoraRTC.getCameras();
-      if (!cams || cams.length < 2) return;
-      const cur = vt.getTrackLabel ? vt.getTrackLabel() : '';
-      const idx = cams.findIndex((c: any) => String(cur).includes(String(c.label)));
-      await vt.setDevice(cams[(idx + 1) % cams.length].deviceId);
-    } catch {}
+    if (isWeb) {
+      try { const t = localTracksRef.current.audioTrack; if (!t) return; await t.setEnabled(!micOn); setMicOn((v) => !v); } catch {}
+    } else {
+      const engine = nativeEngineRef.current;
+      if (!engine) return;
+      engine.muteLocalAudioStream(micOn);
+      setMicOn((v) => !v);
+    }
   };
 
-  // ── Send chat via Agora data stream ──
+  const toggleCamera = async () => {
+    if (isWeb) {
+      try { const t = localTracksRef.current.videoTrack; if (!t) return; await t.setEnabled(!cameraOn); setCameraOn((v) => !v); } catch {}
+    } else {
+      const engine = nativeEngineRef.current;
+      if (!engine) return;
+      engine.muteLocalVideoStream(cameraOn);
+      setCameraOn((v) => !v);
+    }
+  };
+
+  const switchCamera = async () => {
+    if (isWeb) {
+      try {
+        const AgoraRTC = AgoraRTCRef.current;
+        const vt = localTracksRef.current.videoTrack;
+        if (!AgoraRTC || !vt) return;
+        const cams = await AgoraRTC.getCameras();
+        if (!cams || cams.length < 2) return;
+        const cur = vt.getTrackLabel ? vt.getTrackLabel() : '';
+        const idx = cams.findIndex((c: any) => String(cur).includes(String(c.label)));
+        await vt.setDevice(cams[(idx + 1) % cams.length].deviceId);
+      } catch {}
+    } else {
+      const engine = nativeEngineRef.current;
+      if (engine) engine.switchCamera();
+    }
+  };
+
   const sendChatMessage = async () => {
     const text = chatInput.trim();
     if (!text) return;
-
     const senderName = user?.full_name || (user?.role === 'teacher' ? 'Teacher' : 'Student');
     const now = new Date().toISOString();
-
-    // Add to local messages
-    setChatMessages((prev) => [...prev, {
-      id: `${Date.now()}-${Math.random()}`,
-      senderName, text, at: now, mine: true,
-    }]);
+    setChatMessages((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, senderName, text, at: now, mine: true }]);
     setChatInput('');
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
-
-    // Send to other participants via Agora data stream
     const client = rtcClientRef.current;
-    if (client) {
+    if (client && isWeb) {
       try {
-        if (dataStreamIdRef.current === null) {
-          await setupDataStream();
-        }
-        if (dataStreamIdRef.current === null) {
-          throw new Error('Chat stream not ready yet. Please try again.');
-        }
-
+        if (dataStreamIdRef.current === null) await setupDataStream();
+        if (dataStreamIdRef.current === null) throw new Error('Chat stream not ready');
         const payload = JSON.stringify({ type: 'chat', senderName, text, at: now });
-        try {
-          // String transport is supported and avoids binary decoding mismatch across clients.
-          await client.sendStreamMessage(dataStreamIdRef.current, payload);
-        } catch {
-          // Fallback to binary payload for clients expecting Uint8Array.
-          if (typeof TextEncoder !== 'undefined') {
-            const encoded = new TextEncoder().encode(payload);
-            await client.sendStreamMessage(dataStreamIdRef.current, encoded);
-          } else {
-            throw new Error('Text encoder not available for chat transport');
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to send stream message:', e);
-      }
+        try { await client.sendStreamMessage(dataStreamIdRef.current, payload); }
+        catch { if (typeof TextEncoder !== 'undefined') await client.sendStreamMessage(dataStreamIdRef.current, new TextEncoder().encode(payload)); }
+      } catch (e) { console.warn('Failed to send stream message:', e); }
     }
   };
 
@@ -437,9 +484,7 @@ export default function ClassRoomScreen() {
       <View style={st.container}>
         <StatusBar style="light" />
         <View style={st.centered}>
-          <View style={st.loadingRing}>
-            <ActivityIndicator size="large" color="#4ECDC4" />
-          </View>
+          <View style={st.loadingRing}><ActivityIndicator size="large" color="#4ECDC4" /></View>
           <ThemedText style={st.loadingTitle}>Preparing Classroom</ThemedText>
           <ThemedText style={st.loadingSub}>Setting up your live session…</ThemedText>
         </View>
@@ -452,9 +497,7 @@ export default function ClassRoomScreen() {
       <View style={st.container}>
         <StatusBar style="light" />
         <View style={st.centered}>
-          <View style={st.errorCircle}>
-            <Ionicons name="warning" size={36} color="#FCA5A5" />
-          </View>
+          <View style={st.errorCircle}><Ionicons name="warning" size={36} color="#FCA5A5" /></View>
           <ThemedText style={st.errorTitle}>Something went wrong</ThemedText>
           <ThemedText style={st.errorMsg}>{error}</ThemedText>
           <TouchableOpacity style={st.errorBtn} onPress={goBackWithoutEnding}>
@@ -466,7 +509,6 @@ export default function ClassRoomScreen() {
     );
   }
 
-  /** ── Pre-Join Lobby ── */
   if (!joined) {
     return (
       <View style={st.container}>
@@ -478,19 +520,14 @@ export default function ClassRoomScreen() {
           <ThemedText style={st.lobbyTitle}>IlmConnect Classroom</ThemedText>
           <View style={{ width: 40 }} />
         </View>
-
         <View style={st.centered}>
           <View style={st.previewBox}>
             <LinearGradient colors={['#0F172A', '#1E293B']} style={st.previewInner}>
               <View style={st.previewAvatar}>
-                <ThemedText style={st.previewInitial}>
-                  {user?.full_name?.charAt(0)?.toUpperCase() || '?'}
-                </ThemedText>
+                <ThemedText style={st.previewInitial}>{user?.full_name?.charAt(0)?.toUpperCase() || '?'}</ThemedText>
               </View>
               <ThemedText style={st.previewName}>{user?.full_name || 'You'}</ThemedText>
-              <ThemedText style={st.previewRole}>
-                {user?.role === 'teacher' ? '🎓 Teacher' : '📖 Student'}
-              </ThemedText>
+              <ThemedText style={st.previewRole}>{user?.role === 'teacher' ? '🎓 Teacher' : '📖 Student'}</ThemedText>
             </LinearGradient>
             <View style={st.previewCtrls}>
               <TouchableOpacity style={[st.previewCtrl, !micOn && st.previewCtrlOff]} onPress={() => setMicOn(v => !v)}>
@@ -501,57 +538,35 @@ export default function ClassRoomScreen() {
               </TouchableOpacity>
             </View>
           </View>
-
           <ThemedText style={st.lobbySubject}>{classDetails?.subject || 'Class Session'}</ThemedText>
-          <ThemedText style={st.lobbyTeacher}>
-            {user?.role === 'teacher' ? 'You are hosting' : `With ${classDetails?.teacher_name || 'Teacher'}`}
-          </ThemedText>
-
+          <ThemedText style={st.lobbyTeacher}>{user?.role === 'teacher' ? 'You are hosting' : `With ${classDetails?.teacher_name || 'Teacher'}`}</ThemedText>
           {classDetails?.duration_minutes && (
             <View style={st.durationBadge}>
               <Ionicons name="time-outline" size={14} color="#94A3B8" />
               <ThemedText style={st.durationText}>{classDetails.duration_minutes} min</ThemedText>
             </View>
           )}
-
-          <TouchableOpacity
-            style={[st.joinBtn, joining && { opacity: 0.6 }]}
-            onPress={joinClass}
-            disabled={joining}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={joining ? ['#475569', '#475569'] : ['#14B8A6', '#0D9488']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={st.joinGrad}
-            >
-              {joining ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
+          <TouchableOpacity style={[st.joinBtn, joining && { opacity: 0.6 }]} onPress={joinClass} disabled={joining} activeOpacity={0.85}>
+            <LinearGradient colors={joining ? ['#475569', '#475569'] : ['#14B8A6', '#0D9488']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={st.joinGrad}>
+              {joining ? <ActivityIndicator size="small" color="#FFF" /> : (
                 <>
                   <Ionicons name="videocam" size={20} color="#FFF" style={{ marginRight: 10 }} />
-                  <ThemedText style={st.joinText}>
-                    {user?.role === 'teacher' ? 'Start Class' : 'Join Now'}
-                  </ThemedText>
+                  <ThemedText style={st.joinText}>{user?.role === 'teacher' ? 'Start Class' : 'Join Now'}</ThemedText>
                 </>
               )}
             </LinearGradient>
           </TouchableOpacity>
-
-          {!isWeb && <ThemedText style={st.webHint}>On Android/iOS, class runs inside app</ThemedText>}
         </View>
       </View>
     );
   }
 
   /* ═══════════════════════════════════════════════════════════
-   *  IN-CALL VIEW — Zoom-like layout
+   *  IN-CALL VIEW
    * ═══════════════════════════════════════════════════════════ */
   return (
     <View style={st.container}>
       <StatusBar style="light" />
-
-      {/* ── Top Bar ── */}
       <View style={st.topBar}>
         <View style={st.topLeft}>
           <View style={st.liveChip}>
@@ -560,11 +575,7 @@ export default function ClassRoomScreen() {
           </View>
           <ThemedText style={st.topTimer}>{formatElapsed(elapsed)}</ThemedText>
         </View>
-
-        <ThemedText style={st.topTitle} numberOfLines={1}>
-          {classDetails?.subject || 'Live Class'}
-        </ThemedText>
-
+        <ThemedText style={st.topTitle} numberOfLines={1}>{classDetails?.subject || 'Live Class'}</ThemedText>
         <View style={st.topRight}>
           <View style={st.participantChip}>
             <Ionicons name="people" size={14} color="#94A3B8" />
@@ -573,168 +584,91 @@ export default function ClassRoomScreen() {
         </View>
       </View>
 
-      {/* ── Full-Screen Video Area ── */}
       <View style={st.videoArea}>
         {isWeb ? (
           <>
-            {/* Remote video fills entire area */}
-            <div id="remote-grid" style={{
-              position: 'absolute', inset: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: '#0B1120',
-            }}>
+            <div id="remote-grid" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B1120' }}>
               {remoteUids.length === 0 ? (
-                <div style={{
-                  display: 'flex', flexDirection: 'column' as any,
-                  alignItems: 'center', gap: 16,
-                }}>
-                  <div style={{
-                    width: 88, height: 88, borderRadius: 44,
-                    background: 'linear-gradient(135deg, #1E293B, #334155)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '2px solid rgba(255,255,255,0.08)',
-                  }}>
+                <div style={{ display: 'flex', flexDirection: 'column' as any, alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 88, height: 88, borderRadius: 44, background: 'linear-gradient(135deg, #1E293B, #334155)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.08)' }}>
                     <span style={{ fontSize: 36, color: 'rgba(255,255,255,0.25)' }}>👤</span>
                   </div>
-                  <span style={{ color: '#475569', fontSize: 15, fontWeight: '500' }}>
-                    Waiting for participant…
-                  </span>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '5px 14px', borderRadius: 20,
-                    background: 'rgba(78,205,196,0.08)', border: '1px solid rgba(78,205,196,0.15)',
-                  }}>
+                  <span style={{ color: '#475569', fontSize: 15, fontWeight: '500' }}>Waiting for participant…</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(78,205,196,0.08)', border: '1px solid rgba(78,205,196,0.15)' }}>
                     <span style={{ width: 6, height: 6, borderRadius: 3, background: '#4ECDC4' }} />
                     <span style={{ color: '#4ECDC4', fontSize: 12, fontWeight: '600' }}>Connected</span>
                   </div>
                 </div>
               ) : (
-                remoteUids.map((uid, i) => (
+                remoteUids.map((uid) => (
                   <div key={uid} id={`remote-player-${uid}`} style={{
                     position: 'absolute', inset: 0,
-                    // If multiple remotes, tile them; single = fullscreen
-                    ...(remoteUids.length === 1
-                      ? {}
-                      : {
-                          position: 'relative' as any,
-                          width: remoteUids.length <= 2 ? '100%' : '50%',
-                          height: remoteUids.length <= 2 ? '50%' : '50%',
-                          flex: '1 1 auto',
-                        }),
-                    background: '#111827',
-                    borderRadius: remoteUids.length > 1 ? 4 : 0,
-                    overflow: 'hidden',
+                    ...(remoteUids.length === 1 ? {} : { position: 'relative' as any, width: remoteUids.length <= 2 ? '100%' : '50%', height: '50%', flex: '1 1 auto' }),
+                    background: '#111827', borderRadius: remoteUids.length > 1 ? 4 : 0, overflow: 'hidden',
                   }} />
                 ))
               )}
             </div>
-
-            {/* Local PiP — small, bottom-right */}
             <div id="local-player" style={{
-              position: 'absolute',
-              bottom: 100, right: 16,
-              width: 120, height: 160,
-              borderRadius: 14, overflow: 'hidden',
-              border: '2px solid rgba(78,205,196,0.5)',
-              background: '#0F172A',
-              zIndex: 20,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+              position: 'absolute', bottom: 100, right: 16, width: 120, height: 160, borderRadius: 14, overflow: 'hidden',
+              border: '2px solid rgba(78,205,196,0.5)', background: '#0F172A', zIndex: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
             }}>
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                padding: '4px 8px',
-                background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                zIndex: 10,
-              }}>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 8px', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', zIndex: 10 }}>
                 <span style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>You</span>
               </div>
             </div>
           </>
-        ) : mobileClassUrl && MobileWebView ? (
-          <MobileWebView
-            source={{ uri: mobileClassUrl }}
-            style={st.mobileWebView}
-            javaScriptEnabled
-            domStorageEnabled
-            mediaPlaybackRequiresUserAction={false}
-            allowsInlineMediaPlayback
-            allowsFullscreenVideo
-            startInLoadingState
-          />
+        ) : RtcSurfaceView ? (
+          <View style={st.nativeVideoContainer}>
+            {remoteUids.length > 0 ? (
+              <RtcSurfaceView style={st.nativeRemoteVideo} canvas={{ uid: remoteUids[0] }} />
+            ) : (
+              <View style={st.nativeWaiting}>
+                <View style={st.nativeWaitingCircle}>
+                  <Ionicons name="person" size={40} color="rgba(255,255,255,0.2)" />
+                </View>
+                <ThemedText style={st.nativeWaitingText}>Waiting for participant…</ThemedText>
+                <View style={st.nativeConnectedBadge}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ECDC4' }} />
+                  <ThemedText style={{ color: '#4ECDC4', fontSize: 12, fontWeight: '600' }}>Connected</ThemedText>
+                </View>
+              </View>
+            )}
+            <View style={st.nativeLocalPip}>
+              <RtcSurfaceView style={st.nativeLocalVideo} canvas={{ uid: 0 }} zOrderMediaOverlay />
+              <View style={st.nativeLocalLabel}>
+                <ThemedText style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>You</ThemedText>
+              </View>
+            </View>
+          </View>
         ) : (
           <View style={st.centered}>
-            <ThemedText style={st.webHint}>Unable to load mobile classroom</ThemedText>
+            <ThemedText style={st.webHint}>Agora SDK not available. Rebuild the app with native modules.</ThemedText>
           </View>
         )}
       </View>
 
-      {/* ── Bottom Controls — Single Row, Zoom-like ── */}
       <View style={st.bottomBar}>
-        {isWeb ? (
-          <>
-        {/* Mic */}
-        <TouchableOpacity
-          onPress={toggleMic}
-          style={[st.ctrlBtn, !micOn && st.ctrlBtnRed]}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity onPress={toggleMic} style={[st.ctrlBtn, !micOn && st.ctrlBtnRed]} activeOpacity={0.7}>
           <Ionicons name={micOn ? 'mic' : 'mic-off'} size={24} color="#FFF" />
         </TouchableOpacity>
-
-        {/* Camera */}
-        <TouchableOpacity
-          onPress={toggleCamera}
-          style={[st.ctrlBtn, !cameraOn && st.ctrlBtnRed]}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity onPress={toggleCamera} style={[st.ctrlBtn, !cameraOn && st.ctrlBtnRed]} activeOpacity={0.7}>
           <Ionicons name={cameraOn ? 'videocam' : 'videocam-off'} size={24} color="#FFF" />
         </TouchableOpacity>
-
-        {/* Flip Camera */}
         <TouchableOpacity onPress={switchCamera} style={st.ctrlBtn} activeOpacity={0.7}>
           <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
         </TouchableOpacity>
-
-        {/* Chat */}
-        <TouchableOpacity
-          onPress={() => setChatOpen((v) => !v)}
-          style={[st.ctrlBtn, chatOpen && st.ctrlBtnTeal]}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
-        </TouchableOpacity>
-
-        {/* End / Leave */}
-        <TouchableOpacity
-          onPress={user?.role === 'teacher' ? handleEndClass : goBackWithoutEnding}
-          style={st.endBtn}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={user?.role === 'teacher' ? 'call' : 'exit-outline'}
-            size={24}
-            color="#FFF"
-            style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined}
-          />
-        </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity
-            onPress={user?.role === 'teacher' ? handleEndClass : goBackWithoutEnding}
-            style={st.endBtn}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={user?.role === 'teacher' ? 'call' : 'exit-outline'}
-              size={24}
-              color="#FFF"
-              style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined}
-            />
+        {isWeb && (
+          <TouchableOpacity onPress={() => setChatOpen((v) => !v)} style={[st.ctrlBtn, chatOpen && st.ctrlBtnTeal]} activeOpacity={0.7}>
+            <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
           </TouchableOpacity>
         )}
+        <TouchableOpacity onPress={user?.role === 'teacher' ? handleEndClass : goBackWithoutEnding} style={st.endBtn} activeOpacity={0.8}>
+          <Ionicons name={user?.role === 'teacher' ? 'call' : 'exit-outline'} size={24} color="#FFF"
+            style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined} />
+        </TouchableOpacity>
       </View>
 
-      {/* ── Chat Panel — Slide from right ── */}
       {isWeb && chatOpen && (
         <View style={st.chatPanel}>
           <View style={st.chatHeader}>
@@ -743,13 +677,7 @@ export default function ClassRoomScreen() {
               <Ionicons name="close" size={22} color="#94A3B8" />
             </TouchableOpacity>
           </View>
-
-          <ScrollView
-            ref={chatScrollRef}
-            style={st.chatList}
-            contentContainerStyle={{ paddingBottom: 8 }}
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView ref={chatScrollRef} style={st.chatList} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
             {chatMessages.length === 0 && (
               <View style={st.emptyChat}>
                 <Ionicons name="chatbubbles-outline" size={24} color="#334155" />
@@ -766,17 +694,8 @@ export default function ClassRoomScreen() {
               </View>
             ))}
           </ScrollView>
-
           <View style={st.chatInputRow}>
-            <TextInput
-              style={st.chatInput}
-              placeholder="Type a message…"
-              placeholderTextColor="#64748B"
-              value={chatInput}
-              onChangeText={setChatInput}
-              onSubmitEditing={sendChatMessage}
-              returnKeyType="send"
-            />
+            <TextInput style={st.chatInput} placeholder="Type a message…" placeholderTextColor="#64748B" value={chatInput} onChangeText={setChatInput} onSubmitEditing={sendChatMessage} returnKeyType="send" />
             <TouchableOpacity onPress={sendChatMessage} activeOpacity={0.8}>
               <LinearGradient colors={['#14B8A6', '#0D9488']} style={st.sendBtn}>
                 <Ionicons name="send" size={16} color="#FFF" />
@@ -789,190 +708,75 @@ export default function ClassRoomScreen() {
   );
 }
 
-/* ─── Styles ────────────────────────────────────────────── */
-const BOTTOM_BAR_H = Platform.OS === 'ios' ? 90 : 72;
-
 const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B1120' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-
-  /* Loading */
-  loadingRing: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(78,205,196,0.08)',
-    borderWidth: 2, borderColor: 'rgba(78,205,196,0.2)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 20,
-  },
+  loadingRing: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(78,205,196,0.08)', borderWidth: 2, borderColor: 'rgba(78,205,196,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   loadingTitle: { color: '#F1F5F9', fontSize: 18, fontWeight: '700', marginBottom: 4 },
   loadingSub: { color: '#64748B', fontSize: 14 },
-
-  /* Error */
-  errorCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderWidth: 2, borderColor: 'rgba(239,68,68,0.2)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 20,
-  },
+  errorCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2, borderColor: 'rgba(239,68,68,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   errorTitle: { color: '#F1F5F9', fontSize: 18, fontWeight: '700', marginBottom: 6 },
   errorMsg: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 20, lineHeight: 20, paddingHorizontal: 20 },
-  errorBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 12, paddingHorizontal: 24,
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-  },
+  errorBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   errorBtnText: { color: '#FFF', fontWeight: '600', fontSize: 15 },
-
-  /* Lobby */
-  lobbyHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: 54, paddingHorizontal: 20, paddingBottom: 12,
-  },
+  lobbyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 54, paddingHorizontal: 20, paddingBottom: 12 },
   lobbyTitle: { color: '#94A3B8', fontSize: 15, fontWeight: '600' },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  previewBox: {
-    width: Math.min(SCREEN_W - 80, 300), height: 220,
-    borderRadius: 20, overflow: 'hidden', marginBottom: 24,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-  },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
+  previewBox: { width: Math.min(SCREEN_W - 80, 300), height: 220, borderRadius: 20, overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   previewInner: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  previewAvatar: {
-    width: 68, height: 68, borderRadius: 34,
-    backgroundColor: 'rgba(78,205,196,0.12)',
-    borderWidth: 2, borderColor: 'rgba(78,205,196,0.25)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-  },
+  previewAvatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(78,205,196,0.12)', borderWidth: 2, borderColor: 'rgba(78,205,196,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   previewInitial: { color: '#4ECDC4', fontSize: 28, fontWeight: '800' },
   previewName: { color: '#F1F5F9', fontSize: 16, fontWeight: '700', marginBottom: 2 },
   previewRole: { color: '#94A3B8', fontSize: 13 },
-  previewCtrls: {
-    position: 'absolute', bottom: 14, left: 0, right: 0,
-    flexDirection: 'row', justifyContent: 'center', gap: 12,
-  },
-  previewCtrl: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-  },
+  previewCtrls: { position: 'absolute', bottom: 14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  previewCtrl: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   previewCtrlOff: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.25)' },
   lobbySubject: { color: '#F1F5F9', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 4 },
   lobbyTeacher: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 14 },
-  durationBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(148,163,184,0.08)',
-    paddingVertical: 5, paddingHorizontal: 14, borderRadius: 20, marginBottom: 24,
-  },
+  durationBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(148,163,184,0.08)', paddingVertical: 5, paddingHorizontal: 14, borderRadius: 20, marginBottom: 24 },
   durationText: { color: '#94A3B8', fontSize: 13, fontWeight: '600' },
-  joinBtn: { borderRadius: 16, overflow: 'hidden',
-    shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3, shadowRadius: 14, elevation: 8,
-  },
+  joinBtn: { borderRadius: 16, overflow: 'hidden', shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
   joinGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, paddingHorizontal: 44 },
   joinText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
   webHint: { color: '#475569', fontSize: 12, marginTop: 16, textAlign: 'center' },
-
-  /* ── In-Call Top Bar ── */
-  topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: 50, paddingHorizontal: 14, paddingBottom: 8,
-    backgroundColor: 'rgba(11,17,32,0.92)',
-  },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingHorizontal: 14, paddingBottom: 8, backgroundColor: 'rgba(11,17,32,0.92)' },
   topLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  liveChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)',
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
-  },
+  liveChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444' },
   liveLabel: { color: '#FCA5A5', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   topTimer: { color: '#64748B', fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   topTitle: { color: '#E2E8F0', fontSize: 14, fontWeight: '700', flex: 1, textAlign: 'center', marginHorizontal: 8 },
   topRight: { flexDirection: 'row', alignItems: 'center' },
-  participantChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
-  },
+  participantChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   participantText: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
-
-  /* ── Video Area ── */
   videoArea: { flex: 1, position: 'relative' },
-  mobileWebView: { flex: 1, backgroundColor: '#0B1120' },
-
-  /* ── Bottom Bar — Zoom-like single row ── */
-  bottomBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
-    backgroundColor: 'rgba(15,23,42,0.95)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-  },
-  ctrlBtn: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  ctrlBtnRed: {
-    backgroundColor: 'rgba(239,68,68,0.2)',
-  },
-  ctrlBtnTeal: {
-    backgroundColor: 'rgba(78,205,196,0.2)',
-  },
-  endBtn: {
-    width: 54, height: 54, borderRadius: 27,
-    backgroundColor: '#DC2626',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#DC2626', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35, shadowRadius: 10, elevation: 6,
-  },
-
-  /* ── Chat Panel ── */
-  chatPanel: {
-    position: 'absolute',
-    right: 0, top: 0, bottom: 0,
-    width: Math.min(SCREEN_W * 0.85, 340),
-    backgroundColor: 'rgba(15,23,42,0.98)',
-    borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255,255,255,0.06)',
-    zIndex: 50,
-  },
-  chatHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: 54, paddingHorizontal: 16, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
-  },
+  nativeVideoContainer: { flex: 1, backgroundColor: '#0B1120' },
+  nativeRemoteVideo: { flex: 1 },
+  nativeWaiting: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B1120' },
+  nativeWaitingCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(30,41,59,0.8)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  nativeWaitingText: { color: '#475569', fontSize: 15, fontWeight: '500', marginBottom: 12 },
+  nativeConnectedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(78,205,196,0.08)', borderWidth: 1, borderColor: 'rgba(78,205,196,0.15)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20 },
+  nativeLocalPip: { position: 'absolute', bottom: 16, right: 16, width: 120, height: 160, borderRadius: 14, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(78,205,196,0.5)', backgroundColor: '#0F172A', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10 },
+  nativeLocalVideo: { flex: 1 },
+  nativeLocalLabel: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 2, paddingHorizontal: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
+  bottomBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 32 : 16, backgroundColor: 'rgba(15,23,42,0.95)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
+  ctrlBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  ctrlBtnRed: { backgroundColor: 'rgba(239,68,68,0.2)' },
+  ctrlBtnTeal: { backgroundColor: 'rgba(78,205,196,0.2)' },
+  endBtn: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', shadowColor: '#DC2626', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
+  chatPanel: { position: 'absolute', right: 0, top: 0, bottom: 0, width: Math.min(SCREEN_W * 0.85, 340), backgroundColor: 'rgba(15,23,42,0.98)', borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.06)', zIndex: 50 },
+  chatHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 54, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
   chatTitle: { color: '#F1F5F9', fontWeight: '700', fontSize: 17 },
   chatList: { flex: 1, paddingHorizontal: 14, paddingTop: 10 },
   emptyChat: { alignItems: 'center', paddingVertical: 40, gap: 6 },
   emptyChatText: { color: '#475569', fontWeight: '600', fontSize: 13 },
   bubble: { marginBottom: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, maxWidth: '85%' },
   bubbleMine: { alignSelf: 'flex-end', backgroundColor: '#0D9488', borderBottomRightRadius: 4 },
-  bubbleOther: {
-    alignSelf: 'flex-start', backgroundColor: '#1E293B',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderBottomLeftRadius: 4,
-  },
+  bubbleOther: { alignSelf: 'flex-start', backgroundColor: '#1E293B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderBottomLeftRadius: 4 },
   bubbleSender: { color: '#4ECDC4', fontSize: 11, fontWeight: '700', marginBottom: 2 },
   bubbleText: { color: '#E2E8F0', fontSize: 14, lineHeight: 19 },
   bubbleTime: { fontSize: 10, color: '#475569', marginTop: 3, textAlign: 'right' },
-  chatInputRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    padding: 12, paddingBottom: Platform.OS === 'ios' ? 30 : 14,
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)',
-  },
-  chatInput: {
-    flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', color: '#F1F5F9',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-  },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, paddingBottom: Platform.OS === 'ios' ? 30 : 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
+  chatInput: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', color: '#F1F5F9', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   sendBtn: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });
