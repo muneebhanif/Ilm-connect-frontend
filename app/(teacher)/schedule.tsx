@@ -17,6 +17,8 @@ interface ClassSession {
   duration_minutes: number;
   status: 'upcoming' | 'completed' | 'cancelled';
   live_status: 'scheduled' | 'live' | 'ended';
+  delivery_mode?: 'live' | 'prerecorded';
+  fulfilled_with_recording_id?: string | null;
   courses?: {
     title?: string;
   };
@@ -224,6 +226,7 @@ export default function ScheduleScreen() {
     const isJoinable = isClassJoinable(classItem);
     const isCompleted = classItem.status === 'completed' || classItem.live_status === 'ended';
     const isCancelled = classItem.status === 'cancelled';
+    const isPrerecorded = classItem.delivery_mode === 'prerecorded';
 
     return (
       <View key={classItem.id} style={styles.timelineRow}>
@@ -272,6 +275,13 @@ export default function ScheduleScreen() {
               </View>
             </View>
 
+            {isPrerecorded ? (
+              <View style={styles.deliveryBadge}>
+                <Ionicons name="videocam-outline" size={12} color="#0F766E" />
+                <ThemedText style={styles.deliveryBadgeText}>Prerecorded delivery</ThemedText>
+              </View>
+            ) : null}
+
             <View style={styles.studentRow}>
                <View style={[styles.avatarPlaceholder, (isCompleted || isCancelled) && styles.avatarInactive]}>
                   <Ionicons name="person" size={12} color={(isCompleted || isCancelled) ? "#9CA3AF" : "#6B7280"} />
@@ -288,37 +298,57 @@ export default function ScheduleScreen() {
                     <ThemedText style={styles.durationText}>{classItem.duration_minutes || 60} min</ThemedText>
                  </View>
 
-                 <TouchableOpacity 
-                   style={[styles.actionButton, !isJoinable && styles.actionButtonDisabled]}
-                   onPress={() => {
-                     if (isJoinable) {
-                        router.push({
-                          pathname: '/class-room/[id]',
-                          params: { id: classItem.id }
-                        });
-                     } else {
-                          const dbg = getJoinWindowDebug(classItem);
-                          console.log('[Schedule join window]', { sessionId: classItem.id, ...dbg });
-                          Alert.alert(
-                            'Not available yet',
-                            `You can start 10 minutes before the class starts and until it ends.\n\nStarts in ~${dbg.minutesUntilStart} min.`
-                          );
-                     }
-                   }}
-                   disabled={!isJoinable}
-                 >
-                   <LinearGradient
-                      colors={isJoinable ? ['#FF6B6B', '#EE5A24'] : ['#F3F4F6', '#F3F4F6']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.actionGradient}
+                 <View style={styles.actionRow}>
+                   <TouchableOpacity
+                     style={styles.secondaryActionButton}
+                     onPress={() => {
+                       router.push({
+                         pathname: '/upload-recording' as any,
+                         params: {
+                           sessionId: classItem.id,
+                           sessionTitle: getClassSubject(classItem),
+                         },
+                       });
+                     }}
                    >
-                      <ThemedText style={[styles.actionText, !isJoinable && styles.actionTextDisabled]}>
-                         {isJoinable ? 'Start Class' : 'Wait'}
-                      </ThemedText>
-                      {isJoinable && <Ionicons name="videocam" size={14} color="#FFF" />}
-                   </LinearGradient>
-                 </TouchableOpacity>
+                     <Ionicons name="cloud-upload-outline" size={14} color="#0F766E" />
+                     <ThemedText style={styles.secondaryActionText}>
+                       {classItem.fulfilled_with_recording_id ? 'Replace' : 'Upload'}
+                     </ThemedText>
+                   </TouchableOpacity>
+
+                   <TouchableOpacity 
+                     style={[styles.actionButton, !isJoinable && styles.actionButtonDisabled]}
+                     onPress={() => {
+                       if (isJoinable) {
+                          router.push({
+                            pathname: '/class-room/[id]',
+                            params: { id: classItem.id }
+                          });
+                       } else {
+                            const dbg = getJoinWindowDebug(classItem);
+                            console.log('[Schedule join window]', { sessionId: classItem.id, ...dbg });
+                            Alert.alert(
+                              'Not available yet',
+                              `You can start 10 minutes before the class starts and until it ends.\n\nStarts in ~${dbg.minutesUntilStart} min.`
+                            );
+                       }
+                     }}
+                     disabled={!isJoinable}
+                   >
+                     <LinearGradient
+                        colors={isJoinable ? ['#FF6B6B', '#EE5A24'] : ['#F3F4F6', '#F3F4F6']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.actionGradient}
+                     >
+                        <ThemedText style={[styles.actionText, !isJoinable && styles.actionTextDisabled]}>
+                           {isPrerecorded ? 'Live Instead' : isJoinable ? 'Start Class' : 'Wait'}
+                        </ThemedText>
+                        {isJoinable && <Ionicons name="videocam" size={14} color="#FFF" />}
+                     </LinearGradient>
+                   </TouchableOpacity>
+                 </View>
               </View>
             )}
           </View>
@@ -590,7 +620,7 @@ const styles = StyleSheet.create({
   studentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   avatarPlaceholder: {
     width: 24,
@@ -608,6 +638,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
     fontWeight: '500',
+  },
+  deliveryBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFEFF',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 12,
+  },
+  deliveryBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F766E',
   },
 
   /* Footer Actions */
@@ -632,6 +678,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  secondaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: '#ECFEFF',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+  },
+  secondaryActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F766E',
   },
   actionButton: {
     borderRadius: 10,

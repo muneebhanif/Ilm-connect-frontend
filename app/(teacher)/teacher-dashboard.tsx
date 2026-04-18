@@ -669,6 +669,17 @@ export default function TeacherDashboard() {
           </View>
 
           <View style={styles.actionsList}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/upload-recording' as any)}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="videocam-outline" size={24} color="#FF6B6B" />
+              </View>
+              <View style={styles.actionContent}>
+                <ThemedText style={styles.actionTitle}>Upload Recording</ThemedText>
+                <ThemedText style={styles.actionDesc}>Fulfill bookings with prerecorded classes</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(teacher)/availability')}>
               <View style={styles.actionIcon}>
                 <Ionicons name="time-outline" size={24} color="#FF6B6B" />

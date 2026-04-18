@@ -1,14 +1,15 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Linking } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Linking, Modal, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/themed-text';
 import { BackButton } from '@/components/back-button';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { Fonts } from '@/constants/theme';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { WebView } from 'react-native-webview';
 
 interface Review {
   id: string;
@@ -50,6 +51,20 @@ export default function TeacherProfileScreen() {
   const { topPadding, bottomPadding } = useSafePadding();
   const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [portfolioIndex, setPortfolioIndex] = useState(0);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  const screenWidth = Dimensions.get('window').width;
+  const portfolioCardWidth = screenWidth - 40;
+
+  const orderedPortfolioMedia = useMemo(() => {
+    if (!teacher?.portfolio_media?.length) return [];
+
+    const videos = teacher.portfolio_media.filter((item) => item.type === 'video');
+    const images = teacher.portfolio_media.filter((item) => item.type === 'image');
+    return [...videos, ...images];
+  }, [teacher?.portfolio_media]);
 
   useEffect(() => {
     fetchTeacherProfile();
@@ -64,6 +79,25 @@ export default function TeacherProfileScreen() {
       console.error('Error fetching teacher:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openPortfolioViewer = (index: number) => {
+    setViewerIndex(index);
+    setViewerVisible(true);
+  };
+
+  const handlePortfolioScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / portfolioCardWidth);
+    if (Number.isFinite(nextIndex)) {
+      setPortfolioIndex(Math.max(0, Math.min(nextIndex, orderedPortfolioMedia.length - 1)));
+    }
+  };
+
+  const handleViewerScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+    if (Number.isFinite(nextIndex)) {
+      setViewerIndex(Math.max(0, Math.min(nextIndex, orderedPortfolioMedia.length - 1)));
     }
   };
 
@@ -191,23 +225,64 @@ export default function TeacherProfileScreen() {
           )}
 
           {/* Portfolio */}
-          {!!teacher.portfolio_media?.length && (
+          {!!orderedPortfolioMedia.length && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Portfolio</ThemedText>
-              <View style={styles.portfolioGrid}>
-                {teacher.portfolio_media.map((item) => (
-                  <TouchableOpacity key={item.id} style={styles.portfolioCard} onPress={() => Linking.openURL(item.url)}>
+              <ThemedText style={styles.portfolioHint}>Videos appear first, then swipe right to view images.</ThemedText>
+
+              <ScrollView
+                horizontal
+                pagingEnabled
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={portfolioCardWidth + 12}
+                snapToAlignment="start"
+                disableIntervalMomentum
+                contentContainerStyle={styles.portfolioCarousel}
+                onMomentumScrollEnd={handlePortfolioScroll}
+              >
+                {orderedPortfolioMedia.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.portfolioSlide, { width: portfolioCardWidth }]}
+                    activeOpacity={0.92}
+                    onPress={() => openPortfolioViewer(index)}
+                  >
                     {item.type === 'image' ? (
                       <Image source={{ uri: item.url }} style={styles.portfolioImage} />
                     ) : (
-                      <View style={styles.portfolioVideoPlaceholder}>
-                        <Ionicons name="play-circle" size={34} color="#4ECDC4" />
-                        <ThemedText style={styles.portfolioVideoText}>Play Video</ThemedText>
-                      </View>
+                      <LinearGradient colors={['#0F172A', '#111827']} style={styles.portfolioVideoPlaceholder}>
+                        <View style={styles.portfolioVideoIconWrap}>
+                          <Ionicons name="play" size={30} color="#4ECDC4" />
+                        </View>
+                        <ThemedText style={styles.portfolioVideoText}>Portfolio Video</ThemedText>
+                        <ThemedText style={styles.portfolioVideoSubtext}>Tap to watch inside the app</ThemedText>
+                      </LinearGradient>
                     )}
+
+                    <LinearGradient colors={['transparent', 'rgba(17,24,39,0.78)']} style={styles.portfolioOverlay}>
+                      <View style={styles.portfolioTag}>
+                        <Ionicons name={item.type === 'video' ? 'videocam' : 'image'} size={12} color="#FFFFFF" />
+                        <ThemedText style={styles.portfolioTagText}>{item.type === 'video' ? 'Video' : 'Image'}</ThemedText>
+                      </View>
+                    </LinearGradient>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
+
+              {orderedPortfolioMedia.length > 1 ? (
+                <View style={styles.portfolioDots}>
+                  {orderedPortfolioMedia.map((item, index) => (
+                    <View
+                      key={`${item.id}-dot`}
+                      style={[
+                        styles.portfolioDot,
+                        index === portfolioIndex && styles.portfolioDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
           )}
 
@@ -303,6 +378,58 @@ export default function TeacherProfileScreen() {
         </View>
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      <Modal visible={viewerVisible} animationType="fade" transparent onRequestClose={() => setViewerVisible(false)}>
+        <View style={styles.viewerBackdrop}>
+          <TouchableOpacity style={styles.viewerCloseButton} onPress={() => setViewerVisible(false)}>
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: viewerIndex * screenWidth, y: 0 }}
+            onMomentumScrollEnd={handleViewerScroll}
+            style={styles.viewerScroll}
+          >
+            {orderedPortfolioMedia.map((item) => (
+              <View key={`viewer-${item.id}`} style={[styles.viewerSlide, { width: screenWidth }]}> 
+                {item.type === 'image' ? (
+                  <Image source={{ uri: item.url }} style={styles.viewerImage} resizeMode="contain" />
+                ) : (
+                  <View style={styles.viewerVideoFrame}>
+                    <WebView
+                      source={{
+                        html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"><style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;}video{width:100%;height:100%;background:#000;}</style></head><body><video src="${item.url}" controls playsinline webkit-playsinline preload="metadata"></video></body></html>`,
+                      }}
+                      style={styles.viewerWebView}
+                      allowsInlineMediaPlayback
+                      mediaPlaybackRequiresUserAction
+                      javaScriptEnabled
+                      scrollEnabled={false}
+                    />
+                  </View>
+                )}
+              </View>
+            ))}
+          </ScrollView>
+
+          {orderedPortfolioMedia.length > 1 ? (
+            <View style={styles.viewerFooter}>
+              <ThemedText style={styles.viewerCounter}>{viewerIndex + 1} / {orderedPortfolioMedia.length}</ThemedText>
+              <View style={styles.viewerDots}>
+                {orderedPortfolioMedia.map((item, index) => (
+                  <View
+                    key={`viewer-dot-${item.id}`}
+                    style={[styles.viewerDot, index === viewerIndex && styles.viewerDotActive]}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
 
       {/* Footer Action */}
       <View style={[styles.footer, { paddingBottom: bottomPadding }]}> 
@@ -544,34 +671,162 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  portfolioGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  portfolioHint: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
   },
-  portfolioCard: {
-    width: '48%',
+  portfolioCarousel: {
+    paddingRight: 12,
+  },
+  portfolioSlide: {
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+    marginRight: 12,
+    position: 'relative',
   },
   portfolioImage: {
     width: '100%',
-    height: 135,
+    height: 220,
   },
   portfolioVideoPlaceholder: {
-    height: 135,
+    height: 220,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ECFEFF',
     gap: 8,
   },
+  portfolioVideoIconWrap: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
   portfolioVideoText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  portfolioVideoSubtext: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
+  },
+  portfolioOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 14,
+    justifyContent: 'flex-end',
+    height: 80,
+  },
+  portfolioTag: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(17,24,39,0.45)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  portfolioTagText: {
+    color: '#FFFFFF',
     fontSize: 12,
-    color: '#0F766E',
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  portfolioDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  portfolioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D1D5DB',
+  },
+  portfolioDotActive: {
+    width: 24,
+    backgroundColor: '#4ECDC4',
+  },
+
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.96)',
+    justifyContent: 'center',
+  },
+  viewerCloseButton: {
+    position: 'absolute',
+    right: 18,
+    top: Platform.OS === 'android' ? 30 : 54,
+    zIndex: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewerScroll: {
+    flex: 1,
+  },
+  viewerSlide: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  viewerImage: {
+    width: '100%',
+    height: '72%',
+  },
+  viewerVideoFrame: {
+    width: '100%',
+    height: '62%',
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+  },
+  viewerWebView: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  viewerFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 36,
+    alignItems: 'center',
+    gap: 10,
+  },
+  viewerCounter: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewerDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  viewerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  viewerDotActive: {
+    width: 22,
+    backgroundColor: '#4ECDC4',
   },
 
   /* Availability Preview */

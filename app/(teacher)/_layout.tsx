@@ -192,6 +192,12 @@ export default function TeacherLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="upload-recording"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

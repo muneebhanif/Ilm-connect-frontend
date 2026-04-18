@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Define allowed top-level page names for each role so routes that
     // exist both at root and inside the layout group are accepted.
     const parentPages = ['browse-teachers', 'classes', 'dashboard', 'profile', 'edit-profile', 'teacher-profile', 'child-profile', 'book-teacher', 'class-room', 'chat', 'messages'];
-    const teacherPages = ['teacher-dashboard', 'students', 'schedule', 'profile', 'availability', 'edit-profile', 'class-room', 'chat', 'messages', 'parent-profile', 'payout-settings'];
+    const teacherPages = ['teacher-dashboard', 'students', 'schedule', 'profile', 'availability', 'edit-profile', 'class-room', 'chat', 'messages', 'parent-profile', 'payout-settings', 'upload-recording'];
     const studentPages = ['dashboard', 'classes', 'recordings', 'profile', 'class-room', 'chat', 'messages'];
 
     // If already inside the correct layout group or a top-level page for the user's role, do nothing.
