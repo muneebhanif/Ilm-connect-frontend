@@ -46,12 +46,9 @@ export default function TeacherLayout() {
         tabBarActiveTintColor: '#4ECDC4',
         tabBarInactiveTintColor: '#9CA3AF',
         headerShown: false,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
+        tabBarShowLabel: false,
         tabBarIconStyle: {
-          marginBottom: 2,
+          marginBottom: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
@@ -70,12 +67,11 @@ export default function TeacherLayout() {
           shadowOpacity: 0.05,
           shadowRadius: 8,
         },
-        tabBarLabelPosition: 'below-icon',
       }}>
       <Tabs.Screen
         name="teacher-dashboard"
         options={{
-          title: 'Home',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
@@ -88,7 +84,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="courses"
         options={{
-          title: 'Courses',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'library' : 'library-outline'}
@@ -101,7 +97,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="students"
         options={{
-          title: 'Students',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'people' : 'people-outline'}
@@ -114,7 +110,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'Schedule',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'calendar' : 'calendar-outline'}
@@ -127,7 +123,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <View>
               <Ionicons
@@ -149,7 +145,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
@@ -186,6 +182,12 @@ export default function TeacherLayout() {
       />
       <Tabs.Screen
         name="performance-analytics"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="payout-settings"
         options={{
           href: null,
         }}

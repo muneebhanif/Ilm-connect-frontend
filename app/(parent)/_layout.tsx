@@ -46,12 +46,9 @@ export default function ParentLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#4ECDC4',
         tabBarInactiveTintColor: '#9CA3AF',
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
+        tabBarShowLabel: false,
         tabBarIconStyle: {
-          marginBottom: 2,
+          marginBottom: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
@@ -70,13 +67,12 @@ export default function ParentLayout() {
           shadowOpacity: 0.05,
           shadowRadius: 8,
         },
-        tabBarLabelPosition: 'below-icon',
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Home',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
@@ -90,7 +86,7 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="browse-teachers"
         options={{
-          title: 'Search',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'search' : 'search-outline'}
@@ -102,23 +98,9 @@ export default function ParentLayout() {
       />
 
       <Tabs.Screen
-        name="browse-courses"
-        options={{
-          title: 'Courses',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'library' : 'library-outline'}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
         name="classes"
         options={{
-          title: 'Schedule',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'calendar' : 'calendar-outline'}
@@ -132,7 +114,7 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <View>
               <Ionicons
@@ -155,7 +137,7 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
@@ -168,6 +150,7 @@ export default function ParentLayout() {
 
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="browse-courses" options={{ href: null }} />
     </Tabs>
   );
 }

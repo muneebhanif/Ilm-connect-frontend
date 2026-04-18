@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (loading) return;
     const current = segments[0];
     const authGroups = ['(parent)', '(teacher)', '(student)'];
-    const publicPages = [undefined, 'login', 'signup-parent', 'signup-teacher', 'signup-student', 'role-selection'];
+    const publicPages = [undefined, 'login', 'forgot-password', 'signup-parent', 'signup-teacher', 'signup-student', 'role-selection'];
 
     // If user is missing but trying to access an auth-only group, send to login
     if (!user && authGroups.includes(current as string)) {
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Define allowed top-level page names for each role so routes that
     // exist both at root and inside the layout group are accepted.
     const parentPages = ['browse-teachers', 'classes', 'dashboard', 'profile', 'edit-profile', 'teacher-profile', 'child-profile', 'book-teacher', 'class-room', 'chat', 'messages'];
-    const teacherPages = ['teacher-dashboard', 'students', 'schedule', 'profile', 'availability', 'edit-profile', 'class-room', 'chat', 'messages', 'parent-profile'];
+    const teacherPages = ['teacher-dashboard', 'students', 'schedule', 'profile', 'availability', 'edit-profile', 'class-room', 'chat', 'messages', 'parent-profile', 'payout-settings'];
     const studentPages = ['dashboard', 'classes', 'recordings', 'profile', 'class-room', 'chat', 'messages'];
 
     // If already inside the correct layout group or a top-level page for the user's role, do nothing.

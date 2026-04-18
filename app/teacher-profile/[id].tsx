@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { Fonts } from '@/constants/theme';
 import { SkeletonScreen } from '@/components/ui/skeleton';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface Review {
   id: string;
@@ -46,6 +47,7 @@ interface TeacherProfile {
 export default function TeacherProfileScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -87,13 +89,13 @@ export default function TeacherProfileScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPadding }]}> 
         <BackButton lightColor="#FFF" />
         <ThemedText style={styles.headerTitle}>Teacher Profile</ThemedText>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: bottomPadding + 112 }} showsVerticalScrollIndicator={false}>
         
         {/* Profile Card */}
         <View style={styles.profileHeaderContainer}>
@@ -101,6 +103,19 @@ export default function TeacherProfileScreen() {
             colors={['#4ECDC4', '#2BCBBA']}
             style={styles.profileGradient}
           >
+            {teacher.profiles.avatar_url ? (
+              <>
+                <Image
+                  source={{ uri: teacher.profiles.avatar_url }}
+                  style={styles.avatarBackgroundGlow}
+                  blurRadius={18}
+                />
+                <View style={styles.avatarBackgroundOverlay} />
+              </>
+            ) : (
+              <View style={styles.avatarFallbackGlow} />
+            )}
+
             <View style={styles.avatarWrapper}>
               <View style={styles.avatar}>
                 {teacher.profiles.avatar_url ? (
@@ -290,11 +305,7 @@ export default function TeacherProfileScreen() {
       </ScrollView>
 
       {/* Footer Action */}
-      <View style={styles.footer}>
-        <View style={styles.priceContainer}>
-          <ThemedText style={styles.priceLabel}>Hourly Rate</ThemedText>
-          <ThemedText style={styles.priceValue}>${teacher.hourly_rate}</ThemedText>
-        </View>
+      <View style={[styles.footer, { paddingBottom: bottomPadding }]}> 
         <View style={styles.footerButtons}>
           <TouchableOpacity 
             style={styles.messageButton}
@@ -345,7 +356,6 @@ const styles = StyleSheet.create({
   
   /* Header */
   header: {
-    paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -373,13 +383,44 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   profileGradient: {
-    paddingVertical: 24,
+    paddingTop: 18,
+    paddingBottom: 28,
     paddingHorizontal: 24,
     alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  avatarBackgroundGlow: {
+    position: 'absolute',
+    top: -24,
+    alignSelf: 'center',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    opacity: 0.3,
+    transform: [{ scale: 1.2 }],
+  },
+  avatarBackgroundOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(34, 197, 186, 0.18)',
+  },
+  avatarFallbackGlow: {
+    position: 'absolute',
+    top: -32,
+    alignSelf: 'center',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
   avatarWrapper: {
     position: 'relative',
     marginBottom: 12,
+    zIndex: 2,
   },
   avatar: {
     width: 90,
@@ -420,12 +461,14 @@ const styles = StyleSheet.create({
     color: '#FFF',
     marginBottom: 4,
     fontFamily: Fonts.rounded,
+    zIndex: 2,
   },
   teacherSubjects: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
     marginBottom: 16,
     fontWeight: '500',
+    zIndex: 2,
   },
   statsRow: {
     flexDirection: 'row',
@@ -434,6 +477,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     alignItems: 'center',
+    zIndex: 2,
   },
   statItem: {
     flexDirection: 'row',
@@ -667,7 +711,7 @@ const styles = StyleSheet.create({
   },
 
   bottomPadding: {
-    height: 100,
+    height: 24,
   },
 
   /* Footer */
@@ -676,42 +720,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  priceContainer: {
-    flex: 1,
-  },
-  priceLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  priceValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    backgroundColor: 'rgba(249,250,251,0.96)',
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   footerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    width: '100%',
   },
   messageButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: '#4ECDC4',
     justifyContent: 'center',
@@ -720,7 +742,7 @@ const styles = StyleSheet.create({
   },
   bookButton: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 18,
     overflow: 'hidden',
     shadowColor: '#4ECDC4',
     shadowOffset: { width: 0, height: 4 },
@@ -732,7 +754,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 18,
     gap: 8,
   },
   bookButtonText: {

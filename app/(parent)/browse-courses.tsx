@@ -122,6 +122,15 @@ export default function BrowseCoursesScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.modeSwitch}>
+          <TouchableOpacity style={styles.modePill} onPress={() => router.push('/(parent)/browse-teachers')}>
+            <ThemedText style={styles.modePillText}>Teachers</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.modePill, styles.modePillActive]}>
+            <ThemedText style={[styles.modePillText, styles.modePillTextActive]}>Courses</ThemedText>
+          </TouchableOpacity>
+        </View>
+
         {/* Search */}
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color="#9CA3AF" />
@@ -278,6 +287,32 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontWeight: '700',
     color: '#111827',
+  },
+  modeSwitch: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: 20,
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 14,
+  },
+  modePill: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  modePillActive: {
+    backgroundColor: '#111827',
+  },
+  modePillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  modePillTextActive: {
+    color: '#FFFFFF',
   },
   freeToggle: {
     flexDirection: 'row',

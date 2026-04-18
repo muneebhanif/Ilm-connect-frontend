@@ -31,6 +31,7 @@ export const API_URL = normalizeBaseUrl(envApiUrl || ENV[currentEnv].API_URL);
 export const api = {
   // Auth endpoints
   login: () => `${API_URL}/api/login`,
+  forgotPassword: () => `${API_URL}/api/forgot-password`,
   signupParent: () => `${API_URL}/api/signup/parent`,
   signupTeacher: () => `${API_URL}/api/signup/teacher`,
   signupStudent: () => `${API_URL}/api/signup/student`,
@@ -69,6 +70,9 @@ export const api = {
   payments: {
     createIntent: () => `${API_URL}/api/payments/create-intent`,
     verify: () => `${API_URL}/api/payments/verify`,
+    teacherConnectStatus: () => `${API_URL}/api/payments/teacher/connect-status`,
+    teacherConnectOnboarding: () => `${API_URL}/api/payments/teacher/connect-onboarding`,
+    teacherDashboardLink: () => `${API_URL}/api/payments/teacher/dashboard-link`,
   },
 
   // Agora endpoints
@@ -79,6 +83,7 @@ export const api = {
   uploadProfileImage: (userId: string) => `${API_URL}/api/upload/${userId}/profile-image`,
   uploadTeacherDocument: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/document`,
   getTeacherDocuments: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/documents`,
+  uploadCourseThumbnail: (teacherId: string, courseId: string) => `${API_URL}/api/upload/teacher/${teacherId}/course/${courseId}/thumbnail`,
   uploadTeacherPortfolioMedia: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/portfolio-media`,
   deleteTeacherPortfolioMedia: (teacherId: string, mediaId: string) => `${API_URL}/api/upload/teacher/${teacherId}/portfolio-media/${mediaId}`,
   uploadClassRecording: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/recording`,

@@ -14,6 +14,7 @@ export default function StudentLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#14B8A6',
         tabBarInactiveTintColor: '#9CA3AF',
+        tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
@@ -27,24 +28,19 @@ export default function StudentLayout() {
           shadowOpacity: 0.05,
           shadowRadius: 8,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
         tabBarIconStyle: {
-          marginBottom: 2,
+          marginBottom: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
         },
-        tabBarLabelPosition: 'below-icon',
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Home',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
@@ -53,7 +49,7 @@ export default function StudentLayout() {
       <Tabs.Screen
         name="classes"
         options={{
-          title: 'Classes',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
           ),
@@ -62,7 +58,7 @@ export default function StudentLayout() {
       <Tabs.Screen
         name="recordings"
         options={{
-          title: 'Recordings',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={24} color={color} />
           ),
@@ -71,7 +67,7 @@ export default function StudentLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: '',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
           ),

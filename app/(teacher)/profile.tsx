@@ -216,7 +216,7 @@ export default function TeacherProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(teacher)/payout-settings' as any)}>
             <View style={[styles.iconBox, { backgroundColor: '#FDF2F8' }]}>
               <Ionicons name="wallet-outline" size={20} color="#DB2777" />
             </View>

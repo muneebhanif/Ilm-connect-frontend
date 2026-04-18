@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Modal, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Modal, RefreshControl, useWindowDimensions } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -65,7 +65,8 @@ interface Payment {
 export default function ParentDashboard() {
   const router = useRouter();
   const { user, signOut, refreshSession } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
+  const { width: screenWidth } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true);
@@ -83,6 +84,8 @@ export default function ParentDashboard() {
   const [isReady, setIsReady] = useState(false);
   const authFailedRef = useRef(false);
   const didInitialLoadRef = useRef(false);
+  const headerInitial = (parentName || user?.full_name || 'P').trim().charAt(0).toUpperCase();
+  const childCardWidth = Math.max(screenWidth - 48, 280);
 
   // Data fetching logic remains identical
   useEffect(() => {
@@ -288,7 +291,7 @@ export default function ParentDashboard() {
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 28 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -318,10 +321,21 @@ export default function ParentDashboard() {
                  style={styles.profileButton}
                  onPress={() => router.push('/(parent)/profile')}
                >
-                 <Image 
-                   source={{ uri: 'https://ui-avatars.com/api/?name=' + parentName + '&background=4ECDC4&color=fff' }} 
-                   style={styles.profileImage} 
-                 />
+                 {user?.avatar_url ? (
+                   <Image 
+                     source={{ uri: user.avatar_url }} 
+                     style={styles.profileImage} 
+                   />
+                 ) : (
+                   <LinearGradient
+                     colors={['#4ECDC4', '#2BCBBA']}
+                     start={{ x: 0, y: 0 }}
+                     end={{ x: 1, y: 1 }}
+                     style={styles.profileFallback}
+                   >
+                     <ThemedText style={styles.profileFallbackText}>{headerInitial}</ThemedText>
+                   </LinearGradient>
+                 )}
                </TouchableOpacity>
             </View>
           </View>
@@ -350,7 +364,7 @@ export default function ParentDashboard() {
                   key={child.id}
                   activeOpacity={0.9}
                   onPress={() => router.push({ pathname: '/child-profile/[id]', params: { id: child.id, name: child.name } })}
-                  style={styles.childCardWrapper}
+                  style={[styles.childCardWrapper, { width: childCardWidth }]}
                 >
                   <LinearGradient
                     colors={['#4ECDC4', '#2BCBBA']}
@@ -788,21 +802,32 @@ const styles = StyleSheet.create({
     borderColor: '#FFF',
   },
   profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2.5,
     borderColor: '#FFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    overflow: 'hidden',
   },
   profileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 24,
+  },
+  profileFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileFallbackText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 
   /* Sections */
@@ -1220,10 +1245,9 @@ const styles = StyleSheet.create({
     height: 40,
   },
   childCarousel: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
   },
   childCardWrapper: {
-    width: 320,
     marginRight: 12,
   },
   childCardCarousel: {

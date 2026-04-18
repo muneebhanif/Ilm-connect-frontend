@@ -4,12 +4,18 @@ import { ThemedView } from '@/components/themed-view';
 import { BackButton } from '@/components/back-button';
 import { Fonts } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const logo = require('@/assets/images/logo.png');
+const LOGIN_STORAGE = {
+  REMEMBER_ME: 'login_remember_me',
+  REMEMBERED_EMAIL: 'login_remembered_email',
+  REMEMBERED_PASSWORD: 'login_remembered_password',
+};
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -21,6 +27,52 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const [savedRemember, savedEmail, savedPassword] = await Promise.all([
+          AsyncStorage.getItem(LOGIN_STORAGE.REMEMBER_ME),
+          AsyncStorage.getItem(LOGIN_STORAGE.REMEMBERED_EMAIL),
+          AsyncStorage.getItem(LOGIN_STORAGE.REMEMBERED_PASSWORD),
+        ]);
+
+        if (savedRemember === 'true') {
+          setRememberMe(true);
+          if (savedEmail) setEmail(savedEmail);
+          if (savedPassword) setPassword(savedPassword);
+        }
+      } catch (error) {
+        console.error('Failed to load remembered login', error);
+      }
+    })();
+  }, []);
+
+  const persistRememberedLogin = async (enabled: boolean, nextEmail?: string, nextPassword?: string) => {
+    if (!enabled) {
+      await Promise.all([
+        AsyncStorage.setItem(LOGIN_STORAGE.REMEMBER_ME, 'false'),
+        AsyncStorage.removeItem(LOGIN_STORAGE.REMEMBERED_EMAIL),
+        AsyncStorage.removeItem(LOGIN_STORAGE.REMEMBERED_PASSWORD),
+      ]);
+      return;
+    }
+
+    await Promise.all([
+      AsyncStorage.setItem(LOGIN_STORAGE.REMEMBER_ME, 'true'),
+      AsyncStorage.setItem(LOGIN_STORAGE.REMEMBERED_EMAIL, (nextEmail ?? email).trim()),
+      AsyncStorage.setItem(LOGIN_STORAGE.REMEMBERED_PASSWORD, nextPassword ?? password),
+    ]);
+  };
+
+  const handleRememberToggle = async () => {
+    const nextValue = !rememberMe;
+    setRememberMe(nextValue);
+
+    if (!nextValue) {
+      await persistRememberedLogin(false);
+    }
+  };
+
   const handleLogin = async () => {
     setErrorMsg(null);
     if (!email || !password) {
@@ -30,6 +82,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email, password);
+      await persistRememberedLogin(rememberMe, email, password);
     } catch (error: any) {
       setErrorMsg(error.message || 'Login failed');
     } finally {
@@ -117,7 +170,7 @@ export default function LoginScreen() {
                <View style={styles.optionsRow}>
                   <TouchableOpacity 
                     style={styles.rememberMeContainer} 
-                    onPress={() => setRememberMe(!rememberMe)}
+                    onPress={handleRememberToggle}
                     activeOpacity={0.8}
                   >
                     <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
@@ -126,7 +179,7 @@ export default function LoginScreen() {
                     <ThemedText style={styles.optionText}>Remember me</ThemedText>
                   </TouchableOpacity>
 
-                  <TouchableOpacity activeOpacity={0.7}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/forgot-password' as any)}>
                     <ThemedText style={styles.forgotPasswordText}>Forgot password</ThemedText>
                   </TouchableOpacity>
                </View>

@@ -3,16 +3,26 @@ import { AuthProvider } from '@/lib/auth-context';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { StripeProvider } from '@/lib/stripe';
+import { BackHandler, Platform } from 'react-native';
+import { useEffect } from 'react';
 
 const STRIPE_PK = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => subscription.remove();
+  }, []);
+
   const content = (
     <AuthProvider>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="forgot-password" />
         <Stack.Screen name="role-selection" />
         <Stack.Screen name="signup-parent" />
         <Stack.Screen name="signup-teacher" />
