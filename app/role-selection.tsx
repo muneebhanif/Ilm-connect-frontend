@@ -1,7 +1,7 @@
 import { StyleSheet, View, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { Fonts } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,8 +20,6 @@ export default function RoleSelectionScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.content}>
-          <BackButton />
-
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerIcon}>

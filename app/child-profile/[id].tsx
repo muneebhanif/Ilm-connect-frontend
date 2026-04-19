@@ -1,6 +1,6 @@
 import { StyleSheet, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -255,7 +255,9 @@ export default function ChildProfileScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <BackButton />
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <Ionicons name="arrow-back" size={22} color="#1F2937" />
+        </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>{displayName}'s Profile</ThemedText>
         <View style={{ width: 40 }} />
       </View>

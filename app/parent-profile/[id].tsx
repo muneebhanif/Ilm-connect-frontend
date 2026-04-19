@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 're
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { SimpleProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 import { api } from '@/lib/config';
 
@@ -81,7 +81,9 @@ export default function ParentProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <BackButton />
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <Ionicons name="arrow-back" size={22} color="#1F2937" />
+        </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Parent Profile</ThemedText>
         <View style={{ width: 40 }} />
       </View>

@@ -3,7 +3,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';

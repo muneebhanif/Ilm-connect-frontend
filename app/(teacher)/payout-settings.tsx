@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, RefreshControl, ScrollView, StyleSheet, Tou
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -113,9 +113,7 @@ export default function TeacherPayoutSettingsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#111827', '#0F766E']} style={styles.header}>
-        <View style={styles.headerTop}>
-          <BackButton />
-        </View>
+        <View style={styles.headerTop} />
         <ThemedText style={styles.headerTitle}>Payout Settings</ThemedText>
         <ThemedText style={styles.headerSubtitle}>
           Connect Stripe to receive teacher payouts and manage payout details.

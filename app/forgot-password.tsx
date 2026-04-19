@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { api } from '@/lib/config';
 
 export default function ForgotPasswordScreen() {
@@ -56,9 +56,7 @@ export default function ForgotPasswordScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
       >
         <View style={styles.content}>
-          <View style={styles.topNav}>
-            <BackButton />
-          </View>
+
 
           <View style={styles.hero}>
             <View style={styles.iconBadge}>

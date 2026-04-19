@@ -3,7 +3,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -388,7 +388,9 @@ export default function BookTeacherScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <BackButton />
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <Ionicons name="arrow-back" size={22} color="#1F2937" />
+        </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Book Class</ThemedText>
         <View style={{ width: 40 }} />
       </View>

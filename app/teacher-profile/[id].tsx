@@ -1,7 +1,7 @@
 import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Linking, Modal, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/themed-text';
-import { BackButton } from '@/components/back-button';
+// Back navigation uses simple arrow icon
 import { useState, useEffect, useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -124,9 +124,11 @@ export default function TeacherProfileScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPadding }]}> 
-        <BackButton lightColor="#FFF" />
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <Ionicons name="arrow-back" size={22} color="#FFF" />
+        </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Teacher Profile</ThemedText>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: bottomPadding + 112 }} showsVerticalScrollIndicator={false}>
@@ -137,18 +139,7 @@ export default function TeacherProfileScreen() {
             colors={['#4ECDC4', '#2BCBBA']}
             style={styles.profileGradient}
           >
-            {teacher.profiles.avatar_url ? (
-              <>
-                <Image
-                  source={{ uri: teacher.profiles.avatar_url }}
-                  style={styles.avatarBackgroundGlow}
-                  blurRadius={18}
-                />
-                <View style={styles.avatarBackgroundOverlay} />
-              </>
-            ) : (
-              <View style={styles.avatarFallbackGlow} />
-            )}
+            <View style={styles.avatarFallbackGlow} />
 
             <View style={styles.avatarWrapper}>
               <View style={styles.avatar}>
@@ -432,7 +423,7 @@ export default function TeacherProfileScreen() {
       </Modal>
 
       {/* Footer Action */}
-      <View style={[styles.footer, { paddingBottom: bottomPadding }]}> 
+      <View style={[styles.footer, { paddingBottom: Math.max(bottomPadding, 24) + 12 }]}> 
         <View style={styles.footerButtons}>
           <TouchableOpacity 
             style={styles.messageButton}
@@ -517,32 +508,16 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  avatarBackgroundGlow: {
-    position: 'absolute',
-    top: -24,
-    alignSelf: 'center',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    opacity: 0.3,
-    transform: [{ scale: 1.2 }],
-  },
-  avatarBackgroundOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(34, 197, 186, 0.18)',
-  },
   avatarFallbackGlow: {
     position: 'absolute',
-    top: -32,
+    top: -10,
     alignSelf: 'center',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   avatarWrapper: {
     position: 'relative',

@@ -1,7 +1,7 @@
 import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BackButton } from '@/components/back-button';
+// Back button removed
 import { PhoneInput } from '@/components/phone-input';
 import { Fonts } from '@/constants/theme';
 import { useState, useEffect } from 'react';
@@ -271,9 +271,6 @@ export default function SignUpParentScreen() {
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
         >
           <View style={styles.content}>
-            <View style={styles.topNav}>
-              <BackButton />
-            </View>
 
             {/* Header */}
             <View style={styles.header}>

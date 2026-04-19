@@ -3,18 +3,12 @@ import { AuthProvider } from '@/lib/auth-context';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { StripeProvider } from '@/lib/stripe';
-import { BackHandler, Platform } from 'react-native';
-import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 const STRIPE_PK = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 export default function RootLayout() {
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
-    return () => subscription.remove();
-  }, []);
+  // Android hardware back is handled natively by expo-router
 
   const content = (
     <AuthProvider>

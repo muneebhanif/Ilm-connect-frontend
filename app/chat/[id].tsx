@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, FlatList, TextInput, TouchableOpacity, Platform, KeyboardAvoidingView, Image, Alert, Modal, ActivityIndicator, SafeAreaView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { BackButton } from '@/components/back-button';
+// Back navigation uses simple arrow icon
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth-context';
@@ -382,7 +382,9 @@ export default function ChatScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <BackButton />
+        <TouchableOpacity onPress={() => require('expo-router').router.back()} style={{ padding: 8 }}>
+          <Ionicons name="arrow-back" size={22} color="#1F2937" />
+        </TouchableOpacity>
         <View style={styles.headerContent}>
           {avatar ? (
             <Image 
@@ -399,9 +401,6 @@ export default function ChatScreen() {
           <View>
             <ThemedText style={styles.headerTitle} numberOfLines={1}>
               {name || 'Chat'}
-            </ThemedText>
-            <ThemedText style={styles.headerStatus}>
-              Online
             </ThemedText>
           </View>
         </View>
@@ -795,7 +794,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#F3F4F6',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 28,
   },
   inputContainer: {
     flexDirection: 'row',
