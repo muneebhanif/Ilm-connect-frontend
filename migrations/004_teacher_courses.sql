@@ -32,7 +32,7 @@ ALTER TABLE public.teacher_courses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view published courses"
   ON public.teacher_courses
   FOR SELECT
-  USING (status = 'published');
+  USING (status = 'published' OR teacher_id = auth.uid());
 
 -- Teachers can manage their own courses
 CREATE POLICY "Teachers can insert own courses"
@@ -43,7 +43,8 @@ CREATE POLICY "Teachers can insert own courses"
 CREATE POLICY "Teachers can update own courses"
   ON public.teacher_courses
   FOR UPDATE
-  USING (teacher_id = auth.uid());
+  USING (teacher_id = auth.uid())
+  WITH CHECK (teacher_id = auth.uid());
 
 CREATE POLICY "Teachers can delete own courses"
   ON public.teacher_courses

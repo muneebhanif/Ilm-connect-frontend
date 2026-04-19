@@ -37,8 +37,11 @@ CREATE TABLE public.class_sessions (
   live_status text DEFAULT 'scheduled'::text CHECK (live_status = ANY (ARRAY['scheduled'::text, 'live'::text, 'ended'::text])),
   started_at timestamp with time zone,
   ended_at timestamp with time zone,
+  delivery_mode text NOT NULL DEFAULT 'live'::text CHECK (delivery_mode = ANY (ARRAY['live'::text, 'prerecorded'::text])),
+  fulfilled_with_recording_id uuid,
   CONSTRAINT class_sessions_pkey PRIMARY KEY (id),
-  CONSTRAINT class_sessions_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
+  CONSTRAINT class_sessions_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id),
+  CONSTRAINT class_sessions_fulfilled_with_recording_id_fkey FOREIGN KEY (fulfilled_with_recording_id) REFERENCES public.class_recordings(id)
 );
 CREATE TABLE public.conversations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -189,6 +192,26 @@ CREATE TABLE public.students (
   CONSTRAINT students_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.parents(id),
   CONSTRAINT students_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id)
 );
+CREATE TABLE public.teacher_course_lessons (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id uuid NOT NULL,
+  teacher_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  content_type text NOT NULL CHECK (content_type = ANY (ARRAY['video'::text, 'pdf'::text, 'audio'::text, 'document'::text, 'link'::text])),
+  content_url text NOT NULL,
+  file_name text,
+  file_size_bytes bigint,
+  duration_seconds integer,
+  is_preview boolean NOT NULL DEFAULT false,
+  sort_order integer NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'published'::text CHECK (status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teacher_course_lessons_pkey PRIMARY KEY (id),
+  CONSTRAINT teacher_course_lessons_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.teacher_courses(id),
+  CONSTRAINT teacher_course_lessons_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.profiles(id)
+);
 CREATE TABLE public.teacher_courses (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   teacher_id uuid NOT NULL,
@@ -222,6 +245,14 @@ CREATE TABLE public.teachers (
   documents jsonb DEFAULT '[]'::jsonb,
   timezone text,
   rejection_reason text,
+  portfolio_media jsonb DEFAULT '[]'::jsonb,
+  stripe_account_id text,
+  stripe_onboarding_completed boolean NOT NULL DEFAULT false,
+  stripe_charges_enabled boolean NOT NULL DEFAULT false,
+  stripe_payouts_enabled boolean NOT NULL DEFAULT false,
+  stripe_details_submitted boolean NOT NULL DEFAULT false,
+  stripe_country text,
+  stripe_default_currency text,
   CONSTRAINT teachers_pkey PRIMARY KEY (id),
   CONSTRAINT teachers_id_fkey FOREIGN KEY (id) REFERENCES public.profiles(id)
 );

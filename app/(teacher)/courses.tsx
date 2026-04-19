@@ -43,6 +43,28 @@ interface CourseLesson {
 const SUBJECTS = ['Quran Memorization', 'Tajweed', 'Arabic Language', 'Islamic Studies', 'Fiqh', 'Hadith', 'Seerah'];
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
 
+const mapCourseErrorMessage = (message?: string) => {
+  const normalized = String(message || '').toLowerCase();
+
+  if (normalized.includes('row level security')) {
+    return 'Permission error while saving course content. Please run the latest database migration and try again.';
+  }
+
+  if (normalized.includes('course not found or unauthorized')) {
+    return 'This course could not be accessed. Refresh the page and try again.';
+  }
+
+  if (normalized.includes('course thumbnail is required')) {
+    return 'Please upload a course thumbnail before continuing.';
+  }
+
+  if (normalized.includes('upload at least one video lesson')) {
+    return 'Please upload at least one video lesson before publishing.';
+  }
+
+  return message || 'Something went wrong. Please try again.';
+};
+
 export default function TeacherCoursesScreen() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -60,7 +82,7 @@ export default function TeacherCoursesScreen() {
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonDescription, setLessonDescription] = useState('');
   const [lessonPreview, setLessonPreview] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string; mimeType?: string } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ uri: string; name: string; mimeType?: string; size?: number } | null>(null);
   const [thumbnailAsset, setThumbnailAsset] = useState<{ uri: string; name: string; mimeType?: string; fileSize?: number } | null>(null);
   const [publishingCourseId, setPublishingCourseId] = useState<string | null>(null);
 
@@ -244,6 +266,14 @@ export default function TeacherCoursesScreen() {
         return;
       }
 
+      if (asset.size) {
+        const sizeMB = asset.size / (1024 * 1024);
+        if (sizeMB > 50) {
+          setNotification({ type: 'error', message: `Video is too large (${sizeMB.toFixed(1)}MB). Maximum size is 50MB.` });
+          return;
+        }
+      }
+
       // Check file size on native
       if (Platform.OS !== 'web') {
         const fileInfo = await FileSystem.getInfoAsync(asset.uri);
@@ -260,6 +290,7 @@ export default function TeacherCoursesScreen() {
         uri: asset.uri,
         name: asset.name || `content-${Date.now()}`,
         mimeType: asset.mimeType,
+        size: asset.size,
       });
       if (!lessonTitle.trim()) {
         setLessonTitle((asset.name || 'Lesson Content').replace(/\.[^/.]+$/, ''));
@@ -270,7 +301,10 @@ export default function TeacherCoursesScreen() {
   };
 
   const uploadLessonContent = async () => {
-    if (!user?.id || !selectedCourse?.id) return;
+    if (!user?.id || !selectedCourse?.id) {
+      setNotification({ type: 'error', message: 'Please choose a course first' });
+      return;
+    }
     if (!lessonTitle.trim()) {
       setNotification({ type: 'error', message: 'Lesson title is required' });
       return;
@@ -282,6 +316,18 @@ export default function TeacherCoursesScreen() {
 
     setUploadingContent(true);
     try {
+      const extension = selectedFile.name.split('.').pop()?.toLowerCase() || '';
+      if (!['mp4', 'mov', 'm4v', 'webm'].includes(extension)) {
+        throw new Error('Only video files are allowed (mp4, mov, m4v, webm)');
+      }
+
+      if (selectedFile.size) {
+        const sizeMB = selectedFile.size / (1024 * 1024);
+        if (sizeMB > 50) {
+          throw new Error(`Video is too large (${sizeMB.toFixed(1)}MB). Maximum size is 50MB.`);
+        }
+      }
+
       // File size validation (50MB max for videos)
       if (Platform.OS !== 'web') {
         const fileInfo = await FileSystem.getInfoAsync(selectedFile.uri);
@@ -310,7 +356,7 @@ export default function TeacherCoursesScreen() {
 
         return FileSystem.readAsStringAsync(selectedFile.uri, { encoding: 'base64' });
       })();
-      const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'bin';
+      const ext = extension || 'bin';
       const mime = selectedFile.mimeType || 'application/octet-stream';
 
       const response = await authFetch(api.courses.uploadLesson(selectedCourse.id), {
@@ -328,8 +374,8 @@ export default function TeacherCoursesScreen() {
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to upload content');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(mapCourseErrorMessage(data.error || 'Failed to upload content'));
 
       setNotification({ type: 'success', message: 'Course content uploaded successfully' });
       setLessonTitle('');
@@ -339,7 +385,7 @@ export default function TeacherCoursesScreen() {
       await loadCourseLessons(selectedCourse.id);
       await loadCourses('refresh');
     } catch (e: any) {
-      setNotification({ type: 'error', message: e?.message || 'Failed to upload content' });
+      setNotification({ type: 'error', message: mapCourseErrorMessage(e?.message || 'Failed to upload content') });
     } finally {
       setUploadingContent(false);
     }
@@ -445,8 +491,8 @@ export default function TeacherCoursesScreen() {
         });
       }
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to save course');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(mapCourseErrorMessage(data.error || 'Failed to save course'));
 
       let nextCourse: Course = data.course;
       if (thumbnailAsset?.uri && isLocalAssetUri(thumbnailAsset.uri)) {
@@ -469,7 +515,7 @@ export default function TeacherCoursesScreen() {
         await openContentModal(nextCourse);
       }
     } catch (e: any) {
-      setNotification({ type: 'error', message: e.message });
+      setNotification({ type: 'error', message: mapCourseErrorMessage(e?.message) });
     } finally {
       setSaving(false);
     }
