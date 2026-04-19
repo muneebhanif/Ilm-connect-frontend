@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 10,
+    paddingTop: 60,
   },
   topNav: {
     alignItems: 'flex-start',

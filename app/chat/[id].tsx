@@ -9,6 +9,7 @@ import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Validation constants
 const MAX_MESSAGE_LENGTH = 2000;
@@ -29,6 +30,7 @@ interface Message {
 export default function ChatScreen() {
   const { id, name, avatar } = useLocalSearchParams();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -435,7 +437,7 @@ export default function ChatScreen() {
       )}
 
       {/* Input Area */}
-      <View style={styles.inputWrapper}>
+      <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
         <View style={styles.inputContainer}>
           <TouchableOpacity 
             style={styles.attachButton}
@@ -794,7 +796,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#F3F4F6',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 28,
   },
   inputContainer: {
     flexDirection: 'row',
