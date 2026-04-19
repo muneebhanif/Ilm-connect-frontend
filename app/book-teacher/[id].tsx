@@ -20,6 +20,8 @@ interface Teacher {
   id: string;
   profiles: { full_name: string };
   hourly_rate: number;
+  weekly_package_price?: number;
+  monthly_package_price?: number;
   subjects: string[];
   availability: any;
   timezone?: string;
@@ -96,8 +98,36 @@ export default function BookTeacherScreen() {
 
   const packages: Package[] = [
     { id: 'single', name: 'Single Class', description: 'Pay per class', price: teacher?.hourly_rate || 0 },
-    { id: 'weekly', name: 'Weekly Bundle', description: '4 classes (10% off)', price: (teacher?.hourly_rate || 0) * 4 * 0.9, originalPrice: (teacher?.hourly_rate || 0) * 4 },
-    { id: 'monthly', name: 'Monthly Plan', description: '12 classes (20% off)', price: (teacher?.hourly_rate || 0) * 12 * 0.8, originalPrice: (teacher?.hourly_rate || 0) * 12 },
+    {
+      id: 'weekly',
+      name: 'Weekly Bundle',
+      description: '4 classes',
+      price: teacher?.weekly_package_price && teacher.weekly_package_price > 0
+        ? teacher.weekly_package_price
+        : (teacher?.hourly_rate || 0) * 4 * 0.9,
+      originalPrice: (() => {
+        const base = (teacher?.hourly_rate || 0) * 4;
+        const final = teacher?.weekly_package_price && teacher.weekly_package_price > 0
+          ? teacher.weekly_package_price
+          : (teacher?.hourly_rate || 0) * 4 * 0.9;
+        return base > final ? base : undefined;
+      })(),
+    },
+    {
+      id: 'monthly',
+      name: 'Monthly Plan',
+      description: '12 classes',
+      price: teacher?.monthly_package_price && teacher.monthly_package_price > 0
+        ? teacher.monthly_package_price
+        : (teacher?.hourly_rate || 0) * 12 * 0.8,
+      originalPrice: (() => {
+        const base = (teacher?.hourly_rate || 0) * 12;
+        const final = teacher?.monthly_package_price && teacher.monthly_package_price > 0
+          ? teacher.monthly_package_price
+          : (teacher?.hourly_rate || 0) * 12 * 0.8;
+        return base > final ? base : undefined;
+      })(),
+    },
   ];
 
   useEffect(() => { fetchData(); }, [id]);
@@ -125,6 +155,8 @@ export default function BookTeacherScreen() {
         id: t.id || id,
         profiles: { full_name: t.profiles?.full_name || t.full_name || 'Unknown' },
         hourly_rate: Number(t.hourly_rate) || 0,
+        weekly_package_price: Number(t.weekly_package_price) || 0,
+        monthly_package_price: Number(t.monthly_package_price) || 0,
         subjects: Array.isArray(t.subjects) ? t.subjects : [],
         availability: t.availability || {},
         timezone: t.timezone,

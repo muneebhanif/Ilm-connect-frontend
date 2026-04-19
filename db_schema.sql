@@ -253,6 +253,8 @@ CREATE TABLE public.teachers (
   stripe_details_submitted boolean NOT NULL DEFAULT false,
   stripe_country text,
   stripe_default_currency text,
+  weekly_package_price numeric NOT NULL DEFAULT 0 CHECK (weekly_package_price >= 0::numeric),
+  monthly_package_price numeric NOT NULL DEFAULT 0 CHECK (monthly_package_price >= 0::numeric),
   CONSTRAINT teachers_pkey PRIMARY KEY (id),
   CONSTRAINT teachers_id_fkey FOREIGN KEY (id) REFERENCES public.profiles(id)
 );

@@ -19,6 +19,8 @@ interface TeacherProfileData {
   bio: string;
   subjects: string[];
   hourly_rate: number;
+  weekly_package_price: number;
+  monthly_package_price: number;
   languages: string[];
   gender: string;
   portfolio_media: Array<{
@@ -55,6 +57,8 @@ export default function EditTeacherProfileScreen() {
     bio: '',
     subjects: [],
     hourly_rate: 0,
+    weekly_package_price: 0,
+    monthly_package_price: 0,
     languages: [],
     gender: 'male',
     portfolio_media: [],
@@ -88,6 +92,8 @@ export default function EditTeacherProfileScreen() {
           bio: data.profile.bio || '',
           subjects: data.profile.subjects || [],
           hourly_rate: data.profile.hourly_rate || 0,
+          weekly_package_price: data.profile.weekly_package_price || 0,
+          monthly_package_price: data.profile.monthly_package_price || 0,
           languages: data.profile.languages || [],
           gender: data.profile.gender || 'male',
           portfolio_media: data.profile.portfolio_media || [],
@@ -352,6 +358,11 @@ export default function EditTeacherProfileScreen() {
       return;
     }
 
+    if (profile.weekly_package_price < 0 || profile.monthly_package_price < 0) {
+      Alert.alert('Error', 'Weekly and monthly package prices cannot be negative');
+      return;
+    }
+
     if (profile.languages.length === 0) {
       Alert.alert('Error', 'Please select at least one language');
       return;
@@ -506,6 +517,8 @@ export default function EditTeacherProfileScreen() {
         bio: profile.bio,
         subjects: profile.subjects,
         hourly_rate: profile.hourly_rate,
+        weekly_package_price: profile.weekly_package_price,
+        monthly_package_price: profile.monthly_package_price,
         languages: profile.languages,
         gender: profile.gender,
       };
@@ -746,6 +759,38 @@ export default function EditTeacherProfileScreen() {
                 keyboardType="numeric"
               />
               <ThemedText style={styles.perHour}>/hour</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Weekly Package Price (4 classes)</ThemedText>
+            <View style={styles.priceInputContainer}>
+              <ThemedText style={styles.currencySymbol}>$</ThemedText>
+              <TextInput
+                style={styles.priceInput}
+                value={profile.weekly_package_price > 0 ? profile.weekly_package_price.toString() : ''}
+                onChangeText={(text) => setProfile({ ...profile, weekly_package_price: parseFloat(text) || 0 })}
+                placeholder="Auto-calculate if empty"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+              />
+              <ThemedText style={styles.perHour}>/week</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Monthly Package Price (12 classes)</ThemedText>
+            <View style={styles.priceInputContainer}>
+              <ThemedText style={styles.currencySymbol}>$</ThemedText>
+              <TextInput
+                style={styles.priceInput}
+                value={profile.monthly_package_price > 0 ? profile.monthly_package_price.toString() : ''}
+                onChangeText={(text) => setProfile({ ...profile, monthly_package_price: parseFloat(text) || 0 })}
+                placeholder="Auto-calculate if empty"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+              />
+              <ThemedText style={styles.perHour}>/month</ThemedText>
             </View>
           </View>
         </View>
