@@ -122,7 +122,6 @@ CREATE TABLE public.profiles (
   avatar_url text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
-  is_admin boolean DEFAULT false,
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
@@ -257,14 +256,4 @@ CREATE TABLE public.teachers (
   monthly_package_price numeric NOT NULL DEFAULT 0 CHECK (monthly_package_price >= 0::numeric),
   CONSTRAINT teachers_pkey PRIMARY KEY (id),
   CONSTRAINT teachers_id_fkey FOREIGN KEY (id) REFERENCES public.profiles(id)
-);
-CREATE TABLE public.todos (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  title text NOT NULL,
-  due_date date NOT NULL,
-  completed boolean NOT NULL DEFAULT false,
-  priority text NOT NULL DEFAULT 'medium'::text CHECK (priority = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT todos_pkey PRIMARY KEY (id)
 );
