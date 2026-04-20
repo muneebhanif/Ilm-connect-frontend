@@ -118,7 +118,9 @@ export const api = {
     delete: (courseId: string) => `${API_URL}/api/courses/${courseId}`,
     lessons: (courseId: string, teacherId: string) => `${API_URL}/api/courses/${courseId}/lessons?teacher_id=${encodeURIComponent(teacherId)}`,
     createLesson: (courseId: string) => `${API_URL}/api/courses/${courseId}/lessons`,
+    createLessonUploadUrl: (courseId: string) => `${API_URL}/api/courses/${courseId}/lessons/upload-url`,
     uploadLesson: (courseId: string) => `${API_URL}/api/courses/${courseId}/lessons/upload`,
+    finalizeLessonUpload: (courseId: string) => `${API_URL}/api/courses/${courseId}/lessons/upload-complete`,
     deleteLesson: (courseId: string, lessonId: string) => `${API_URL}/api/courses/${courseId}/lessons/${lessonId}`,
   },
 };

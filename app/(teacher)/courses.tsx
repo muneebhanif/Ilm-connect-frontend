@@ -62,6 +62,18 @@ const mapCourseErrorMessage = (message?: string) => {
     return 'Please upload at least one video lesson before publishing.';
   }
 
+  if (normalized.includes('payload too large') || normalized.includes('entity too large') || normalized.includes('request entity too large')) {
+    return 'The old upload request was too large. Please try again with direct upload or choose a smaller file.';
+  }
+
+  if (normalized.includes('failed to create signed upload url')) {
+    return 'Could not prepare secure video upload. Please try again.';
+  }
+
+  if (normalized.includes('failed to finalize upload')) {
+    return 'The video uploaded, but saving the lesson failed. Please try again.';
+  }
+
   return message || 'Something went wrong. Please try again.';
 };
 
@@ -140,6 +152,20 @@ export default function TeacherCoursesScreen() {
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
     const mime = String(mimeType || '').toLowerCase();
     return mime.startsWith('video/') || ['mp4', 'mov', 'm4v', 'webm'].includes(ext);
+  };
+
+  const getSelectedFileSizeBytes = async () => {
+    if (!selectedFile?.uri) return 0;
+    if (selectedFile.size) return selectedFile.size;
+
+    if (Platform.OS !== 'web') {
+      const fileInfo = await FileSystem.getInfoAsync(selectedFile.uri);
+      if (fileInfo.exists && fileInfo.size) {
+        return fileInfo.size;
+      }
+    }
+
+    return 0;
   };
 
   const loadCourseLessons = async (courseId: string) => {
@@ -321,24 +347,87 @@ export default function TeacherCoursesScreen() {
         throw new Error('Only video files are allowed (mp4, mov, m4v, webm)');
       }
 
-      if (selectedFile.size) {
-        const sizeMB = selectedFile.size / (1024 * 1024);
+      const fileSizeBytes = await getSelectedFileSizeBytes();
+      if (fileSizeBytes) {
+        const sizeMB = fileSizeBytes / (1024 * 1024);
         if (sizeMB > 50) {
           throw new Error(`Video is too large (${sizeMB.toFixed(1)}MB). Maximum size is 50MB.`);
         }
       }
 
-      // File size validation (50MB max for videos)
+      const ext = extension || 'bin';
+      const mime = selectedFile.mimeType || 'application/octet-stream';
+
       if (Platform.OS !== 'web') {
-        const fileInfo = await FileSystem.getInfoAsync(selectedFile.uri);
-        if (fileInfo.exists && fileInfo.size) {
-          const sizeMB = fileInfo.size / (1024 * 1024);
-          if (sizeMB > 50) {
-            setNotification({ type: 'error', message: `Video is too large (${sizeMB.toFixed(1)}MB). Maximum size is 50MB.` });
-            setUploadingContent(false);
-            return;
-          }
+        const uploadUrlResponse = await authFetch(api.courses.createLessonUploadUrl(selectedCourse.id), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_id: user.id,
+            fileExtension: ext,
+            fileName: selectedFile.name,
+          }),
+        });
+
+        const uploadUrlData = await uploadUrlResponse.json().catch(() => ({}));
+        if (!uploadUrlResponse.ok) {
+          throw new Error(mapCourseErrorMessage(uploadUrlData.error || 'Failed to create signed upload URL'));
         }
+
+        const upload = uploadUrlData.upload;
+        if (!upload?.signedUrl || !upload?.storagePath) {
+          throw new Error('Failed to create signed upload URL');
+        }
+
+        const uploadResult = await FileSystem.uploadAsync(upload.signedUrl, selectedFile.uri, {
+          httpMethod: 'PUT',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            'content-type': upload.contentType || mime,
+            'x-upsert': 'false',
+            'cache-control': 'max-age=3600',
+          },
+        });
+
+        if (uploadResult.status < 200 || uploadResult.status >= 300) {
+          let uploadError = 'Failed to upload content';
+          try {
+            const parsed = JSON.parse(uploadResult.body || '{}');
+            uploadError = parsed?.error || parsed?.message || uploadError;
+          } catch {
+            if (uploadResult.body) uploadError = uploadResult.body;
+          }
+          throw new Error(uploadError);
+        }
+
+        const finalizeResponse = await authFetch(api.courses.finalizeLessonUpload(selectedCourse.id), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_id: user.id,
+            title: lessonTitle.trim(),
+            description: lessonDescription.trim() || null,
+            storagePath: upload.storagePath,
+            fileName: selectedFile.name,
+            fileSizeBytes: fileSizeBytes || undefined,
+            content_type: 'video',
+            is_preview: lessonPreview,
+          }),
+        });
+
+        const finalizeData = await finalizeResponse.json().catch(() => ({}));
+        if (!finalizeResponse.ok) {
+          throw new Error(mapCourseErrorMessage(finalizeData.error || 'Failed to finalize upload'));
+        }
+
+        setNotification({ type: 'success', message: 'Course content uploaded successfully' });
+        setLessonTitle('');
+        setLessonDescription('');
+        setLessonPreview(false);
+        setSelectedFile(null);
+        await loadCourseLessons(selectedCourse.id);
+        await loadCourses('refresh');
+        return;
       }
 
       const base64 = await (async () => {
@@ -356,8 +445,6 @@ export default function TeacherCoursesScreen() {
 
         return FileSystem.readAsStringAsync(selectedFile.uri, { encoding: 'base64' });
       })();
-      const ext = extension || 'bin';
-      const mime = selectedFile.mimeType || 'application/octet-stream';
 
       const response = await authFetch(api.courses.uploadLesson(selectedCourse.id), {
         method: 'POST',
