@@ -1,9 +1,9 @@
-import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Modal, Image } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-// Back button removed
 import { PhoneInput } from '@/components/phone-input';
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoHero } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
@@ -12,8 +12,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '@/lib/config';
 import { CountryDropdown, CityDropdown, GenderDropdown, LanguagesDropdown } from '@/components/dropdowns';
-
-const logo = require('@/assets/images/logo.png');
 
 // --- Subjects Dropdown Component ---
 const SUBJECTS_OPTIONS = [
@@ -409,14 +407,12 @@ export default function SignUpTeacherScreen() {
         >
           <View style={styles.content}>
 
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.logoBadge}>
-                <Image source={logo} style={styles.logoImage} resizeMode="contain" />
-              </View>
-              <ThemedText style={styles.welcomeText}>Teacher Sign Up</ThemedText>
-              <ThemedText style={styles.subtitleText}>Share your expertise with the world</ThemedText>
-            </View>
+            <LingoHero
+              icon="school"
+              badge="Teacher account"
+              title="Build your teaching profile"
+              subtitle="Create your teacher account, set your details, and get ready for verification."
+            />
 
             {/* Progress Bar (Minimalist) */}
             <View style={styles.progressSection}>
@@ -450,7 +446,11 @@ export default function SignUpTeacherScreen() {
             </View>
 
             {/* Form Fields */}
-            <View style={styles.formContainer}>
+            <LingoCard style={styles.formContainer}>
+              <View style={styles.formHeaderRow}>
+                <ThemedText style={styles.formTitle}>Teacher sign up</ThemedText>
+                <LingoBadge label="Profile setup" icon="ribbon" tone="danger" />
+              </View>
               
               {/* General Error */}
               {formErrors.general && (
@@ -628,25 +628,15 @@ export default function SignUpTeacherScreen() {
               </View>
 
               {/* Submit Button */}
-              <TouchableOpacity 
-                style={[styles.signUpButton, loading && styles.buttonDisabled]}
-                onPress={handleSignUp}
-                disabled={loading}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={loading ? ['#E5E7EB', '#E5E7EB'] : ['#FF6B6B', '#EE5A24']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.signUpButtonGradient}
-                >
-                  <ThemedText style={[styles.signUpButtonText, loading && { color: '#9CA3AF' }]}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
-                  </ThemedText>
-                  {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.submitWrap}>
+                <LingoButton
+                  label={loading ? 'Creating Account...' : 'Create Account'}
+                  icon="arrow-forward"
+                  onPress={handleSignUp}
+                  loading={loading}
+                />
+              </View>
+            </LingoCard>
 
             {/* Footer */}
             <View style={styles.footer}>
@@ -668,7 +658,7 @@ export default function SignUpTeacherScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -681,50 +671,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 10,
-  },
-  topNav: {
-    alignItems: 'flex-start',
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  
-  /* Header */
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoBadge: {
-    marginBottom: 16,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  logoImage: {
-    width: 70,
-    height: 70,
-  },
-  logoGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  welcomeText: {
-    fontSize: 26,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  subtitleText: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
 
   /* Progress Bar */
@@ -735,25 +683,39 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   progressBarBg: {
-    height: 4,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 2,
+    height: 10,
+    backgroundColor: '#FDE7D9',
+    borderRadius: 999,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 999,
   },
   progressText: {
-    fontSize: 11,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: LingoTheme.colors.muted,
     textAlign: 'right',
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   /* Form */
   formContainer: {
     width: '100%',
+  },
+  formHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+  formTitle: {
+    flex: 1,
+    fontSize: 24,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   spacer: {
     height: 16,
@@ -762,20 +724,20 @@ const styles = StyleSheet.create({
   /* Filled Input Styles (Shared by TextInput and Dropdown Trigger) */
   filledInputContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   multilineContainer: {
     paddingBottom: 16,
   },
   tinyLabel: {
     fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '600',
+    color: LingoTheme.colors.muted,
+    fontWeight: '700',
     marginBottom: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -790,7 +752,7 @@ const styles = StyleSheet.create({
   mainInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
+    color: LingoTheme.colors.ink,
     fontWeight: '500',
     paddingVertical: Platform.OS === 'android' ? 4 : 2,
     minHeight: 24,
@@ -892,32 +854,8 @@ const styles = StyleSheet.create({
   },
 
   /* Button */
-  signUpButton: {
-    marginTop: 32,
-    borderRadius: 30, // Pill shape
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  signUpButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 8,
-    borderRadius: 30,
-  },
-  signUpButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-    shadowOpacity: 0,
-    elevation: 0,
+  submitWrap: {
+    marginTop: 18,
   },
 
   /* Footer */
@@ -927,31 +865,31 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: LingoTheme.colors.muted,
     textAlign: 'center',
     lineHeight: 20,
   },
   termsLink: {
-    color: '#111827',
-    fontWeight: '600',
+    color: '#C2410C',
+    fontWeight: '700',
   },
 
   /* Error Styles */
   inputError: {
     borderColor: '#EF4444',
-    borderWidth: 1.5,
+    borderWidth: 2,
   },
   errorText: {
-    color: '#EF4444',
+    color: '#B91C1C',
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 6,
     marginLeft: 4,
   },
   generalErrorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
     padding: 12,
     marginBottom: 16,
     gap: 8,

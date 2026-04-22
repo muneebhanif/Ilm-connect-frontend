@@ -1,195 +1,90 @@
-import { StyleSheet, View, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-// Back button removed
-import { Fonts } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LingoBadge, LingoCard } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
 
-const { width } = Dimensions.get('window');
+const roles = [
+  {
+    title: "I'm a Parent",
+    description: 'Find trusted teachers, book classes, and guide your child with confidence.',
+    icon: 'people',
+    colors: ['#E6FFFA', '#F0FDFA'],
+    accent: '#14B8A6',
+    route: '/signup-parent',
+    points: ['Browse verified teachers', 'Manage classes with ease', "Track your child's growth"],
+  },
+  {
+    title: "I'm a Teacher",
+    description: 'Share your knowledge, build your profile, and teach students worldwide.',
+    icon: 'school',
+    colors: ['#FFF1F2', '#FFF7ED'],
+    accent: '#F97316',
+    route: '/signup-teacher',
+    points: ['Create your teaching profile', 'Set availability and rates', 'Grow your student base'],
+  },
+  {
+    title: "I'm a Student",
+    description: 'Join classes, learn with clarity, and revisit lessons that matter most.',
+    icon: 'person-circle',
+    colors: ['#EEF2FF', '#F5F3FF'],
+    accent: '#6366F1',
+    route: '/signup-student',
+    points: ['Join upcoming classes', 'Review your teachers', 'Watch unlocked recordings'],
+  },
+] as const;
 
 export default function RoleSelectionScreen() {
   const router = useRouter();
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerIcon}>
-              <Ionicons name="people" size={36} color="#4ECDC4" />
-            </View>
-            <ThemedText type="title" style={styles.title}>
-              Join IlmConnect
-            </ThemedText>
-            <ThemedText style={styles.subtitle}>
-              Choose how you'd like to use our platform
-            </ThemedText>
-          </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <LingoBadge label="Pick your path" icon="sparkles" />
+          <ThemedText style={styles.title}>Join IlmConnect your way</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            Choose the role that fits you best and start with a simple, guided setup.
+          </ThemedText>
+        </View>
 
-          {/* Role Cards */}
-          <View style={styles.cardsContainer}>
-            {/* Parent Option */}
-            <TouchableOpacity
-              style={styles.roleCard}
-              onPress={() => router.push('/signup-parent')}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={['#fff', '#F8FEFF']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardContent}>
-                  <View style={styles.iconContainer}>
-                    <LinearGradient
-                      colors={['#4ECDC4', '#44A08D']}
-                      style={styles.iconGradient}
-                    >
-                      <Ionicons name="people" size={40} color="#fff" />
-                    </LinearGradient>
+        <View style={styles.cardsContainer}>
+          {roles.map((role) => (
+            <TouchableOpacity key={role.title} activeOpacity={0.92} onPress={() => router.push(role.route as any)}>
+              <LinearGradient colors={role.colors as any} style={styles.roleWrap}>
+                <LingoCard style={styles.roleCard}>
+                  <View style={[styles.roleIcon, { backgroundColor: role.accent }]}>
+                    <Ionicons name={role.icon as keyof typeof Ionicons.glyphMap} size={26} color="#FFFFFF" />
                   </View>
-                  
-                  <View style={styles.cardTextContent}>
-                    <ThemedText style={styles.roleTitle}>I'm a Parent</ThemedText>
-                    <ThemedText style={styles.roleDescription}>
-                      Find trusted Islamic teachers for your children and manage their learning journey
-                    </ThemedText>
+                  <ThemedText style={styles.roleTitle}>{role.title}</ThemedText>
+                  <ThemedText style={styles.roleDescription}>{role.description}</ThemedText>
+
+                  <View style={styles.pointsList}>
+                    {role.points.map((point) => (
+                      <View key={point} style={styles.pointItem}>
+                        <Ionicons name="checkmark-circle" size={18} color={role.accent} />
+                        <ThemedText style={styles.pointText}>{point}</ThemedText>
+                      </View>
+                    ))}
                   </View>
 
-                  <View style={styles.featuresList}>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#4ECDC4" />
-                      <ThemedText style={styles.featureText}>Browse verified teachers</ThemedText>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#4ECDC4" />
-                      <ThemedText style={styles.featureText}>Book and manage classes</ThemedText>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#4ECDC4" />
-                      <ThemedText style={styles.featureText}>Track your child's progress</ThemedText>
-                    </View>
+                  <View style={styles.arrowRow}>
+                    <ThemedText style={[styles.ctaText, { color: role.accent }]}>Continue</ThemedText>
+                    <Ionicons name="arrow-forward-circle" size={28} color={role.accent} />
                   </View>
-
-                  <View style={styles.cardArrow}>
-                    <Ionicons name="arrow-forward-circle" size={32} color="#4ECDC4" />
-                  </View>
-                </View>
+                </LingoCard>
               </LinearGradient>
             </TouchableOpacity>
+          ))}
+        </View>
 
-            {/* Teacher Option */}
-            <TouchableOpacity
-              style={styles.roleCard}
-              onPress={() => router.push('/signup-teacher')}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={['#fff', '#FFF8F5']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardContent}>
-                  <View style={styles.iconContainer}>
-                    <LinearGradient
-                      colors={['#FF6B6B', '#ee5a24']}
-                      style={styles.iconGradient}
-                    >
-                      <Ionicons name="school" size={40} color="#fff" />
-                    </LinearGradient>
-                  </View>
-                  
-                  <View style={styles.cardTextContent}>
-                    <ThemedText style={styles.roleTitle}>I'm a Teacher</ThemedText>
-                    <ThemedText style={styles.roleDescription}>
-                      Share your Islamic knowledge and connect with students worldwide
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.featuresList}>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#FF6B6B" />
-                      <ThemedText style={styles.featureText}>Create your teaching profile</ThemedText>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#FF6B6B" />
-                      <ThemedText style={styles.featureText}>Set your own schedule & rates</ThemedText>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#FF6B6B" />
-                      <ThemedText style={styles.featureText}>Grow your student base</ThemedText>
-                    </View>
-                  </View>
-
-                  <View style={styles.cardArrow}>
-                    <Ionicons name="arrow-forward-circle" size={32} color="#FF6B6B" />
-                  </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Student Option */}
-            <TouchableOpacity
-              style={styles.roleCard}
-              onPress={() => router.push('/signup-student')}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={['#fff', '#F5F7FF']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.cardContent}>
-                  <View style={styles.iconContainer}>
-                    <LinearGradient
-                      colors={['#6366F1', '#4F46E5']}
-                      style={styles.iconGradient}
-                    >
-                      <Ionicons name="person-circle" size={40} color="#fff" />
-                    </LinearGradient>
-                  </View>
-
-                  <View style={styles.cardTextContent}>
-                    <ThemedText style={styles.roleTitle}>I'm a Student</ThemedText>
-                    <ThemedText style={styles.roleDescription}>
-                      Join your classes, review teachers, and access paid recordings.
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.featuresList}>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#6366F1" />
-                      <ThemedText style={styles.featureText}>Join upcoming classes</ThemedText>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#6366F1" />
-                      <ThemedText style={styles.featureText}>Rate your teacher</ThemedText>
-                    </View>
-                    <View style={styles.featureItem}>
-                      <Ionicons name="checkmark-circle" size={18} color="#6366F1" />
-                      <ThemedText style={styles.featureText}>Watch unlocked recordings</ThemedText>
-                    </View>
-                  </View>
-
-                  <View style={styles.cardArrow}>
-                    <Ionicons name="arrow-forward-circle" size={32} color="#6366F1" />
-                  </View>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Ionicons name="shield-checkmark-outline" size={18} color="#999" />
-            <ThemedText style={styles.footerText}>
-              Your data is secure and protected
-            </ThemedText>
-          </View>
+        <View style={styles.footer}>
+          <Ionicons name="shield-checkmark" size={18} color={LingoTheme.colors.muted} />
+          <ThemedText style={styles.footerText}>Safe sign-up, verified learning, and secure access.</ThemedText>
         </View>
       </ScrollView>
     </ThemedView>
@@ -199,117 +94,101 @@ export default function RoleSelectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFB',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    backgroundColor: LingoTheme.colors.background,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingTop: 26,
     paddingBottom: 40,
+    gap: 18,
   },
   header: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 32,
-  },
-  headerIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: 'rgba(78, 205, 196, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 30,
+    lineHeight: 36,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     textAlign: 'center',
-    marginBottom: 8,
-    color: '#1a1a1a',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
+    lineHeight: 22,
+    color: LingoTheme.colors.muted,
     textAlign: 'center',
+    maxWidth: 320,
   },
   cardsContainer: {
-    gap: 20,
+    gap: 16,
+  },
+  roleWrap: {
+    borderRadius: 28,
+    padding: 2,
   },
   roleCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 8,
+    gap: 12,
   },
-  cardGradient: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-  },
-  cardContent: {
-    padding: 24,
-  },
-  iconContainer: {
-    marginBottom: 20,
-  },
-  iconGradient: {
-    width: 72,
-    height: 72,
+  roleIcon: {
+    width: 56,
+    height: 56,
     borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  cardTextContent: {
-    marginBottom: 20,
+    justifyContent: 'center',
   },
   roleTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 8,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   roleDescription: {
-    fontSize: 15,
-    color: '#666',
-    lineHeight: 22,
-  },
-  featuresList: {
-    gap: 12,
-    marginBottom: 8,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  featureText: {
     fontSize: 14,
-    color: '#444',
+    lineHeight: 21,
+    color: LingoTheme.colors.muted,
   },
-  cardArrow: {
-    position: 'absolute',
-    top: 24,
-    right: 24,
+  pointsList: {
+    gap: 10,
+    marginTop: 2,
+  },
+  pointItem: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  pointText: {
+    flex: 1,
+    color: LingoTheme.colors.ink,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  arrowRow: {
+    marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ctaText: {
+    fontSize: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   footer: {
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 32,
     gap: 8,
+    paddingHorizontal: 16,
   },
   footerText: {
-    fontSize: 14,
-    color: '#999',
+    textAlign: 'center',
+    color: LingoTheme.colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

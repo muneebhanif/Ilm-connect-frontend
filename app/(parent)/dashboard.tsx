@@ -12,6 +12,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
 import { ParentDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 
 // Interfaces remain untouched
 interface Child {
@@ -299,46 +301,51 @@ export default function ParentDashboard() {
           />
         }
       >
-        {/* Header Section */}
-        <View style={[styles.header, { paddingTop: topPadding }]}>
-          <View style={styles.headerTopRow}>
-            <View>
-              <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
-              <ThemedText style={styles.userNameText}>{parentName}</ThemedText>
+        <View style={[styles.headerWrap, { paddingTop: topPadding }]}> 
+          <LingoScreenHeader
+            title={parentName}
+            subtitle={`${getGreeting()} — keep classes, children, and messages on track.`}
+            badge="Parent hub"
+            icon="people-outline"
+          >
+            <View style={styles.headerStatsRow}>
+              <LingoStatPill label="Children" value={String(stats.children)} icon="happy-outline" tone="teal" />
+              <LingoStatPill label="Active" value={String(stats.activeClasses)} icon="calendar-outline" tone="gold" />
+              <LingoStatPill label="Teachers" value={String(stats.teachers)} icon="school-outline" tone="primary" />
             </View>
             <View style={styles.headerActions}>
-               <TouchableOpacity
-                 style={styles.iconButton}
-                 onPress={() => {
-                   setHasUnreadNotifications(false);
-                   router.push('/(parent)/notifications');
-                 }}
-               >
-                 <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-                 {hasUnreadNotifications && <View style={styles.notificationDot} />}
-               </TouchableOpacity>
-               <TouchableOpacity 
-                 style={styles.profileButton}
-                 onPress={() => router.push('/(parent)/profile')}
-               >
-                 {user?.avatar_url ? (
-                   <Image 
-                     source={{ uri: user.avatar_url }} 
-                     style={styles.profileImage} 
-                   />
-                 ) : (
-                   <LinearGradient
-                     colors={['#4ECDC4', '#2BCBBA']}
-                     start={{ x: 0, y: 0 }}
-                     end={{ x: 1, y: 1 }}
-                     style={styles.profileFallback}
-                   >
-                     <ThemedText style={styles.profileFallbackText}>{headerInitial}</ThemedText>
-                   </LinearGradient>
-                 )}
-               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => {
+                  setHasUnreadNotifications(false);
+                  router.push('/(parent)/notifications');
+                }}
+              >
+                <Ionicons name="notifications-outline" size={20} color={LingoTheme.colors.ink} />
+                {hasUnreadNotifications && <View style={styles.notificationDot} />}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.profileButton}
+                onPress={() => router.push('/(parent)/profile')}
+              >
+                {user?.avatar_url ? (
+                  <Image 
+                    source={{ uri: user.avatar_url }} 
+                    style={styles.profileImage} 
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={[LingoTheme.colors.primary, LingoTheme.colors.primaryDark]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.profileFallback}
+                  >
+                    <ThemedText style={styles.profileFallbackText}>{headerInitial}</ThemedText>
+                  </LinearGradient>
+                )}
+              </TouchableOpacity>
             </View>
-          </View>
+          </LingoScreenHeader>
         </View>
 
         {/* Child Progress Section */}
@@ -453,11 +460,7 @@ export default function ParentDashboard() {
               onPress={() => setShowAddChildModal(true)}
               activeOpacity={0.8}
             >
-              <View style={styles.addChildIconCircle}>
-                 <Ionicons name="add" size={32} color="#4ECDC4" />
-              </View>
-              <ThemedText style={styles.addChildTitle}>Add Child Profile</ThemedText>
-              <ThemedText style={styles.addChildSubtitle}>Track progress and manage classes</ThemedText>
+              <LingoEmptyState icon="person-add-outline" title="Add Child Profile" subtitle="Track progress and manage classes from one place." tone="teal" />
             </TouchableOpacity>
           )}
           {/* Children selector modal */}
@@ -544,13 +547,9 @@ export default function ParentDashboard() {
              </TouchableOpacity>
           </View>
           {upcomingClasses.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-               <View style={styles.emptyIconBg}>
-                  <Ionicons name="calendar-outline" size={28} color="#9CA3AF" />
-               </View>
-               <ThemedText style={styles.emptyStateTitle}>No upcoming classes</ThemedText>
-               <ThemedText style={styles.emptyStateDesc}>Book a class to get started</ThemedText>
-            </View>
+            <LingoCard style={styles.emptyStateContainer}>
+              <LingoEmptyState icon="calendar-outline" title="No upcoming classes" subtitle="Book a class to get started." tone="gold" />
+            </LingoCard>
           ) : (
             upcomingClasses.slice(0, 2).map((classItem) => {
               // Join button logic: only enabled 15 min before to 60 min after start, and status confirmed
@@ -610,13 +609,9 @@ export default function ParentDashboard() {
              <ThemedText style={styles.sectionTitle}>History</ThemedText>
           </View>
           {pastClasses.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-               <View style={styles.emptyIconBg}>
-                  <Ionicons name="time-outline" size={28} color="#9CA3AF" />
-               </View>
-               <ThemedText style={styles.emptyStateTitle}>No class history</ThemedText>
-               <ThemedText style={styles.emptyStateDesc}>Completed or closed classes will appear here.</ThemedText>
-            </View>
+            <LingoCard style={styles.emptyStateContainer}>
+              <LingoEmptyState icon="time-outline" title="No class history" subtitle="Completed or closed classes will appear here." tone="primary" />
+            </LingoCard>
           ) : (
             pastClasses.slice(0, 2).map((classItem) => {
               const classDateTime = new Date(classItem.scheduled_date);
@@ -664,10 +659,9 @@ export default function ParentDashboard() {
            </View>
 
            {messages.length === 0 ? (
-             <View style={styles.emptyStateContainerCompact}>
-               <Ionicons name="chatbubble-ellipses-outline" size={22} color="#D1D5DB" style={{ marginBottom: 6 }} />
-               <ThemedText style={styles.emptyStateTextCompact}>No new messages</ThemedText>
-             </View>
+             <LingoCard style={styles.emptyStateContainerCompact}>
+               <LingoEmptyState icon="chatbubble-ellipses-outline" title="No new messages" subtitle="Fresh updates from teachers will appear here." tone="teal" />
+             </LingoCard>
            ) : (
              messages.map((msg) => (
                <TouchableOpacity key={msg.id} style={styles.messageRow} onPress={() => router.push('/(parent)/messages')}>
@@ -693,10 +687,9 @@ export default function ParentDashboard() {
            </View>
            
            {payments.length === 0 ? (
-             <View style={styles.emptyStateContainerCompact}>
-               <Ionicons name="wallet-outline" size={22} color="#D1D5DB" style={{ marginBottom: 6 }} />
-               <ThemedText style={styles.emptyStateTextCompact}>No recent transactions</ThemedText>
-             </View>
+             <LingoCard style={styles.emptyStateContainerCompact}>
+               <LingoEmptyState icon="wallet-outline" title="No recent transactions" subtitle="Recent payments will show up here." tone="primary" />
+             </LingoCard>
            ) : (
              payments.map((pay) => (
                <View key={pay.id} style={styles.paymentRow}>
@@ -747,35 +740,14 @@ const styles = StyleSheet.create({
   },
   
   /* Header */
-  header: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    backgroundColor: '#FFF',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 20,
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  headerTopRow: {
+  headerStatsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  greetingText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
-    fontWeight: '500',
-  },
-  userNameText: {
-    fontSize: 22,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
+    flexWrap: 'wrap',
+    gap: 10,
   },
   headerActions: {
     flexDirection: 'row',
@@ -786,7 +758,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -805,8 +779,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    borderWidth: 2.5,
-    borderColor: '#FFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -929,33 +903,11 @@ const styles = StyleSheet.create({
 
   /* Add Child Card */
   addChildCard: {
-    backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-  },
-  addChildIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#E6FFFA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  addChildTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  addChildSubtitle: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    textAlign: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
 
   /* Upcoming Classes */
@@ -1024,43 +976,12 @@ const styles = StyleSheet.create({
 
   /* Empty States */
   emptyStateContainer: {
-    alignItems: 'center',
     padding: 32,
-    backgroundColor: '#FFF',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  emptyIconBg: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  emptyStateTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 4,
-  },
-  emptyStateDesc: {
-    fontSize: 13,
-    color: '#9CA3AF',
   },
   emptyStateContainerCompact: {
     padding: 20,
-    backgroundColor: '#FFF',
     borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  emptyStateTextCompact: {
-    fontSize: 14,
-    color: '#9CA3AF',
   },
 
   /* Quick Actions */

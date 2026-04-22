@@ -1,16 +1,13 @@
-import { StyleSheet, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-// Back button removed
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoHero } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const logo = require('@/assets/images/logo.png');
 const LOGIN_STORAGE = {
   REMEMBER_ME: 'login_remember_me',
   REMEMBERED_EMAIL: 'login_remembered_email',
@@ -144,19 +141,18 @@ export default function LoginScreen() {
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
         >
           <View style={styles.content}>
-            {/* Header Section */}
-            <View style={styles.header}>
-               {/* Logo */}
-               <View style={styles.logoBadge}>
-                  <Image source={logo} style={styles.logoImage} resizeMode="contain" />
-               </View>
-               
-               <ThemedText style={styles.welcomeText}>Welcome back</ThemedText>
-               <ThemedText style={styles.subtitleText}>Please enter your details.</ThemedText>
-            </View>
+            <LingoHero
+              icon="lock-closed"
+              badge="Welcome back"
+              title="Sign in and continue learning"
+              subtitle="Return to classes, messages, and your dashboard with a bright, simple login flow."
+            />
 
-            {/* Form Section */}
-            <View style={styles.formContainer}>
+            <LingoCard style={styles.formContainer}>
+               <View style={styles.formHeaderRow}>
+                 <ThemedText style={styles.formTitle}>Your account</ThemedText>
+                 <LingoBadge label="Secure login" icon="shield-checkmark" tone="teal" />
+               </View>
                {renderInput('Email', email, setEmail, 'alina@example.com')}
                <View style={{ height: 16 }} />
                {renderInput('Password', password, setPassword, '••••••••', true)}
@@ -189,30 +185,12 @@ export default function LoginScreen() {
 
                {/* Actions */}
                <View style={styles.actionsContainer}>
-                 {/* Main Sign In Button */}
-                 <TouchableOpacity 
-                    style={[styles.primaryButton, loading && styles.buttonDisabled]}
-                    onPress={handleLogin}
-                    disabled={loading}
-                    activeOpacity={0.9}
-                 >
-                    <LinearGradient
-                      colors={loading ? ['#E5E7EB', '#E5E7EB'] : ['#4ECDC4', '#3DBDB4']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.primaryButtonGradient}
-                    >
-                       <ThemedText style={[styles.primaryButtonText, loading && { color: '#9CA3AF' }]}>
-                          {loading ? 'Signing in...' : 'Sign in'}
-                       </ThemedText>
-                    </LinearGradient>
-                 </TouchableOpacity>
-
-                 {/* Google Sign In Button
-                 <TouchableOpacity style={styles.googleButton} activeOpacity={0.8}>
-                    <Ionicons name="logo-google" size={20} color="#1F2937" style={{ marginRight: 8 }} />
-                    <ThemedText style={styles.googleButtonText}>Sign in with Google</ThemedText>
-                 </TouchableOpacity> */}
+                <LingoButton
+                  label={loading ? 'Signing in...' : 'Sign in'}
+                  icon="arrow-forward"
+                  onPress={handleLogin}
+                  loading={loading}
+                />
                </View>
 
                {/* Footer */}
@@ -222,7 +200,7 @@ export default function LoginScreen() {
                      <ThemedText style={styles.signUpLink}>Sign up</ThemedText>
                   </TouchableOpacity>
                </View>
-            </View>
+            </LingoCard>
 
           </View>
         </ScrollView>
@@ -234,7 +212,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Pure white background as per design
+    backgroundColor: LingoTheme.colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -248,73 +226,47 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
-  },
-  topNav: {
-    alignItems: 'flex-start',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-
-  /* Header */
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoBadge: {
-    marginBottom: 24,
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  logoImage: {
-    width: 80,
-    height: 80,
-  },
-  logoGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  welcomeText: {
-    fontSize: 28,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  subtitleText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '400',
+    paddingHorizontal: 20,
+    paddingTop: 28,
   },
 
   /* Form */
   formContainer: {
     width: '100%',
   },
+  formHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+  formTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
   
   /* Input Styles - Matches the "Filled" look */
   inputContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   inputLabel: {
     fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600',
-    marginBottom: 2,
+    color: LingoTheme.colors.muted,
+    fontWeight: '700',
+    marginBottom: 4,
     marginLeft: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   inputRow: {
     flexDirection: 'row',
@@ -324,7 +276,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     paddingVertical: Platform.OS === 'android' ? 4 : 2,
     paddingHorizontal: 0,
     fontWeight: '500',
@@ -347,28 +299,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
+    width: 22,
+    height: 22,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
   },
   checkboxChecked: {
-    backgroundColor: '#4ECDC4', // Theme color check
-    borderColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primary,
   },
   optionText: {
     fontSize: 14,
-    color: '#4B5563',
-    fontWeight: '500',
+    color: LingoTheme.colors.ink,
+    fontWeight: '600',
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: '#111827', // Darker text for link as per design
-    fontWeight: '700',
+    color: LingoTheme.colors.primaryDark,
+    fontWeight: '800',
   },
 
   /* Error */
@@ -382,68 +334,30 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    color: '#EF4444',
+    color: '#B91C1C',
     fontSize: 14,
     flex: 1,
   },
 
   /* Actions */
   actionsContainer: {
-    gap: 16,
-  },
-  primaryButton: {
-    borderRadius: 30, // Fully rounded pill shape
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  primaryButtonGradient: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 30,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 18,
-    borderRadius: 30, // Pill shape
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  googleButtonText: {
-    fontSize: 16,
-    color: '#1F2937',
-    fontWeight: '600',
+    marginTop: 4,
   },
 
   /* Footer */
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 40,
+    marginTop: 24,
+    flexWrap: 'wrap',
   },
   footerText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: LingoTheme.colors.muted,
   },
   signUpLink: {
     fontSize: 14,
-    color: '#111827',
-    fontWeight: '700',
+    color: LingoTheme.colors.primaryDark,
+    fontWeight: '800',
   },
 });

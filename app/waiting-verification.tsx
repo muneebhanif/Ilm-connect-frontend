@@ -11,12 +11,14 @@ import {
 } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { LingoTheme } from '@/constants/theme';
 
 interface Document {
   type: string;
@@ -337,40 +339,30 @@ export default function WaitingVerification() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Ionicons 
-              name={status === 'verified' ? 'checkmark-circle' : 'hourglass-outline'} 
-              size={48} 
-              color={status === 'verified' ? '#10B981' : '#FF6B6B'} 
-            />
+        <LingoScreenHeader
+          title={status === 'verified' ? 'Account verified!' : 'Verification pending'}
+          subtitle={status === 'verified' ? 'Your account has been verified. You can now access all teacher features.' : 'Upload your documents below to complete verification. The team will review them shortly.'}
+          badge="Teacher onboarding"
+          icon={status === 'verified' ? 'checkmark-circle-outline' : 'hourglass-outline'}
+        >
+          <View style={styles.headerStats}>
+            <LingoStatPill icon="📄" value={String(documents.length)} label="Docs" tone="primary" />
+            <LingoStatPill icon={status === 'verified' ? '✅' : '⏳'} value={status === 'verified' ? 'Done' : 'Open'} label="Status" tone={status === 'verified' ? 'teal' : 'gold'} />
           </View>
-          <ThemedText style={styles.title}>
-            {status === 'verified' ? 'Account Verified!' : 'Verification Pending'}
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>
-            {status === 'verified' 
-              ? 'Your account has been verified. You can now access all features.'
-              : 'Upload your documents below to complete verification. Our team will review them shortly.'}
-          </ThemedText>
-        </View>
+        </LingoScreenHeader>
 
-        {/* Status Card */}
-        <View style={styles.statusCard}>
+        <LingoCard style={styles.statusCard}>
           <View style={styles.statusRow}>
             <ThemedText style={styles.statusLabel}>Current Status:</ThemedText>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status || 'pending') + '20' }]}>
-              <Ionicons name={getStatusIcon(status || 'pending') as any} size={16} color={getStatusColor(status || 'pending')} />
-              <ThemedText style={[styles.statusText, { color: getStatusColor(status || 'pending') }]}>
-                {(status || 'pending').charAt(0).toUpperCase() + (status || 'pending').slice(1)}
-              </ThemedText>
-            </View>
+            <LingoBadge
+              label={(status || 'pending').charAt(0).toUpperCase() + (status || 'pending').slice(1)}
+              icon={getStatusIcon(status || 'pending') as any}
+              tone={status === 'verified' ? 'primary' : status === 'rejected' ? 'danger' : 'gold'}
+            />
           </View>
           {loading && <ActivityIndicator size="small" color="#FF6B6B" style={{ marginTop: 8 }} />}
-        </View>
+        </LingoCard>
 
-        {/* Documents Section */}
         {status !== 'verified' && (
           <View style={styles.documentsSection}>
             <ThemedText style={styles.sectionTitle}>Required Documents</ThemedText>
@@ -383,7 +375,7 @@ export default function WaitingVerification() {
               const isUploading = uploading === doc.type;
 
               return (
-                <View key={doc.type} style={styles.documentCard}>
+                <LingoCard key={doc.type} style={styles.documentCard}>
                   <View style={styles.documentHeader}>
                     <View style={styles.documentInfo}>
                       <View style={[styles.documentIcon, uploadedDoc && { backgroundColor: getStatusColor(uploadedDoc.status) + '20' }]}>
@@ -439,29 +431,24 @@ export default function WaitingVerification() {
                       </>
                     )}
                   </TouchableOpacity>
-                </View>
+                </LingoCard>
               );
             })}
 
             {!requiredDocsUploaded && (
-              <View style={styles.warningBox}>
-                <Ionicons name="information-circle-outline" size={20} color="#F59E0B" />
-                <ThemedText style={styles.warningText}>
-                  Please upload all required documents to complete verification
-                </ThemedText>
-              </View>
+              <LingoCard style={styles.warningBox}>
+                <LingoEmptyState
+                  icon="information-circle-outline"
+                  title="More documents needed"
+                  subtitle="Please upload all required documents to complete verification."
+                  tone="gold"
+                />
+              </LingoCard>
             )}
           </View>
         )}
 
-        {/* Refresh Button */}
-        <TouchableOpacity 
-          style={styles.refreshButton} 
-          onPress={refreshSession}
-        >
-          <Ionicons name="refresh-outline" size={20} color="#FF6B6B" />
-          <ThemedText style={styles.refreshButtonText}>Refresh Status</ThemedText>
-        </TouchableOpacity>
+        <LingoButton label="Refresh status" variant="secondary" icon="refresh-outline" onPress={refreshSession} style={styles.refreshButton} />
       </ScrollView>
 
       {/* Web Modal for Document Picker */}
@@ -508,7 +495,7 @@ export default function WaitingVerification() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#F8FAFB' 
+    backgroundColor: LingoTheme.colors.background 
   },
   scrollView: {
     flex: 1,
@@ -516,6 +503,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
+    gap: 18,
   },
   notificationBanner: {
     flexDirection: 'row',
@@ -537,8 +525,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 24,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
   },
   iconCircle: {
     width: 96,
@@ -568,15 +560,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   statusCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
     padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 3,
   },
   statusRow: { 
     flexDirection: 'row', 
@@ -585,23 +569,11 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusText: { 
-    fontSize: 14, 
-    fontWeight: '600',
+    color: LingoTheme.colors.ink,
+    fontWeight: '700',
   },
   documentsSection: {
-    marginBottom: 24,
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 18,
@@ -611,19 +583,11 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginBottom: 16,
   },
   documentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 2,
   },
   documentHeader: {
     flexDirection: 'row',
@@ -640,7 +604,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -650,8 +614,8 @@ const styles = StyleSheet.create({
   },
   documentLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
   },
   uploadedInfo: {
@@ -671,14 +635,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF6B6B',
+    backgroundColor: LingoTheme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 14,
     gap: 8,
   },
   reuploadButton: {
-    backgroundColor: '#6B7280',
+    backgroundColor: LingoTheme.colors.teal,
   },
   uploadingButton: {
     opacity: 0.7,
@@ -689,35 +653,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   warningBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    padding: 14,
-    borderRadius: 10,
-    gap: 10,
+    padding: 12,
     marginTop: 8,
   },
-  warningText: {
-    fontSize: 13,
-    color: '#92400E',
-    flex: 1,
-  },
   refreshButton: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14, 
-    paddingHorizontal: 24, 
-    borderRadius: 12, 
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#FF6B6B',
-    gap: 8,
-  },
-  refreshButtonText: { 
-    color: '#FF6B6B', 
-    fontWeight: '600',
-    fontSize: 15,
+    marginTop: 4,
   },
   modalOverlay: {
     flex: 1,

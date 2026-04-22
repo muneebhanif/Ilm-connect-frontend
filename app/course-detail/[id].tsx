@@ -3,12 +3,12 @@ import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-// Back button removed
-import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { SkeletonScreen } from '@/components/ui/skeleton';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface CourseDetail {
   id: string;
@@ -34,6 +34,7 @@ export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,12 +81,12 @@ export default function CourseDetailScreen() {
     return 'school';
   };
 
-  const getGradientColors = (lvl: string): [string, string] => {
+  const getLevelTone = (lvl: string): 'primary' | 'gold' | 'danger' => {
     switch (lvl) {
-      case 'beginner': return ['#10B981', '#059669'];
-      case 'intermediate': return ['#F59E0B', '#D97706'];
-      case 'advanced': return ['#EF4444', '#DC2626'];
-      default: return ['#6B7280', '#4B5563'];
+      case 'beginner': return 'primary';
+      case 'intermediate': return 'gold';
+      case 'advanced': return 'danger';
+      default: return 'gold';
     }
   };
 
@@ -94,11 +95,17 @@ export default function CourseDetailScreen() {
   if (error || !course) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
-        <ThemedText style={styles.errorText}>{error || 'Course not found'}</ThemedText>
-        <TouchableOpacity style={styles.retryButton} onPress={() => fetchCourse()}>
-          <ThemedText style={styles.retryText}>Retry</ThemedText>
-        </TouchableOpacity>
+        <View style={[styles.screenPadding, { paddingTop: topPadding, paddingBottom: bottomPadding }]}> 
+          <LingoCard>
+            <LingoEmptyState
+              icon="alert-circle-outline"
+              title="Course not found"
+              subtitle={error || 'This course could not be loaded right now. Please try again.'}
+              tone="danger"
+            />
+            <LingoButton label="Try again" onPress={() => fetchCourse()} icon="refresh-outline" style={styles.retryButton} />
+          </LingoCard>
+        </View>
       </View>
     );
   }
@@ -110,159 +117,129 @@ export default function CourseDetailScreen() {
     <View style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: (isParent && teacherId ? 144 : 40) + bottomPadding }]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => fetchCourse('refresh')} tintColor="#4ECDC4" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => fetchCourse('refresh')} tintColor={LingoTheme.colors.primary} />
         }
       >
-        {/* Header */}
-        <LinearGradient
-          colors={getGradientColors(course.level)}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.headerNav}>
-            <BackButton />
-          </View>
-          <View style={styles.headerContent}>
-            <View style={styles.subjectIconWrap}>
-              <Ionicons name={getSubjectIcon(course.subject) as any} size={32} color="#FFF" />
+        <View style={styles.screenPadding}>
+          <LingoScreenHeader
+            title={course.title}
+            subtitle={`${course.subject} • ${course.total_lessons} lesson${course.total_lessons === 1 ? '' : 's'} to explore`}
+            badge={course.is_free ? 'Free course' : 'Premium course'}
+            icon={getSubjectIcon(course.subject) as any}
+            onBack={() => router.back()}
+          >
+            <View style={styles.headerMetaRow}>
+              <LingoBadge
+                label={course.level.charAt(0).toUpperCase() + course.level.slice(1)}
+                icon="speedometer-outline"
+                tone={getLevelTone(course.level)}
+              />
+              <LingoBadge
+                label={course.is_free ? 'No cost' : `$${course.price}`}
+                icon="wallet-outline"
+                tone={course.is_free ? 'teal' : 'purple'}
+              />
             </View>
-            <ThemedText style={styles.courseTitle}>{course.title}</ThemedText>
-            <View style={styles.headerMeta}>
-              <View style={styles.levelChip}>
-                <ThemedText style={styles.levelChipText}>
-                  {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
-                </ThemedText>
-              </View>
-              <View style={styles.priceChip}>
-                <ThemedText style={styles.priceChipText}>
-                  {course.is_free ? 'Free' : `$${course.price}`}
-                </ThemedText>
-              </View>
+            <View style={styles.headerStats}>
+              <LingoStatPill icon="📚" value={String(course.total_lessons)} label="Lessons" tone="primary" />
+              <LingoStatPill icon="🎯" value={course.subject.split(' ')[0]} label="Subject" tone="teal" />
             </View>
-          </View>
-        </LinearGradient>
+          </LingoScreenHeader>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="book-outline" size={20} color="#4ECDC4" />
-            <ThemedText style={styles.statValue}>{course.total_lessons}</ThemedText>
-            <ThemedText style={styles.statLabel}>Lessons</ThemedText>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="school-outline" size={20} color="#F59E0B" />
-            <ThemedText style={styles.statValue}>{course.subject.split(' ')[0]}</ThemedText>
-            <ThemedText style={styles.statLabel}>Subject</ThemedText>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="speedometer-outline" size={20} color={getLevelColor(course.level)} />
-            <ThemedText style={styles.statValue}>{course.level.charAt(0).toUpperCase() + course.level.slice(1)}</ThemedText>
-            <ThemedText style={styles.statLabel}>Level</ThemedText>
-          </View>
-        </View>
-
-        {/* Description */}
         {course.description ? (
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>About this course</ThemedText>
-            <View style={styles.descCard}>
+            <LingoCard>
               <ThemedText style={styles.descText}>{course.description}</ThemedText>
-            </View>
+            </LingoCard>
           </View>
         ) : null}
 
-        {/* Teacher Card */}
         {course.profiles && (
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Instructor</ThemedText>
-            <TouchableOpacity
-              style={styles.teacherCard}
-              onPress={() => {
-                if (teacherId) {
-                  router.push(`/teacher-profile/${teacherId}` as any);
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              {course.profiles.avatar_url ? (
-                <Image source={{ uri: course.profiles.avatar_url }} style={styles.teacherAvatar} />
-              ) : (
-                <View style={[styles.teacherAvatar, styles.avatarFallback]}>
-                  <ThemedText style={styles.avatarInitial}>
-                    {course.profiles.full_name?.charAt(0) || 'T'}
-                  </ThemedText>
+            <LingoCard>
+              <TouchableOpacity
+                style={styles.teacherCard}
+                onPress={() => {
+                  if (teacherId) {
+                    router.push(`/teacher-profile/${teacherId}` as any);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                {course.profiles.avatar_url ? (
+                  <Image source={{ uri: course.profiles.avatar_url }} style={styles.teacherAvatar} />
+                ) : (
+                  <View style={[styles.teacherAvatar, styles.avatarFallback]}>
+                    <ThemedText style={styles.avatarInitial}>
+                      {course.profiles.full_name?.charAt(0) || 'T'}
+                    </ThemedText>
+                  </View>
+                )}
+                <View style={styles.teacherBody}>
+                  <ThemedText style={styles.teacherName}>{course.profiles.full_name}</ThemedText>
+                  {course.profiles.bio ? (
+                    <ThemedText style={styles.teacherBio} numberOfLines={2}>{course.profiles.bio}</ThemedText>
+                  ) : (
+                    <ThemedText style={styles.teacherBio}>Tap to view the instructor profile and teaching background.</ThemedText>
+                  )}
                 </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <ThemedText style={styles.teacherName}>{course.profiles.full_name}</ThemedText>
-                {course.profiles.bio ? (
-                  <ThemedText style={styles.teacherBio} numberOfLines={2}>{course.profiles.bio}</ThemedText>
-                ) : null}
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
+                <Ionicons name="chevron-forward" size={20} color={LingoTheme.colors.muted} />
+              </TouchableOpacity>
+            </LingoCard>
           </View>
         )}
 
-        {/* What You'll Learn */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>What you'll learn</ThemedText>
-          <View style={styles.learnCard}>
+          <LingoCard style={styles.learnCard}>
             <View style={styles.learnRow}>
-              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={18} color={LingoTheme.colors.primary} />
               <ThemedText style={styles.learnText}>
                 {course.total_lessons} structured lessons in {course.subject}
               </ThemedText>
             </View>
             <View style={styles.learnRow}>
-              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={18} color={LingoTheme.colors.primary} />
               <ThemedText style={styles.learnText}>
                 {course.level.charAt(0).toUpperCase() + course.level.slice(1)} level content
               </ThemedText>
             </View>
             <View style={styles.learnRow}>
-              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={18} color={LingoTheme.colors.primary} />
               <ThemedText style={styles.learnText}>
                 Learn at your own pace with video lessons
               </ThemedText>
             </View>
             <View style={styles.learnRow}>
-              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={18} color={LingoTheme.colors.primary} />
               <ThemedText style={styles.learnText}>
                 Direct access to your instructor for questions
               </ThemedText>
             </View>
-          </View>
+          </LingoCard>
         </View>
 
-        <View style={{ height: 120 }} />
+        </View>
       </ScrollView>
 
-      {/* Bottom Action Bar */}
       {isParent && teacherId && (
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: bottomPadding + 12 }]}> 
           <View style={styles.bottomPrice}>
             <ThemedText style={styles.bottomPriceLabel}>Price</ThemedText>
             <ThemedText style={styles.bottomPriceValue}>
               {course.is_free ? 'Free' : `$${course.price}`}
             </ThemedText>
           </View>
-          <TouchableOpacity
-            style={styles.bookButton}
+          <LingoButton
+            label="Book this teacher"
+            icon="calendar-outline"
             onPress={() => router.push(`/book-teacher/${teacherId}` as any)}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#4ECDC4', '#45B7AA']}
-              style={styles.bookGradient}
-            >
-              <Ionicons name="calendar-outline" size={20} color="#FFF" />
-              <ThemedText style={styles.bookText}>Book This Teacher</ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
+            style={styles.bookButton}
+          />
         </View>
       )}
     </View>
@@ -272,166 +249,57 @@ export default function CourseDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    paddingHorizontal: 20,
   },
-  errorText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 12,
-    textAlign: 'center',
+  screenPadding: {
+    paddingHorizontal: 20,
   },
   retryButton: {
-    marginTop: 16,
-    backgroundColor: '#4ECDC4',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  retryText: {
-    color: '#FFF',
-    fontWeight: '700',
+    marginTop: 20,
   },
   scrollContent: {
-    paddingBottom: 40,
+    gap: 20,
   },
-
-  /* Header */
-  header: {
-    paddingTop: 50,
-    paddingBottom: 32,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-  },
-  headerNav: {
-    marginBottom: 20,
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
-  subjectIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  courseTitle: {
-    fontSize: 24,
-    fontFamily: Fonts.rounded,
-    fontWeight: '800',
-    color: '#FFF',
-    textAlign: 'center',
-    marginBottom: 14,
-  },
-  headerMeta: {
+  headerMetaRow: {
     flexDirection: 'row',
     gap: 10,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginBottom: 16,
   },
-  levelChip: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  levelChipText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  priceChip: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  priceChipText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  /* Stats */
-  statsRow: {
+  headerStats: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 20,
-    marginTop: -16,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 6,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-
-  /* Section */
   section: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-
-  /* Description */
-  descCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+    paddingHorizontal: 4,
   },
   descText: {
     fontSize: 15,
-    color: '#374151',
+    color: LingoTheme.colors.ink,
     lineHeight: 24,
   },
-
-  /* Teacher */
   teacherCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+  },
+  teacherBody: {
+    flex: 1,
+    gap: 4,
   },
   teacherAvatar: {
     width: 52,
@@ -439,38 +307,29 @@ const styles = StyleSheet.create({
     borderRadius: 26,
   },
   avatarFallback: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: LingoTheme.colors.softTeal,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInitial: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#6B7280',
+    fontWeight: '800',
+    color: LingoTheme.colors.teal,
   },
   teacherName: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 2,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   teacherBio: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     lineHeight: 18,
   },
-
-  /* What You'll Learn */
   learnCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    padding: 18,
     gap: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
   },
   learnRow: {
     flexDirection: 'row',
@@ -479,58 +338,40 @@ const styles = StyleSheet.create({
   },
   learnText: {
     fontSize: 14,
-    color: '#374151',
+    color: LingoTheme.colors.ink,
     flex: 1,
     lineHeight: 20,
   },
-
-  /* Bottom Bar */
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 34,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
+    paddingTop: 16,
+    borderTopWidth: 2,
+    borderTopColor: LingoTheme.colors.border,
+    gap: 16,
   },
   bottomPrice: {
-    marginRight: 16,
+    minWidth: 84,
   },
   bottomPriceLabel: {
     fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: LingoTheme.colors.muted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   bottomPriceValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
+    color: LingoTheme.colors.ink,
   },
   bookButton: {
     flex: 1,
-  },
-  bookGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 8,
-  },
-  bookText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
   },
 });

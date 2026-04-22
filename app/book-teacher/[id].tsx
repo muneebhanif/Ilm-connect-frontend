@@ -3,14 +3,15 @@ import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Back button removed
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { BookTeacherSkeleton } from '@/components/ui/dashboard-skeletons';
 import { DateTime } from 'luxon';
 import { useStripe } from '@/lib/stripe';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 /* Safe Platform Resolve */
 const OS = typeof Platform !== 'undefined' ? Platform.OS : 'web';
@@ -44,6 +45,7 @@ export default function BookTeacherScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { topPadding, bottomPadding } = useSafePadding();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -312,8 +314,6 @@ export default function BookTeacherScreen() {
           defaultBillingDetails: { name: 'Parent' },
           style: 'automatic',
           returnURL: 'ilmconnect://payment-complete',
-          // Test mode hint shown in the sheet
-          testEnv: true,
         });
 
         if (initError) {
@@ -405,11 +405,10 @@ export default function BookTeacherScreen() {
   if (error || !teacher) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
-        <ThemedText style={styles.errorText}>{error || 'Teacher not found'}</ThemedText>
-        <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
-          <ThemedText style={styles.retryText}>Go Back</ThemedText>
-        </TouchableOpacity>
+        <LingoCard style={styles.errorCard}>
+          <LingoEmptyState icon="alert-circle-outline" title="Teacher not found" subtitle={error || 'The teacher profile could not be loaded right now.'} tone="danger" />
+          <LingoButton label="Go back" onPress={() => router.back()} variant="secondary" style={styles.retryButton} />
+        </LingoCard>
       </View>
     );
   }
@@ -419,19 +418,25 @@ export default function BookTeacherScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Ionicons name="arrow-back" size={22} color="#1F2937" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Book Class</ThemedText>
-        <View style={{ width: 40 }} />
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        <LingoScreenHeader
+          title="Book class"
+          subtitle="Choose a child, subject, schedule, and package to confirm the lesson."
+          badge="Parent booking"
+          icon="calendar-outline"
+          onBack={() => router.back()}
+        >
+          <View style={styles.headerStats}>
+            <LingoStatPill icon="👧" value={String(selectedChildren.length)} label="Children" tone="primary" />
+            <LingoStatPill icon="💳" value={`$${totalAmount.toFixed(0)}`} label="Current total" tone="teal" />
+          </View>
+        </LingoScreenHeader>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: bottomPadding + 120 }} showsVerticalScrollIndicator={false}>
         
-        {/* Hero Card */}
         <LinearGradient
-          colors={['#4ECDC4', '#2BCBBA']}
+          colors={['#ECFCD8', '#FFFFFF', '#F2E8FF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.teacherCard}
@@ -444,20 +449,14 @@ export default function BookTeacherScreen() {
           <View style={styles.teacherInfo}>
             <ThemedText style={styles.teacherName}>{teacher.profiles.full_name}</ThemedText>
             <ThemedText style={styles.teacherSub}>{teacher.subjects.join(' • ') || 'Islamic Studies'}</ThemedText>
-            <View style={styles.rateTag}>
-              <Ionicons name="pricetag" size={12} color="#FFF" />
-              <ThemedText style={styles.rateText}>${teacher.hourly_rate}/hr</ThemedText>
-            </View>
+            <LingoBadge label={`$${teacher.hourly_rate}/hr`} icon="pricetag-outline" tone="teal" />
           </View>
         </LinearGradient>
 
-        {/* Step 1: Children */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>1. Select Child</ThemedText>
           {children.length === 0 ? (
-            <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/(parent)/dashboard')}>
-              <ThemedText style={styles.addBtnText}>+ Add Child Profile</ThemedText>
-            </TouchableOpacity>
+            <LingoButton label="Add child profile" variant="secondary" icon="add-outline" onPress={() => router.push('/(parent)/dashboard')} style={styles.addBtn} />
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowScroll}>
               {children.map((child) => {
@@ -490,10 +489,9 @@ export default function BookTeacherScreen() {
               })}
             </ScrollView>
           )}
-        </View>
+        </LingoCard>
 
-        {/* Step 2: Subject */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>2. Select Subject</ThemedText>
           <View style={styles.subjectRow}>
             {derivedSubjectOptions.map((opt) => {
@@ -516,10 +514,9 @@ export default function BookTeacherScreen() {
               );
             })}
           </View>
-        </View>
+        </LingoCard>
 
-        {/* Step 3: Date */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>3. Select Date</ThemedText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowScroll}>
             {dates.map((date, i) => {
@@ -540,10 +537,9 @@ export default function BookTeacherScreen() {
               );
             })}
           </ScrollView>
-        </View>
+        </LingoCard>
 
-        {/* Step 4: Time */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>4. Select Time</ThemedText>
           {availableTimeSlots.length > 0 ? (
             <View style={styles.timeGrid}>
@@ -560,15 +556,11 @@ export default function BookTeacherScreen() {
               ))}
             </View>
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={24} color="#9CA3AF" />
-              <ThemedText style={styles.emptyText}>No slots available for this date.</ThemedText>
-            </View>
+            <LingoEmptyState icon="calendar-outline" title="No slots available" subtitle="Try another date to view available times for this teacher." tone="gold" />
           )}
-        </View>
+        </LingoCard>
 
-        {/* Step 5: Packages */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>5. Select Package</ThemedText>
           {packages.map((pkg) => (
             <TouchableOpacity
@@ -591,7 +583,7 @@ export default function BookTeacherScreen() {
               </View>
             </TouchableOpacity>
           ))}
-        </View>
+        </LingoCard>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -607,60 +599,47 @@ export default function BookTeacherScreen() {
           <ThemedText style={styles.totalLabel}>Total</ThemedText>
           <ThemedText style={styles.totalValue}>${totalAmount.toFixed(2)}</ThemedText>
         </View>
-        <TouchableOpacity 
-          style={[styles.bookBtn, (submitting || paymentLoading || !selectedSubject || !selectedTime || selectedChildren.length === 0) && styles.btnDisabled]}
+        <LingoButton
+          label={totalAmount > 0 ? `Pay $${totalAmount.toFixed(2)}` : 'Book free class'}
           onPress={handleBooking}
-          disabled={submitting || paymentLoading || !selectedSubject || !selectedTime || selectedChildren.length === 0}
-        >
-          {submitting || paymentLoading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <ThemedText style={styles.bookBtnText}>
-              {totalAmount > 0 ? `Pay $${totalAmount.toFixed(2)}` : 'Book Free Class'}
-            </ThemedText>
-          )}
-        </TouchableOpacity>
+          loading={submitting || paymentLoading}
+          disabled={!selectedSubject || !selectedTime || selectedChildren.length === 0}
+          style={[styles.bookBtn, (submitting || paymentLoading || !selectedSubject || !selectedTime || selectedChildren.length === 0) && styles.btnDisabled]}
+        />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: LingoTheme.colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorCard: { width: '100%', maxWidth: 340 },
   
-  /* Header */
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
-    backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6'
+    paddingHorizontal: 20, paddingBottom: 12,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827', fontFamily: Fonts.rounded },
+  headerStats: { flexDirection: 'row', justifyContent: 'center', gap: 12, flexWrap: 'wrap' },
   
-  content: { padding: 20 },
+  content: { paddingHorizontal: 20 },
 
   /* Hero Card */
   teacherCard: {
-    flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 20,
-    marginBottom: 24, shadowColor: '#4ECDC4', shadowOpacity: 0.3, shadowRadius: 8, elevation: 5
+    flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24,
+    marginBottom: 24, borderWidth: 2, borderColor: LingoTheme.colors.border
   },
   avatar: {
-    width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)'
+    width: 56, height: 56, borderRadius: 28, backgroundColor: LingoTheme.colors.softTeal,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF'
   },
-  avatarText: { fontSize: 24, fontWeight: '700', color: '#FFF' },
+  avatarText: { fontSize: 24, fontWeight: '700', color: LingoTheme.colors.teal },
   teacherInfo: { marginLeft: 16, flex: 1 },
-  teacherName: { fontSize: 18, fontWeight: '700', color: '#FFF' },
-  teacherSub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginBottom: 6 },
-  rateTag: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start', gap: 4 
-  },
-  rateText: { color: '#FFF', fontWeight: '600', fontSize: 12 },
+  teacherName: { fontSize: 18, fontWeight: '800', color: LingoTheme.colors.ink },
+  teacherSub: { fontSize: 13, color: LingoTheme.colors.muted, marginBottom: 6 },
 
   /* Sections */
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#374151', marginBottom: 12, textTransform: 'uppercase' },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#374151', marginBottom: 12, textTransform: 'uppercase' },
   rowScroll: { gap: 12, paddingRight: 20 },
 
   feedbackBanner: {
@@ -681,24 +660,22 @@ const styles = StyleSheet.create({
 
   /* Children */
   addBtn: {
-    padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#4ECDC4', 
-    borderStyle: 'dashed', backgroundColor: '#F0FDFA', alignItems: 'center'
+    marginTop: 4,
   },
-  addBtnText: { color: '#4ECDC4', fontWeight: '600' },
   
   childChip: {
     alignItems: 'center', padding: 12, borderRadius: 16, backgroundColor: '#FFF',
-    borderWidth: 2, borderColor: '#F3F4F6', minWidth: 85, position: 'relative'
+    borderWidth: 2, borderColor: LingoTheme.colors.border, minWidth: 85, position: 'relative'
   },
-  childChipSelected: { borderColor: '#4ECDC4', backgroundColor: '#F0FDFA' },
+  childChipSelected: { borderColor: LingoTheme.colors.primaryDark, backgroundColor: LingoTheme.colors.softPrimary },
   childAvatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: LingoTheme.colors.surfaceAlt,
     justifyContent: 'center', alignItems: 'center', marginBottom: 8
   },
-  childAvatarSelected: { backgroundColor: '#4ECDC4' },
+  childAvatarSelected: { backgroundColor: LingoTheme.colors.primary },
   childInit: { fontSize: 18, fontWeight: '600', color: '#6B7280' },
   childName: { fontSize: 13, fontWeight: '500', color: '#6B7280' },
-  childNameSelected: { color: '#4ECDC4', fontWeight: '700' },
+  childNameSelected: { color: LingoTheme.colors.primaryDark, fontWeight: '700' },
   checkBadge: {
     position: 'absolute', top: 8, right: 8, width: 16, height: 16, 
     borderRadius: 8, backgroundColor: '#4ECDC4', justifyContent: 'center', alignItems: 'center'
@@ -709,7 +686,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', padding: 12, borderRadius: 14, backgroundColor: '#FFF',
     borderWidth: 1, borderColor: '#E5E7EB', minWidth: 64
   },
-  dateCardSelected: { backgroundColor: '#4ECDC4', borderColor: '#4ECDC4', elevation: 2 },
+  dateCardSelected: { backgroundColor: LingoTheme.colors.primary, borderColor: LingoTheme.colors.primaryDark, elevation: 2 },
   dayText: { fontSize: 12, color: '#6B7280', marginBottom: 4, fontWeight: '500' },
   dateText: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
   textSelected: { color: '#FFF' },
@@ -722,8 +699,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#E5E7EB'
   },
   subjectChipSelected: { 
-    backgroundColor: '#4ECDC4', borderColor: '#4ECDC4',
-    shadowColor: '#4ECDC4', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2
+    backgroundColor: LingoTheme.colors.primary, borderColor: LingoTheme.colors.primaryDark,
   },
   subjectText: { fontSize: 15, fontWeight: '600', color: '#4B5563' },
   subjectTextSelected: { color: '#FFF' },
@@ -734,7 +710,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#FFF',
     borderWidth: 1, borderColor: '#E5E7EB', width: '30%', alignItems: 'center'
   },
-  timeChipSelected: { backgroundColor: '#4ECDC4', borderColor: '#4ECDC4' },
+  timeChipSelected: { backgroundColor: LingoTheme.colors.primary, borderColor: LingoTheme.colors.primaryDark },
   timeText: { fontSize: 14, fontWeight: '500', color: '#4B5563' },
   emptyState: { padding: 20, alignItems: 'center', gap: 8 },
   emptyText: { color: '#9CA3AF' },
@@ -744,38 +720,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 16,
     borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F3F4F6'
   },
-  pkgCardSelected: { borderColor: '#4ECDC4', backgroundColor: '#F0FDFA' },
+  pkgCardSelected: { borderColor: LingoTheme.colors.primaryDark, backgroundColor: LingoTheme.colors.softPrimary },
   pkgInfo: { flex: 1 },
   pkgName: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
   pkgDesc: { fontSize: 13, color: '#6B7280', marginTop: 2 },
   pkgRight: { alignItems: 'flex-end', gap: 2 },
   strikePrice: { fontSize: 12, color: '#9CA3AF', textDecorationLine: 'line-through' },
-  finalPrice: { fontSize: 16, fontWeight: '700', color: '#4ECDC4' },
+  finalPrice: { fontSize: 16, fontWeight: '700', color: LingoTheme.colors.primaryDark },
   radio: {
     width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#D1D5DB',
     justifyContent: 'center', alignItems: 'center', marginTop: 4
   },
-  radioActive: { borderColor: '#4ECDC4' },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#4ECDC4' },
+  radioActive: { borderColor: LingoTheme.colors.primaryDark },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: LingoTheme.colors.primaryDark },
 
   /* Footer */
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF',
-    borderTopWidth: 1, borderTopColor: '#F3F4F6', flexDirection: 'row', alignItems: 'center',
+    borderTopWidth: 2, borderTopColor: LingoTheme.colors.border, flexDirection: 'row', alignItems: 'center',
     padding: 20, shadowColor: '#000', shadowOffset: {width:0, height:-2}, shadowOpacity: 0.05, shadowRadius: 4, elevation: 10
   },
   footerInfo: { flex: 1 },
   totalLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   totalValue: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  bookBtn: {
-    backgroundColor: '#4ECDC4', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12,
-    shadowColor: '#4ECDC4', shadowOffset: {width:0, height:4}, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4
-  },
+  bookBtn: { minWidth: 180 },
   btnDisabled: { backgroundColor: '#E5E7EB', shadowOpacity: 0 },
-  bookBtnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
 
-  /* Error */
   errorText: { fontSize: 16, color: '#374151', marginVertical: 12 },
-  retryButton: { padding: 10 },
-  retryText: { color: '#4ECDC4', fontWeight: '600' },
+  retryButton: { marginTop: 20 },
 });

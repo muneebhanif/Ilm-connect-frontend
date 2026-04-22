@@ -7,7 +7,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SkeletonScreen } from '@/components/ui/skeleton';
@@ -35,7 +36,7 @@ interface ClassSession {
 export default function ClassesScreen() {
   const router = useRouter();
   const { user, signOut, refreshSession } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [allClasses, setAllClasses] = useState<ClassSession[]>([]);
@@ -276,7 +277,7 @@ export default function ClassesScreen() {
     const statusLabel = isScheduled ? 'scheduled' : (isCompleted ? 'completed' : (isCancelled ? 'cancelled' : status));
 
     return (
-      <View key={classItem.id} style={[styles.classCard, isPast && styles.classCardPast]}>
+      <LingoCard key={classItem.id} style={[styles.classCard, isPast && styles.classCardPast]}>
         <View style={styles.cardHeader}>
           <View style={styles.teacherInfo}>
              <View style={[styles.avatar, isPast && styles.avatarPast]}>
@@ -368,7 +369,7 @@ export default function ClassesScreen() {
             <ThemedText style={styles.rateButtonText}>Rate This Class</ThemedText>
           </TouchableOpacity>
         )}
-      </View>
+      </LingoCard>
     );
   };
 
@@ -377,74 +378,78 @@ export default function ClassesScreen() {
   }
 
   const displayClasses = activeTab === 'upcoming' ? upcomingClasses : pastClasses;
+  const completedCount = pastClasses.filter(item => String(item.status || '').toLowerCase() === 'completed').length;
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <ThemedText style={styles.headerTitle}>My Classes</ThemedText>
-        <ThemedText style={styles.headerSubtitle}>
-          Manage your schedule and history
-        </ThemedText>
+      <View style={[styles.header, { paddingTop: topPadding }]}> 
+        <LingoScreenHeader
+          title="My classes"
+          subtitle="Keep track of booked lessons, class history, and rating follow-ups from one place."
+          badge="Parent dashboard"
+          icon="school-outline"
+        >
+          <View style={styles.headerStatsRow}>
+            <LingoStatPill icon="📅" value={String(upcomingClasses.length)} label="Upcoming" tone="primary" />
+            <LingoStatPill icon="✅" value={String(completedCount)} label="Completed" tone="teal" />
+          </View>
+          <View style={styles.headerBadgeRow}>
+            <LingoBadge label={`${allClasses.length} total classes`} icon="albums-outline" tone="gold" />
+            <LingoBadge label={activeTab === 'upcoming' ? 'Upcoming focus' : 'History focus'} icon="sparkles" tone="purple" />
+          </View>
+        </LingoScreenHeader>
       </View>
 
-      {/* Custom Tab Switcher */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'upcoming' && styles.tabActive]}
-          onPress={() => setActiveTab('upcoming')}
-        >
-          <ThemedText style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
-            Upcoming
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'past' && styles.tabActive]}
-          onPress={() => setActiveTab('past')}
-        >
-          <ThemedText style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
-            History
-          </ThemedText>
-        </TouchableOpacity>
+      <View style={styles.tabContainerWrap}>
+        <LingoCard style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'upcoming' && styles.tabActive]}
+            onPress={() => setActiveTab('upcoming')}
+          >
+            <ThemedText style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
+              Upcoming
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'past' && styles.tabActive]}
+            onPress={() => setActiveTab('past')}
+          >
+            <ThemedText style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
+              History
+            </ThemedText>
+          </TouchableOpacity>
+        </LingoCard>
       </View>
 
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 24 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => loadClasses('refresh')}
+            tintColor={LingoTheme.colors.primary}
           />
         }
       >
         {displayClasses.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconBg}>
-               <Ionicons 
-                 name={activeTab === 'upcoming' ? "calendar-clear-outline" : "time-outline"} 
-                 size={40} 
-                 color="#9CA3AF" 
-               />
-            </View>
-            <ThemedText style={styles.emptyTitle}>
-              {activeTab === 'upcoming' ? 'No Upcoming Classes' : 'No Class History'}
-            </ThemedText>
-            <ThemedText style={styles.emptyText}>
-              {activeTab === 'upcoming' 
-                ? 'Your scheduled classes will appear here.'
-                : 'Classes you complete will be listed here.'
-              }
-            </ThemedText>
+          <LingoCard style={styles.emptyCard}>
+            <LingoEmptyState
+              icon={activeTab === 'upcoming' ? 'calendar-clear-outline' : 'time-outline'}
+              title={activeTab === 'upcoming' ? 'No upcoming classes' : 'No class history yet'}
+              subtitle={activeTab === 'upcoming' ? 'Booked lessons will appear here as soon as they are confirmed.' : 'Completed classes and ratings will show up here after lessons finish.'}
+              tone={activeTab === 'upcoming' ? 'primary' : 'teal'}
+            />
             {activeTab === 'upcoming' && (
-               <TouchableOpacity 
-                 style={styles.bookBtn}
-                 onPress={() => router.push('/(parent)/browse-teachers')}
-               >
-                 <ThemedText style={styles.bookBtnText}>Book a Teacher</ThemedText>
-               </TouchableOpacity>
+              <LingoButton 
+                label="Book a teacher"
+                icon="search-outline"
+                onPress={() => router.push('/(parent)/browse-teachers')}
+                style={styles.bookBtn}
+              />
             )}
-          </View>
+          </LingoCard>
         ) : (
           displayClasses.map(item => renderClassCard(item, activeTab === 'past'))
         )}
@@ -471,7 +476,7 @@ export default function ClassesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   centerContent: {
     justifyContent: 'center',
@@ -480,82 +485,68 @@ const styles = StyleSheet.create({
   
   /* Header */
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
+  headerStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 14,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
+  headerBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
   },
 
-  /* Tabs */
+  tabContainerWrap: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
   tabContainer: {
     flexDirection: 'row',
-    margin: 20,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 12,
     padding: 4,
+    gap: 8,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 14,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   tabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primaryDark,
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
   },
   tabTextActive: {
-    color: '#111827',
+    color: '#FFFFFF',
   },
 
-  /* Scroll Content */
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingTop: 8,
+    gap: 16,
   },
 
-  /* Class Card */
   classCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
   classCardPast: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#E5E7EB',
-    shadowOpacity: 0,
+    opacity: 0.85,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -572,7 +563,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.teal,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -586,12 +577,12 @@ const styles = StyleSheet.create({
   },
   teacherName: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   subjectName: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
   },
   textPast: {
     color: '#9CA3AF',
@@ -599,7 +590,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 999,
   },
   statusConfirmed: {
     backgroundColor: '#D1FAE5',
@@ -612,7 +603,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   textConfirmed: { color: '#059669' },
@@ -621,7 +612,7 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.border,
     marginBottom: 16,
   },
   detailsRow: {
@@ -636,13 +627,12 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#374151',
   },
 
-  /* Join Button */
   joinButton: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   joinButtonDisabled: {
@@ -652,74 +642,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     gap: 8,
   },
   joinButtonText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFF',
   },
   joinButtonTextDisabled: {
     color: '#9CA3AF',
   },
 
-  /* Rate Button */
   rateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#4ECDC4',
-    backgroundColor: '#F0FDFA',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.teal,
+    backgroundColor: LingoTheme.colors.softTeal,
     gap: 8,
   },
   rateButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#4ECDC4',
+    fontWeight: '800',
+    color: LingoTheme.colors.teal,
   },
 
-  /* Empty State */
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 60,
-  },
-  emptyIconBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 40,
+  emptyCard: {
+    marginTop: 8,
   },
   bookBtn: {
     marginTop: 24,
-    backgroundColor: '#4ECDC4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
   },
   bookBtnText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 14,
   },
 });

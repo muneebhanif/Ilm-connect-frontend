@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, ScrollView, RefreshControl, Image, Animated, Dimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, RefreshControl, Image, Animated } from 'react-native';
 import { StudentDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/lib/auth-context';
@@ -10,6 +10,7 @@ import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { Fonts, LingoTheme } from '@/constants/theme';
 
 interface ClassItem {
   id: string;
@@ -211,7 +212,7 @@ export default function StudentDashboardScreen() {
       >
         {/* Premium Header */}
         <LinearGradient
-          colors={['#0F766E', '#14B8A6', '#2DD4BF']}
+          colors={['#58CC02', '#14B8A6', '#7C3AED']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.header, { paddingTop: topPadding }]}
@@ -328,7 +329,7 @@ export default function StudentDashboardScreen() {
               onPress={() => router.push('/(student)/classes' as any)}
             >
               <LinearGradient
-                colors={['#4ECDC4', '#2BCBBA']}
+                colors={['#14B8A6', '#58CC02']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.nextClassGradient}
@@ -494,7 +495,7 @@ export default function StudentDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -505,10 +506,10 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingBottom: 26,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -519,26 +520,27 @@ const styles = StyleSheet.create({
   greetingText: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    fontWeight: '700',
     marginBottom: 4,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 26,
+    fontFamily: Fonts.rounded,
     fontWeight: '800',
     color: '#FFF',
   },
   avatarButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.4)',
     overflow: 'hidden',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 20,
   },
   streakContainer: {
     flexDirection: 'row',
@@ -547,11 +549,13 @@ const styles = StyleSheet.create({
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 999,
     gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   streakText: {
     color: '#FFF',
@@ -561,11 +565,13 @@ const styles = StyleSheet.create({
   starsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 999,
     gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   starsText: {
     color: '#FFF',
@@ -583,23 +589,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginBottom: 24,
-    marginTop: -16,
+    marginTop: -20,
   },
   statCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 14,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    ...LingoTheme.shadow.card,
   },
   statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -611,22 +615,22 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
 
   /* Progress Card */
   progressCard: {
     backgroundColor: '#FFF',
-    borderRadius: 20,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 24,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+    ...LingoTheme.shadow.card,
   },
   progressRow: {
     flexDirection: 'row',
@@ -642,28 +646,27 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    fontFamily: Fonts.rounded,
+    color: LingoTheme.colors.ink,
   },
   seeAllText: {
     fontSize: 14,
-    color: '#14B8A6',
-    fontWeight: '600',
+    color: LingoTheme.colors.primaryDark,
+    fontWeight: '800',
   },
 
   /* Next Class Card */
   nextClassCard: {
     marginBottom: 24,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
+    ...LingoTheme.shadow.card,
   },
   nextClassGradient: {
     padding: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   nextClassTop: {
     flexDirection: 'row',
@@ -674,7 +677,7 @@ const styles = StyleSheet.create({
   nextClassIconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -693,10 +696,10 @@ const styles = StyleSheet.create({
   countdownBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: 999,
     gap: 4,
   },
   countdownText: {
@@ -722,12 +725,13 @@ const styles = StyleSheet.create({
   /* Empty State */
   emptyCard: {
     backgroundColor: '#FFF',
-    borderRadius: 20,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 32,
     alignItems: 'center',
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    ...LingoTheme.shadow.card,
   },
   emptyIconBg: {
     width: 56,
@@ -740,13 +744,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
   },
   emptyDesc: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: LingoTheme.colors.muted,
   },
 
   /* Quick Actions */
@@ -759,14 +763,12 @@ const styles = StyleSheet.create({
   actionCard: {
     width: '47%',
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 18,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...LingoTheme.shadow.card,
   },
   actionIconWrap: {
     width: 48,
@@ -778,8 +780,8 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
 
   /* Recent Activity */
@@ -787,14 +789,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 16,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    ...LingoTheme.shadow.card,
   },
   recentIcon: {
     width: 40,
@@ -806,13 +806,13 @@ const styles = StyleSheet.create({
   },
   recentTitle: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 2,
   },
   recentMeta: {
     fontSize: 12,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
   },
   statusBadge: {
     paddingHorizontal: 10,

@@ -10,6 +10,8 @@ import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguagesMultiSelectDropdown } from '@/components/dropdowns';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 
 interface TeacherProfileData {
   full_name: string;
@@ -571,7 +573,9 @@ export default function EditTeacherProfileScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
+        <LingoCard style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#4ECDC4" />
+        </LingoCard>
       </View>
     );
   }
@@ -593,18 +597,26 @@ export default function EditTeacherProfileScreen() {
         </View>
       )}
       
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
-        <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
-          {saving ? (
-            <ActivityIndicator size="small" color="#4ECDC4" />
-          ) : (
-            <ThemedText style={styles.saveText}>Save</ThemedText>
-          )}
-        </TouchableOpacity>
+      <View style={[styles.headerWrap, { paddingTop: topPadding }]}>
+        <LingoScreenHeader
+          title="Edit Profile"
+          subtitle="Refresh your teaching story, pricing, and showcase assets."
+          badge="Teacher profile"
+          icon="create-outline"
+          onBack={() => router.back()}
+        >
+          <View style={styles.headerActionsRow}>
+            <LingoBadge label={`${profile.subjects.length} subjects`} icon="book-outline" tone="teal" />
+            <LingoBadge label={`${profile.languages.length} languages`} icon="language-outline" tone="gold" />
+            <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <ThemedText style={styles.saveText}>Save</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </LingoScreenHeader>
       </View>
 
       <KeyboardAvoidingView 
@@ -614,7 +626,7 @@ export default function EditTeacherProfileScreen() {
       >
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Picture */}
-        <View style={styles.avatarSection}>
+        <LingoCard style={styles.avatarSection}>
           <TouchableOpacity 
             onPress={() => {
               console.log('👆 Avatar TouchableOpacity pressed!');
@@ -635,10 +647,10 @@ export default function EditTeacherProfileScreen() {
             </View>
           </TouchableOpacity>
           <ThemedText style={styles.changePhotoText}>Tap to change photo</ThemedText>
-        </View>
+        </LingoCard>
 
         {/* Basic Info */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Basic Information</ThemedText>
           
           <View style={styles.inputGroup}>
@@ -696,10 +708,10 @@ export default function EditTeacherProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </LingoCard>
 
         {/* Bio */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>About You</ThemedText>
           <TextInput
             style={styles.textArea}
@@ -711,10 +723,10 @@ export default function EditTeacherProfileScreen() {
             numberOfLines={4}
             textAlignVertical="top"
           />
-        </View>
+        </LingoCard>
 
         {/* Subjects */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Subjects You Teach</ThemedText>
           <View style={styles.chipContainer}>
             {AVAILABLE_SUBJECTS.map((subject) => (
@@ -729,10 +741,10 @@ export default function EditTeacherProfileScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </LingoCard>
 
         {/* Languages */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Languages</ThemedText>
           <View style={styles.inputGroup}>
             <LanguagesMultiSelectDropdown
@@ -741,10 +753,10 @@ export default function EditTeacherProfileScreen() {
               label=""
             />
           </View>
-        </View>
+        </LingoCard>
 
         {/* Hourly Rate */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Pricing</ThemedText>
           <View style={styles.inputGroup}>
             <ThemedText style={styles.label}>Hourly Rate (USD)</ThemedText>
@@ -793,10 +805,10 @@ export default function EditTeacherProfileScreen() {
               <ThemedText style={styles.perHour}>/month</ThemedText>
             </View>
           </View>
-        </View>
+        </LingoCard>
 
         {/* Portfolio Media */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Portfolio Media</ThemedText>
           <ThemedText style={styles.portfolioHint}>
             Upload photos and short videos to showcase your teaching quality.
@@ -861,14 +873,12 @@ export default function EditTeacherProfileScreen() {
                 </View>
               ))
             ) : (
-              <View style={{ alignItems: 'center', padding: 30, width: '100%', backgroundColor: '#F9FAFB', borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', borderStyle: 'dashed' }}>
-                <Ionicons name="images-outline" size={40} color="#D1D5DB" />
-                <ThemedText style={[styles.emptyPortfolioText, { marginTop: 8 }]}>No portfolio media yet</ThemedText>
-                <ThemedText style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>Tap "Add Photo" or "Add Video" above</ThemedText>
+              <View style={styles.emptyPortfolioWrap}>
+                <LingoEmptyState icon="images-outline" title="No portfolio media yet" subtitle="Tap Add Photo or Add Video above." tone="primary" />
               </View>
             )}
           </View>
-        </View>
+        </LingoCard>
 
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -951,35 +961,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    flexDirection: 'row',
+  loadingCard: {
+    width: '100%',
+    maxWidth: 220,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
-  backButton: {
-    padding: 4,
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  backText: {
-    fontSize: 28,
-    color: '#000',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+  headerActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
   },
   saveButton: {
-    padding: 4,
+    backgroundColor: LingoTheme.colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.primaryDark,
   },
   saveText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4ECDC4',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -987,7 +995,6 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: '#FFFFFF',
     marginBottom: 12,
   },
   avatarContainer: {
@@ -1033,11 +1040,10 @@ const styles = StyleSheet.create({
   },
   changePhotoText: {
     fontSize: 14,
-    color: '#4ECDC4',
+    color: LingoTheme.colors.primary,
     fontWeight: '500',
   },
   section: {
-    backgroundColor: '#FFFFFF',
     padding: 20,
     marginBottom: 12,
   },
@@ -1058,8 +1064,8 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -1072,8 +1078,8 @@ const styles = StyleSheet.create({
   },
   textArea: {
     backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -1091,8 +1097,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     borderRadius: 12,
     paddingVertical: 12,
     gap: 8,
@@ -1122,8 +1128,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   chipActive: {
     backgroundColor: '#4ECDC4',
@@ -1141,8 +1147,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
   },
@@ -1237,6 +1243,14 @@ const styles = StyleSheet.create({
   emptyPortfolioText: {
     color: '#6B7280',
     fontSize: 13,
+  },
+  emptyPortfolioWrap: {
+    width: '100%',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderStyle: 'dashed',
+    padding: 12,
   },
   bottomPadding: {
     height: 40,

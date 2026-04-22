@@ -1,12 +1,15 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
+
+import { ThemedText } from '@/components/themed-text';
+import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
+import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
-import { Fonts } from '@/constants/theme';
 
 type TeacherNotificationType = 'student_enrolled' | 'upcoming_class' | 'system';
 
@@ -27,6 +30,7 @@ interface TeacherNotification {
 export default function TeacherNotificationsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notifications, setNotifications] = useState<TeacherNotification[]>([]);
@@ -36,6 +40,19 @@ export default function TeacherNotificationsScreen() {
       loadNotifications();
     }, [user?.id])
   );
+
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.read).length,
+    [notifications]
+  );
+
+  const recentCount = useMemo(() => {
+    const now = Date.now();
+    return notifications.filter((notification) => {
+      const createdAt = new Date(notification.created_at).getTime();
+      return Number.isFinite(createdAt) && now - createdAt <= 24 * 60 * 60 * 1000;
+    }).length;
+  }, [notifications]);
 
   const loadNotifications = async () => {
     if (!user?.id) {
@@ -68,14 +85,14 @@ export default function TeacherNotificationsScreen() {
     loadNotifications();
   };
 
-  const getNotificationIcon = (type: TeacherNotificationType) => {
+  const getNotificationMeta = (type: TeacherNotificationType) => {
     switch (type) {
       case 'student_enrolled':
-        return { name: 'person-add-outline', color: '#10B981', bg: '#D1FAE5' };
+        return { name: 'person-add-outline' as const, tone: 'primary' as const, chip: 'New student' };
       case 'upcoming_class':
-        return { name: 'time-outline', color: '#3B82F6', bg: '#DBEAFE' };
+        return { name: 'time-outline' as const, tone: 'purple' as const, chip: 'Class reminder' };
       default:
-        return { name: 'notifications-outline', color: '#6B7280', bg: '#F3F4F6' };
+        return { name: 'notifications-outline' as const, tone: 'teal' as const, chip: 'System update' };
     }
   };
 
@@ -87,7 +104,6 @@ export default function TeacherNotificationsScreen() {
 
     if (notification.type === 'upcoming_class') {
       router.push('/(teacher)/schedule');
-      return;
     }
   };
 
@@ -108,67 +124,87 @@ export default function TeacherNotificationsScreen() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Notifications</ThemedText>
-        <View style={{ width: 40 }} />
-      </View>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
+        >
+          <LingoScreenHeader
+            badge="Teacher inbox"
+            icon="notifications"
+            title="Notifications that matter"
+            subtitle="Stay ahead of new enrollments, reminders, and updates without digging through tabs."
+            onBack={() => router.back()}
+          >
+            <View style={styles.statsRow}>
+              <LingoStatPill icon="🔔" value={String(notifications.length)} label="Updates" tone="primary" />
+              <LingoStatPill icon="✨" value={String(unreadCount)} label="Unread" tone="purple" />
+              <LingoStatPill icon="🕒" value={String(recentCount)} label="Today" tone="teal" />
+            </View>
+          </LingoScreenHeader>
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {notifications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={64} color="#D1D5DB" />
-            <ThemedText style={styles.emptyTitle}>No Notifications</ThemedText>
-            <ThemedText style={styles.emptyText}>
-              New enrollments and class reminders will show up here.
-            </ThemedText>
-          </View>
-        ) : (
-          notifications.map((notification) => {
-            const iconData = getNotificationIcon(notification.type);
-            return (
-              <TouchableOpacity
-                key={notification.id}
-                style={[styles.notificationCard, !notification.read && styles.unreadCard]}
-                onPress={() => handleNotificationPress(notification)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconContainer, { backgroundColor: iconData.bg }]}>
-                  <Ionicons name={iconData.name as any} size={24} color={iconData.color} />
-                </View>
-                <View style={styles.contentContainer}>
-                  <View style={styles.titleRow}>
-                    <ThemedText style={styles.notificationTitle}>{notification.title}</ThemedText>
-                    <ThemedText style={styles.timeText}>{formatTime(notification.created_at)}</ThemedText>
-                  </View>
-                  <ThemedText style={styles.notificationMessage} numberOfLines={2}>
-                    {notification.message}
-                  </ThemedText>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          {notifications.length === 0 ? (
+            <LingoCard>
+              <LingoEmptyState
+                icon="notifications-off-outline"
+                title="No teacher alerts yet"
+                subtitle="New student enrollments and upcoming class reminders will appear here as soon as they happen."
+                tone="teal"
+              />
+            </LingoCard>
+          ) : (
+            notifications.map((notification) => {
+              const meta = getNotificationMeta(notification.type);
+
+              return (
+                <TouchableOpacity
+                  key={notification.id}
+                  style={styles.touchCard}
+                  activeOpacity={0.88}
+                  onPress={() => handleNotificationPress(notification)}
+                >
+                  <LingoCard style={[styles.notificationCard, !notification.read && styles.notificationCardUnread]}>
+                    <View style={styles.notificationTopRow}>
+                      <View
+                        style={[
+                          styles.iconBubble,
+                          meta.tone === 'primary' && styles.iconBubblePrimary,
+                          meta.tone === 'purple' && styles.iconBubblePurple,
+                          meta.tone === 'teal' && styles.iconBubbleTeal,
+                        ]}
+                      >
+                        <Ionicons name={meta.name} size={22} color={LingoTheme.colors.ink} />
+                      </View>
+
+                      <View style={styles.notificationContent}>
+                        <View style={styles.titleRow}>
+                          <ThemedText style={styles.notificationTitle}>{notification.title}</ThemedText>
+                          {!notification.read ? <View style={styles.unreadDot} /> : null}
+                        </View>
+                        <ThemedText style={styles.notificationMessage}>{notification.message}</ThemedText>
+                      </View>
+                    </View>
+
+                    <View style={styles.footerRow}>
+                      <View style={styles.metaBadge}>
+                        <ThemedText style={styles.metaBadgeText}>{meta.chip}</ThemedText>
+                      </View>
+                      <ThemedText style={styles.timeText}>{formatTime(notification.created_at)}</ThemedText>
+                    </View>
+                  </LingoCard>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -176,101 +212,110 @@ export default function TeacherNotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
-  centerContent: {
-    justifyContent: 'center',
+  loadingContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: LingoTheme.colors.background,
   },
-  header: {
+  content: {
+    paddingHorizontal: 16,
+  },
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
+    gap: 10,
     justifyContent: 'center',
-    alignItems: 'center',
+    flexWrap: 'wrap',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 22,
+  touchCard: {
+    marginBottom: 14,
   },
   notificationCard: {
+    padding: 18,
+  },
+  notificationCardUnread: {
+    backgroundColor: '#FCFFFC',
+    borderColor: '#CFEAA9',
+  },
+  notificationTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    gap: 14,
   },
-  unreadCard: {
-    backgroundColor: '#F0FDFA',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
+  iconBubble: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    borderWidth: 2,
   },
-  contentContainer: {
+  iconBubblePrimary: {
+    backgroundColor: LingoTheme.colors.softPrimary,
+    borderColor: '#B7E889',
+  },
+  iconBubblePurple: {
+    backgroundColor: LingoTheme.colors.softPurple,
+    borderColor: '#D7B7FF',
+  },
+  iconBubbleTeal: {
+    backgroundColor: LingoTheme.colors.softTeal,
+    borderColor: '#90E2D8',
+  },
+  notificationContent: {
     flex: 1,
   },
   titleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 6,
   },
   notificationTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
     flex: 1,
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: LingoTheme.colors.primary,
+  },
+  notificationMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: LingoTheme.colors.muted,
+  },
+  footerRow: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  metaBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: LingoTheme.colors.border,
+  },
+  metaBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   timeText: {
     fontSize: 12,
-    color: '#9CA3AF',
-  },
-  notificationMessage: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
+    fontWeight: '700',
+    color: LingoTheme.colors.muted,
   },
 });

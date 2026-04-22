@@ -77,8 +77,11 @@ export const api = {
   },
 
   // Agora endpoints
-  agoraToken: (channel: string, uid: string, role: 'HOST' | 'STUDENT') =>
-    `${API_URL}/api/agora?channel=${encodeURIComponent(channel)}&uid=${encodeURIComponent(uid)}&role=${role}`,
+  agoraToken: (channel: string, uid: string, role: 'HOST' | 'STUDENT', agoraUid?: number) =>
+    `${API_URL}/api/agora?channel=${encodeURIComponent(channel)}&uid=${encodeURIComponent(uid)}&role=${role}${typeof agoraUid === 'number' ? `&agoraUid=${encodeURIComponent(String(agoraUid))}` : ''}`,
+  notifications: {
+    registerDevice: () => `${API_URL}/api/notifications/device-token`,
+  },
   
   // Upload endpoints
   uploadProfileImage: (userId: string) => `${API_URL}/api/upload/${userId}/profile-image`,

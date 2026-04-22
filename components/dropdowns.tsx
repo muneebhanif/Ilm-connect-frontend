@@ -163,7 +163,13 @@ export function CityDropdown({ country, value, onSelect, label, required }: { co
       try {
         const list = CSC.City.getCitiesOfCountry(countryIso) || [];
         // ensure unique and just names
-        return Array.from(new Set(list.map((c: any) => c.name))).sort();
+        return Array.from<string>(
+          new Set(
+            list
+              .map((c: any) => (typeof c?.name === 'string' ? c.name : null))
+              .filter((name: string | null): name is string => Boolean(name))
+          )
+        ).sort();
       } catch (e) {
         return CITY_MAP[country] || [];
       }

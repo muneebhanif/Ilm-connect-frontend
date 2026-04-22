@@ -7,7 +7,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { TeacherMyProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -61,7 +62,7 @@ interface Review {
 export default function MyProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -139,28 +140,32 @@ export default function MyProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
-        <TouchableOpacity 
-          style={styles.editButton}
-          onPress={() => router.push('/(teacher)/edit-profile')}
+      <View style={[styles.header, { paddingTop: topPadding }]}> 
+        <LingoScreenHeader
+          title="My profile"
+          subtitle="Show parents your teaching strengths, expertise, and the trust signals that help bookings grow."
+          badge="Teacher profile"
+          icon="person-circle-outline"
         >
-          <Ionicons name="create-outline" size={20} color="#4ECDC4" />
-          <ThemedText style={styles.editButtonText}>Edit</ThemedText>
-        </TouchableOpacity>
+          <View style={styles.headerStats}>
+            <LingoStatPill icon="⭐" value={profile?.rating?.toFixed(1) || '0.0'} label="Rating" tone="gold" />
+            <LingoStatPill icon="👥" value={String(stats?.totalStudents || 0)} label="Students" tone="teal" />
+            <LingoStatPill icon="📚" value={String(stats?.completedClasses || 0)} label="Classes" tone="primary" />
+          </View>
+          <LingoButton label="Edit profile" variant="secondary" icon="create-outline" onPress={() => router.push('/(teacher)/edit-profile')} style={styles.editButton} />
+        </LingoScreenHeader>
       </View>
 
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomPadding + 24 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />
         }
       >
-        {/* Profile Card */}
         <LinearGradient
-          colors={['#4ECDC4', '#2BCBBA']}
+          colors={['#ECFCD8', '#FFFFFF', '#F2E8FF']}
           style={styles.profileCard}
         >
           <View style={styles.avatarSection}>
@@ -183,18 +188,13 @@ export default function MyProfileScreen() {
             <ThemedText style={styles.name}>{profile?.full_name || 'Teacher'}</ThemedText>
             <ThemedText style={styles.email}>{profile?.email}</ThemedText>
             
-            {/* Verification Status */}
-            <View style={[styles.statusBadge, { backgroundColor: getVerificationBadgeColor() }]}>
-              <Ionicons 
-                name={profile?.verification_status === 'verified' ? 'shield-checkmark' : 'time'} 
-                size={14} 
-                color="#FFF" 
-              />
-              <ThemedText style={styles.statusText}>{getVerificationLabel()}</ThemedText>
-            </View>
+            <LingoBadge
+              label={getVerificationLabel()}
+              icon={profile?.verification_status === 'verified' ? 'shield-checkmark-outline' : 'time-outline'}
+              tone={profile?.verification_status === 'verified' ? 'primary' : 'gold'}
+            />
           </View>
 
-          {/* Quick Stats */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Ionicons name="star" size={18} color="#FFD700" />
@@ -207,31 +207,29 @@ export default function MyProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Ionicons name="people" size={18} color="#E0F2F1" />
+              <Ionicons name="people" size={18} color={LingoTheme.colors.teal} />
               <ThemedText style={styles.statValue}>{stats?.totalStudents || 0}</ThemedText>
               <ThemedText style={styles.statLabel}>Students</ThemedText>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Ionicons name="book" size={18} color="#E0F2F1" />
+              <Ionicons name="book" size={18} color={LingoTheme.colors.primary} />
               <ThemedText style={styles.statValue}>{stats?.completedClasses || 0}</ThemedText>
               <ThemedText style={styles.statLabel}>Classes</ThemedText>
             </View>
           </View>
         </LinearGradient>
 
-        {/* About Section */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>About Me</ThemedText>
           </View>
           <ThemedText style={styles.bioText}>
             {profile?.bio || 'Add a bio to tell parents about yourself and your teaching style.'}
           </ThemedText>
-        </View>
+        </LingoCard>
 
-        {/* Hourly Rate */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Hourly Rate</ThemedText>
           </View>
@@ -239,47 +237,39 @@ export default function MyProfileScreen() {
             <ThemedText style={styles.rateValue}>${profile?.hourly_rate || 0}</ThemedText>
             <ThemedText style={styles.rateLabel}>per hour</ThemedText>
           </View>
-        </View>
+        </LingoCard>
 
-        {/* Subjects */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Subjects I Teach</ThemedText>
           </View>
           <View style={styles.tagsContainer}>
             {profile?.subjects?.length ? (
               profile.subjects.map((subject, idx) => (
-                <View key={idx} style={styles.tag}>
-                  <ThemedText style={styles.tagText}>{subject}</ThemedText>
-                </View>
+                <LingoBadge key={idx} label={subject} icon="school-outline" tone="teal" />
               ))
             ) : (
               <ThemedText style={styles.emptyText}>No subjects added</ThemedText>
             )}
           </View>
-        </View>
+        </LingoCard>
 
-        {/* Languages */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Languages</ThemedText>
           </View>
           <View style={styles.tagsContainer}>
             {profile?.languages?.length ? (
               profile.languages.map((lang, idx) => (
-                <View key={idx} style={[styles.tag, styles.languageTag]}>
-                  <Ionicons name="language-outline" size={14} color="#4ECDC4" />
-                  <ThemedText style={[styles.tagText, { color: '#4ECDC4' }]}>{lang}</ThemedText>
-                </View>
+                <LingoBadge key={idx} label={lang} icon="language-outline" tone="purple" />
               ))
             ) : (
               <ThemedText style={styles.emptyText}>No languages added</ThemedText>
             )}
           </View>
-        </View>
+        </LingoCard>
 
-        {/* Portfolio */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <ThemedText style={styles.sectionTitle}>Portfolio</ThemedText>
@@ -317,16 +307,14 @@ export default function MyProfileScreen() {
                 </View>
               ))
             ) : (
-              <View style={{ alignItems: 'center', padding: 30, width: '100%' }}>
-                <Ionicons name="images-outline" size={40} color="#D1D5DB" />
-                <ThemedText style={[styles.emptyText, { marginTop: 8 }]}>No portfolio media uploaded</ThemedText>
+              <View style={{ width: '100%' }}>
+                <LingoEmptyState icon="images-outline" title="No portfolio media yet" subtitle="Add visuals to help parents understand your teaching style and presentation." tone="purple" />
               </View>
             )}
           </View>
-        </View>
+        </LingoCard>
 
-        {/* Availability Overview */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Weekly Availability</ThemedText>
             <TouchableOpacity onPress={() => router.push('/(teacher)/availability')}>
@@ -354,10 +342,9 @@ export default function MyProfileScreen() {
               );
             })}
           </View>
-        </View>
+        </LingoCard>
 
-        {/* Reviews Section */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>
               Reviews ({reviews.length})
@@ -403,17 +390,11 @@ export default function MyProfileScreen() {
               </View>
             ))
           ) : (
-            <View style={styles.emptyReviews}>
-              <Ionicons name="chatbubbles-outline" size={40} color="#D1D5DB" />
-              <ThemedText style={styles.emptyReviewsText}>
-                No reviews yet. Complete more classes to get reviews!
-              </ThemedText>
-            </View>
+            <LingoEmptyState icon="chatbubbles-outline" title="No reviews yet" subtitle="Complete more classes and parents will be able to leave feedback here." tone="gold" />
           )}
-        </View>
+        </LingoCard>
 
-        {/* Earnings Summary */}
-        <View style={styles.section}>
+        <LingoCard style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Earnings</ThemedText>
           </View>
@@ -433,7 +414,7 @@ export default function MyProfileScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </LingoCard>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -444,47 +425,36 @@ export default function MyProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFF',
+    paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#F0FDFA',
-  },
-  editButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4ECDC4',
+    alignSelf: 'center',
+    minWidth: 170,
   },
   scrollView: {
     flex: 1,
   },
   profileCard: {
     margin: 20,
-    borderRadius: 20,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 24,
+    ...LingoTheme.shadow.card,
   },
   avatarSection: {
     alignItems: 'center',
@@ -499,22 +469,22 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '#FFFFFF',
   },
   avatarPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: LingoTheme.colors.softTeal,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '#FFFFFF',
   },
   avatarText: {
     fontSize: 40,
     fontWeight: '700',
-    color: '#FFF',
+    color: LingoTheme.colors.teal,
   },
   verifiedBadge: {
     position: 'absolute',
@@ -531,33 +501,22 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#FFF',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
   },
   email: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: LingoTheme.colors.muted,
     marginBottom: 12,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFF',
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     padding: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   statItem: {
     flex: 1,
@@ -566,23 +525,21 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#FFF',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   statLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
+    color: LingoTheme.colors.muted,
   },
   statDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: LingoTheme.colors.border,
     marginHorizontal: 8,
   },
   section: {
-    backgroundColor: '#FFF',
     marginHorizontal: 20,
     marginBottom: 16,
-    borderRadius: 16,
     padding: 16,
   },
   sectionHeader: {
@@ -593,22 +550,22 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   seeAllText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#4ECDC4',
+    fontWeight: '700',
+    color: LingoTheme.colors.teal,
   },
   bioText: {
     fontSize: 14,
     lineHeight: 22,
-    color: '#4B5563',
+    color: LingoTheme.colors.ink,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: LingoTheme.colors.muted,
     fontStyle: 'italic',
   },
   rateCard: {
@@ -618,34 +575,17 @@ const styles = StyleSheet.create({
   },
   rateValue: {
     fontSize: 32,
-    fontWeight: '700',
-    color: '#4ECDC4',
+    fontWeight: '800',
+    color: LingoTheme.colors.primary,
   },
   rateLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  tag: {
-    backgroundColor: '#E0F2F1',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  tagText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#00695C',
-  },
-  languageTag: {
-    backgroundColor: '#F0FDFA',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
   },
   portfolioGrid: {
     flexDirection: 'row',
@@ -654,14 +594,11 @@ const styles = StyleSheet.create({
   },
   portfolioCard: {
     width: '48%',
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   portfolioImage: {
     width: '100%',
@@ -672,10 +609,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: LingoTheme.colors.softTeal,
   },
   portfolioVideoText: {
-    color: '#0F766E',
+    color: LingoTheme.colors.teal,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -690,24 +627,26 @@ const styles = StyleSheet.create({
   dayLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
   },
   dayIndicator: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dayAvailable: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.primary,
   },
   reviewCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderRadius: 16,
     padding: 12,
     marginBottom: 12,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -718,7 +657,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#E0F2F1',
+    backgroundColor: LingoTheme.colors.softTeal,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -733,8 +672,8 @@ const styles = StyleSheet.create({
   },
   reviewerName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
   },
   starsRow: {
     flexDirection: 'row',
@@ -750,20 +689,12 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 20,
   },
-  emptyReviews: {
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyReviewsText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 12,
-  },
   earningsCard: {
-    backgroundColor: '#F0FDFA',
-    borderRadius: 12,
+    backgroundColor: LingoTheme.colors.softTeal,
+    borderRadius: 18,
     padding: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   earningsRow: {
     flexDirection: 'row',
@@ -773,12 +704,12 @@ const styles = StyleSheet.create({
   },
   earningsLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginBottom: 4,
   },
   earningsValue: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#4ECDC4',
+    fontWeight: '800',
+    color: LingoTheme.colors.teal,
   },
 });

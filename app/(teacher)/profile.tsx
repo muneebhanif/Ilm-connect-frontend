@@ -7,8 +7,9 @@ import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
+import { Fonts, LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { NotificationStatusCard } from '@/components/ui/notification-status-card';
 
 interface TeacherProfile {
   full_name: string;
@@ -168,6 +169,8 @@ export default function TeacherProfileScreen() {
           </View>
         </View>
 
+        <NotificationStatusCard title="Teacher notifications" subtitle="Get instant alerts for bookings, live classes, student updates, and messages." />
+
         {/* Menu Options */}
         <View style={styles.menuContainer}>
           <ThemedText style={styles.menuHeader}>Settings</ThemedText>
@@ -267,7 +270,7 @@ export default function TeacherProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   centerContent: {
     justifyContent: 'center',
@@ -276,7 +279,7 @@ const styles = StyleSheet.create({
   
   /* Header */
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.background,
     paddingBottom: 20,
     paddingHorizontal: 24,
     // No shadow here, letting content overlap or just flow
@@ -306,11 +309,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 4,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    ...LingoTheme.shadow.card,
     marginBottom: 24,
   },
   avatarWrapper: {

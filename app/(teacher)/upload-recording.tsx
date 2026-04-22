@@ -14,12 +14,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/themed-text';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
 import { useAuth } from '@/lib/auth-context';
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { LingoTheme } from '@/constants/theme';
 
 interface TeacherSession {
   id: string;
@@ -89,7 +90,7 @@ export default function UploadRecordingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ sessionId?: string; sessionTitle?: string }>();
   const { user } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -272,36 +273,38 @@ export default function UploadRecordingScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 28 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData('refresh')} tintColor="#14B8A6" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData('refresh')} tintColor={LingoTheme.colors.primary} />}
       >
-        <LinearGradient
-          colors={['#0F766E', '#14B8A6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: topPadding }]}
-        >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={styles.headerIconWrap}>
-            <Ionicons name="videocam" size={28} color="#FFF" />
-          </View>
-          <ThemedText style={styles.headerTitle}>Upload prerecorded class</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>
-            Fulfill a booking with a recording or grant paid access directly to selected students.
-          </ThemedText>
-        </LinearGradient>
+        <View style={styles.header}>
+          <LingoScreenHeader
+            title="Upload prerecorded class"
+            subtitle="Fulfill a booking with a recording or grant access directly to selected students."
+            badge="Teacher tools"
+            icon="videocam-outline"
+            onBack={() => router.back()}
+          >
+            <View style={styles.headerStats}>
+              <LingoStatPill icon="🎬" value={String(sessions.length)} label="Sessions" tone="primary" />
+              <LingoStatPill icon="👥" value={String(students.length)} label="Students" tone="teal" />
+            </View>
+            <View style={styles.headerBadges}>
+              <LingoBadge label={selectedSession ? 'Booking linked' : 'Standalone upload'} icon="albums-outline" tone={selectedSession ? 'purple' : 'gold'} />
+              <LingoBadge label={selectedVideo ? 'Video selected' : 'No file yet'} icon="cloud-upload-outline" tone={selectedVideo ? 'primary' : 'teal'} />
+            </View>
+          </LingoScreenHeader>
+        </View>
 
         <View style={styles.content}>
           {loading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color="#14B8A6" />
-            </View>
+            <LingoCard style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
+              <ThemedText style={styles.loadingText}>Loading recording form...</ThemedText>
+            </LingoCard>
           ) : (
             <>
-              <View style={styles.card}>
+              <LingoCard style={styles.card}>
                 <ThemedText style={styles.sectionTitle}>Delivery mode</ThemedText>
                 <ThemedText style={styles.sectionSubtitle}>Choose whether this upload fulfills a booked class or stays standalone.</ThemedText>
 
@@ -387,9 +390,9 @@ export default function UploadRecordingScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : null}
-              </View>
+              </LingoCard>
 
-              <View style={styles.card}>
+              <LingoCard style={styles.card}>
                 <ThemedText style={styles.sectionTitle}>Recording details</ThemedText>
                 <View style={styles.fieldGroup}>
                   <ThemedText style={styles.label}>Title</ThemedText>
@@ -446,9 +449,9 @@ export default function UploadRecordingScreen() {
                     </ThemedText>
                   </View>
                 </TouchableOpacity>
-              </View>
+              </LingoCard>
 
-              <View style={styles.card}>
+              <LingoCard style={styles.card}>
                 <ThemedText style={styles.sectionTitle}>Student access</ThemedText>
                 <ThemedText style={styles.sectionSubtitle}>
                   {selectedSessionId && grantToBookedStudents
@@ -457,7 +460,7 @@ export default function UploadRecordingScreen() {
                 </ThemedText>
                 <View style={styles.studentWrap}>
                   {students.length === 0 ? (
-                    <ThemedText style={styles.emptyCopy}>No students found yet.</ThemedText>
+                    <LingoEmptyState icon="people-outline" title="No students found" subtitle="Students will appear here after bookings are created." tone="teal" />
                   ) : (
                     students.map((student) => {
                       const active = selectedStudentIds.includes(student.id);
@@ -480,14 +483,15 @@ export default function UploadRecordingScreen() {
                     })
                   )}
                 </View>
-              </View>
+              </LingoCard>
 
-              <TouchableOpacity style={[styles.submitButton, uploading && styles.submitButtonDisabled]} onPress={submit} disabled={uploading}>
-                <LinearGradient colors={['#0F766E', '#14B8A6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
-                  {uploading ? <ActivityIndicator color="#FFF" /> : <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" />}
-                  <ThemedText style={styles.submitText}>{uploading ? 'Uploading…' : 'Upload prerecorded class'}</ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
+              <LingoButton
+                label={uploading ? 'Uploading…' : 'Upload prerecorded class'}
+                icon="checkmark-circle-outline"
+                onPress={submit}
+                loading={uploading}
+                style={[styles.submitButton, uploading && styles.submitButtonDisabled]}
+              />
             </>
           )}
         </View>
@@ -499,83 +503,54 @@ export default function UploadRecordingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    gap: 20,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  backButton: {
-    position: 'absolute',
-    left: 20,
-    top: 18,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
+  headerStats: {
+    flexDirection: 'row',
     justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 14,
   },
-  headerIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+  headerBadges: {
+    flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    color: 'rgba(255,255,255,0.86)',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 320,
+    flexWrap: 'wrap',
+    gap: 10,
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 22,
   },
   loadingWrap: {
-    paddingVertical: 80,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 14,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: LingoTheme.colors.muted,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
     padding: 18,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
   },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     marginBottom: 6,
   },
   sectionSubtitle: {
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 14,
@@ -586,15 +561,15 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderRadius: 18,
     padding: 14,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.surfaceAlt,
   },
   modeCardActive: {
-    borderColor: '#14B8A6',
-    backgroundColor: '#ECFEFF',
+    borderColor: LingoTheme.colors.teal,
+    backgroundColor: LingoTheme.colors.softTeal,
   },
   modeTitle: {
     fontSize: 15,
@@ -607,7 +582,7 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   modeCopy: {
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -616,17 +591,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sessionCard: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderRadius: 18,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
   },
   sessionCardActive: {
-    borderColor: '#14B8A6',
-    backgroundColor: '#F0FDFA',
+    borderColor: LingoTheme.colors.teal,
+    backgroundColor: LingoTheme.colors.softTeal,
   },
   sessionTitle: {
     fontSize: 14,
@@ -638,7 +613,7 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   sessionMeta: {
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -656,9 +631,11 @@ const styles = StyleSheet.create({
   optionBox: {
     marginTop: 14,
     gap: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderRadius: 18,
     padding: 14,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   optionRow: {
     flexDirection: 'row',
@@ -668,12 +645,12 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     marginBottom: 2,
   },
   optionCopy: {
     fontSize: 12,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     lineHeight: 17,
   },
   fieldGroup: {
@@ -686,13 +663,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     fontSize: 14,
   },
   textarea: {
@@ -711,19 +688,19 @@ const styles = StyleSheet.create({
   },
   visibilityChip: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderRadius: 16,
     paddingVertical: 12,
     alignItems: 'center',
   },
   visibilityChipActive: {
-    borderColor: '#14B8A6',
-    backgroundColor: '#ECFEFF',
+    borderColor: LingoTheme.colors.teal,
+    backgroundColor: LingoTheme.colors.softTeal,
   },
   visibilityChipText: {
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -732,25 +709,25 @@ const styles = StyleSheet.create({
   },
   videoPicker: {
     marginTop: 4,
-    borderWidth: 1,
+    borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#14B8A6',
-    borderRadius: 16,
+    borderColor: LingoTheme.colors.teal,
+    borderRadius: 18,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: LingoTheme.colors.softTeal,
   },
   videoPickerTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     marginBottom: 2,
   },
   videoPickerCopy: {
     fontSize: 12,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
   },
   studentWrap: {
     flexDirection: 'row',
@@ -759,48 +736,38 @@ const styles = StyleSheet.create({
   },
   studentChip: {
     minWidth: '47%',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   studentChipActive: {
-    backgroundColor: '#0F766E',
-    borderColor: '#0F766E',
+    backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primaryDark,
   },
   studentChipText: {
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 2,
   },
+  studentChipTextActive: {
+    color: '#FFFFFF',
+  },
   studentChipMeta: {
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     fontSize: 11,
   },
   emptyCopy: {
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     fontSize: 13,
   },
   submitButton: {
-    borderRadius: 18,
-    overflow: 'hidden',
+    marginTop: 4,
   },
   submitButtonDisabled: {
     opacity: 0.7,
-  },
-  submitGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
   },
 });

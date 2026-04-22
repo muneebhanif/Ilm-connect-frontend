@@ -5,7 +5,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
+import { LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 
@@ -85,55 +86,61 @@ export default function BrowseTeachersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <View style={styles.headerTop}>
-           <ThemedText style={styles.headerTitle}>Find a Teacher</ThemedText>
-           <TouchableOpacity style={styles.filterBtn}>
-              <Ionicons name="options-outline" size={24} color="#111827" />
-           </TouchableOpacity>
-        </View>
-
-        <View style={styles.modeSwitch}>
-          <TouchableOpacity style={[styles.modePill, styles.modePillActive]}>
-            <ThemedText style={[styles.modePillText, styles.modePillTextActive]}>Teachers</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.modePill} onPress={() => router.push('/(parent)/browse-courses')}>
-            <ThemedText style={styles.modePillText}>Courses</ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#9CA3AF" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by name or subject..."
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+      <ScrollView
+        style={styles.headerScroll}
+        contentContainerStyle={{ paddingTop: topPadding }}
+        horizontal={false}
+        scrollEnabled={false}
+      >
+        <View style={styles.headerPad}>
+          <LingoScreenHeader
+            badge="Parent hub"
+            icon="people"
+            title="Find a teacher with confidence"
+            subtitle="Browse verified teachers, compare strengths, and filter by subject in a friendlier flow."
           />
-        </View>
 
-        {/* Filter Pills */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.pillsContainer}
-        >
-          {subjects.map((subject) => (
-            <TouchableOpacity
-              key={subject}
-              style={[styles.pill, selectedSubject === subject && styles.pillActive]}
-              onPress={() => setSelectedSubject(subject)}
-            >
-              <ThemedText style={[styles.pillText, selectedSubject === subject && styles.pillTextActive]}>
-                {subject}
-              </ThemedText>
+          <View style={styles.modeSwitch}>
+            <TouchableOpacity style={[styles.modePill, styles.modePillActive]}>
+              <ThemedText style={[styles.modePillText, styles.modePillTextActive]}>Teachers</ThemedText>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            <TouchableOpacity style={styles.modePill} onPress={() => router.push('/(parent)/browse-courses')}>
+              <ThemedText style={styles.modePillText}>Courses</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          <LingoCard style={styles.filterCard}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={20} color={LingoTheme.colors.muted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name or subject..."
+                placeholderTextColor={LingoTheme.colors.muted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.pillsContainer}
+            >
+              {subjects.map((subject) => (
+                <TouchableOpacity
+                  key={subject}
+                  style={[styles.pill, selectedSubject === subject && styles.pillActive]}
+                  onPress={() => setSelectedSubject(subject)}
+                >
+                  <ThemedText style={[styles.pillText, selectedSubject === subject && styles.pillTextActive]}>
+                    {subject}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </LingoCard>
+        </View>
+      </ScrollView>
 
       <ScrollView 
         style={styles.scrollView} 
@@ -144,13 +151,9 @@ export default function BrowseTeachersScreen() {
         {loading ? (
           <SkeletonScreen />
         ) : filteredTeachers.length === 0 ? (
-          <View style={styles.centerState}>
-            <View style={styles.emptyIconBg}>
-               <Ionicons name="search-outline" size={32} color="#9CA3AF" />
-            </View>
-            <ThemedText style={styles.emptyTitle}>No teachers found</ThemedText>
-            <ThemedText style={styles.emptyText}>Try adjusting your search or filters.</ThemedText>
-          </View>
+          <LingoCard>
+            <LingoEmptyState icon="search-outline" title="No teachers found" subtitle="Try adjusting your search or filters to widen the results." tone="teal" />
+          </LingoCard>
         ) : (
           filteredTeachers.map((teacher) => (
             
@@ -244,34 +247,20 @@ export default function BrowseTeachersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
-  
-  /* Header */
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
-    zIndex: 10,
+  headerScroll: {
+    flexGrow: 0,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+  headerPad: {
+    paddingHorizontal: 16,
   },
   modeSwitch: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    marginHorizontal: 20,
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 4,
     marginBottom: 14,
   },
@@ -283,69 +272,62 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   modePillActive: {
-    backgroundColor: '#111827',
+    backgroundColor: LingoTheme.colors.ink,
   },
   modePillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
   },
   modePillTextActive: {
     color: '#FFFFFF',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  filterBtn: {
-    padding: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+  filterCard: {
+    marginBottom: 14,
   },
   
   /* Search */
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     height: 48,
     borderRadius: 14,
-    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     height: '100%',
   },
 
   /* Pills */
   pillsContainer: {
-    paddingHorizontal: 20,
     gap: 8,
+    paddingTop: 14,
     paddingBottom: 4,
   },
   pill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: 'transparent',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    gap: 8,
   },
   pillActive: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
+    backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primary,
   },
   pillText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
   },
   pillTextActive: {
     color: '#FFFFFF',
@@ -510,27 +492,4 @@ const styles = StyleSheet.create({
   },
 
   /* States */
-  centerState: {
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyIconBg: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
 });

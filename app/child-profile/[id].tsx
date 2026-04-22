@@ -1,6 +1,5 @@
 import { StyleSheet, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-// Back button removed
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +7,9 @@ import { api } from '@/lib/config';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/lib/auth-context';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 const cleanDisplayText = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -51,10 +53,25 @@ interface Enrollment {
   };
 }
 
+interface AttendanceSummary {
+  totalClasses: number;
+  attendedClasses: number;
+  missedClasses: number;
+  attendancePercentage: number;
+  recentAttendance: Array<{
+    session_id: string;
+    session_date: string;
+    status: string;
+    attended: boolean;
+    course_title: string;
+  }>;
+}
+
 export default function ChildProfileScreen() {
   const { id, name } = useLocalSearchParams();
   const router = useRouter();
   const { user, refreshSession, signOut } = useAuth();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +81,13 @@ export default function ChildProfileScreen() {
     completedClasses: 0,
     enrollments: [] as Enrollment[],
     upcomingSessions: [] as Session[],
+    attendanceSummary: {
+      totalClasses: 0,
+      attendedClasses: 0,
+      missedClasses: 0,
+      attendancePercentage: 0,
+      recentAttendance: [],
+    } as AttendanceSummary,
   });
 
   useEffect(() => {
@@ -107,6 +131,13 @@ export default function ChildProfileScreen() {
         completedClasses: data.progress?.completedClasses || 0,
         enrollments: data.progress?.enrollments || [],
         upcomingSessions: data.progress?.upcomingSessions || [],
+        attendanceSummary: data.progress?.attendanceSummary || {
+          totalClasses: 0,
+          attendedClasses: 0,
+          missedClasses: 0,
+          attendancePercentage: 0,
+          recentAttendance: [],
+        },
       });
     } catch (err: any) {
       console.error('Error fetching child:', err);
@@ -213,10 +244,10 @@ export default function ChildProfileScreen() {
   if (error || !childData) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ThemedText style={styles.errorText}>{error || 'Child not found'}</ThemedText>
-        <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
-          <ThemedText style={styles.retryButtonText}>Go Back</ThemedText>
-        </TouchableOpacity>
+        <LingoCard style={styles.errorCard}>
+          <LingoEmptyState icon="alert-circle-outline" title="Child not found" subtitle={error || 'This child profile could not be loaded.'} tone="danger" />
+          <LingoButton label="Go back" variant="secondary" onPress={() => router.back()} style={styles.retryButton} />
+        </LingoCard>
       </View>
     );
   }
@@ -253,19 +284,25 @@ export default function ChildProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Ionicons name="arrow-back" size={22} color="#1F2937" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>{displayName}'s Profile</ThemedText>
-        <View style={{ width: 40 }} />
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        <LingoScreenHeader
+          title={`${displayName}'s profile`}
+          subtitle="View learning progress, classes, and portal access for this child account."
+          badge="Child profile"
+          icon="happy-outline"
+          onBack={() => router.back()}
+        >
+          <View style={styles.headerStats}>
+            <LingoStatPill icon="✅" value={String(progress.completedClasses)} label="Completed" tone="primary" />
+            <LingoStatPill icon="📚" value={String(progress.enrollments.length)} label="Courses" tone="teal" />
+            <LingoStatPill icon="🎯" value={`${progress.attendanceSummary.attendancePercentage}%`} label="Attendance" tone="gold" />
+          </View>
+        </LingoScreenHeader>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Child Info Card */}
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPadding + 24 }}>
         <View style={styles.section}>
-          <View style={styles.profileCard}>
+          <LingoCard style={styles.profileCard}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
                 <ThemedText style={styles.avatarText}>
@@ -281,39 +318,89 @@ export default function ChildProfileScreen() {
               {childData.subjects && childData.subjects.length > 0 && (
                 <View style={styles.subjectTags}>
                   {childData.subjects.map((subject: string, index: number) => (
-                    <View key={index} style={styles.subjectTag}>
-                      <ThemedText style={styles.subjectTagText}>{subject}</ThemedText>
-                    </View>
+                    <LingoBadge key={index} label={subject} icon="book-outline" tone="teal" />
                   ))}
                 </View>
               )}
             </View>
-          </View>
+          </LingoCard>
         </View>
 
-        {/* Stats */}
         <View style={styles.section}>
           <View style={styles.statsRow}>
-            <View style={styles.statItem}>
+            <LingoCard style={styles.statItem}>
               <Ionicons name="checkmark-circle" size={24} color="#10B981" />
               <ThemedText style={styles.statValue}>{progress.completedClasses}</ThemedText>
               <ThemedText style={styles.statLabel}>Classes Completed</ThemedText>
-            </View>
-            <View style={styles.statItem}>
+            </LingoCard>
+            <LingoCard style={styles.statItem}>
               <Ionicons name="book" size={24} color="#4ECDC4" />
               <ThemedText style={styles.statValue}>{progress.enrollments.length}</ThemedText>
               <ThemedText style={styles.statLabel}>Active Courses</ThemedText>
-            </View>
-            <View style={styles.statItem}>
+            </LingoCard>
+            <LingoCard style={styles.statItem}>
               <Ionicons name="calendar" size={24} color="#F59E0B" />
-              <ThemedText style={styles.statValue}>{progress.upcomingSessions.length}</ThemedText>
-              <ThemedText style={styles.statLabel}>Upcoming</ThemedText>
-            </View>
+              <ThemedText style={styles.statValue}>{progress.attendanceSummary.attendedClasses}/{progress.attendanceSummary.totalClasses}</ThemedText>
+              <ThemedText style={styles.statLabel}>Attendance</ThemedText>
+            </LingoCard>
           </View>
         </View>
 
         <View style={styles.section}>
-          <View style={styles.studentPortalCard}>
+          <LingoCard style={styles.attendanceCard}>
+            <View style={styles.attendanceHeader}>
+              <View>
+                <ThemedText style={styles.sectionTitle}>Attendance snapshot</ThemedText>
+                <ThemedText style={styles.attendanceHint}>Parents can quickly check how many classes this child attended.</ThemedText>
+              </View>
+              <LingoBadge label={`${progress.attendanceSummary.attendancePercentage}%`} icon="analytics-outline" tone="gold" />
+            </View>
+
+            <View style={styles.attendanceSummaryRow}>
+              <View style={styles.attendanceSummaryItem}>
+                <ThemedText style={styles.attendanceSummaryValue}>{progress.attendanceSummary.attendedClasses}</ThemedText>
+                <ThemedText style={styles.attendanceSummaryLabel}>Taken</ThemedText>
+              </View>
+              <View style={styles.attendanceSummaryItem}>
+                <ThemedText style={styles.attendanceSummaryValue}>{progress.attendanceSummary.missedClasses}</ThemedText>
+                <ThemedText style={styles.attendanceSummaryLabel}>Missed</ThemedText>
+              </View>
+              <View style={styles.attendanceSummaryItem}>
+                <ThemedText style={styles.attendanceSummaryValue}>{progress.attendanceSummary.totalClasses}</ThemedText>
+                <ThemedText style={styles.attendanceSummaryLabel}>Total</ThemedText>
+              </View>
+            </View>
+
+            {progress.attendanceSummary.recentAttendance.length > 0 ? (
+              <View style={styles.attendanceList}>
+                {progress.attendanceSummary.recentAttendance.slice(0, 4).map((item) => (
+                  <View key={item.session_id} style={styles.attendanceRow}>
+                    <View style={styles.attendanceRowInfo}>
+                      <ThemedText style={styles.attendanceCourse}>{cleanDisplayText(item.course_title) || 'Class'}</ThemedText>
+                      <ThemedText style={styles.attendanceDate}>
+                        {new Date(item.session_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </ThemedText>
+                    </View>
+                    <LingoBadge
+                      label={item.attended ? 'Present' : 'Absent'}
+                      icon={item.attended ? 'checkmark-circle-outline' : 'close-circle-outline'}
+                      tone={item.attended ? 'teal' : 'gold'}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <LingoEmptyState icon="analytics-outline" title="No attendance records yet" subtitle="Attendance will appear after completed classes." tone="primary" />
+            )}
+          </LingoCard>
+        </View>
+
+        <View style={styles.section}>
+          <LingoCard style={styles.studentPortalCard}>
             <View style={styles.studentPortalHeader}>
               <Ionicons name="school-outline" size={20} color="#4ECDC4" />
               <ThemedText style={styles.studentPortalTitle}>Student Portal</ThemedText>
@@ -334,7 +421,7 @@ export default function ChildProfileScreen() {
                 {hasStudentCredentials ? 'Student Login Linked' : 'Create Student Login'}
               </ThemedText>
             </TouchableOpacity>
-          </View>
+          </LingoCard>
         </View>
 
         {/* Upcoming Classes */}
@@ -343,7 +430,7 @@ export default function ChildProfileScreen() {
           
           {progress.upcomingSessions.length > 0 ? (
             progress.upcomingSessions.map((session) => (
-              <View key={session.id} style={styles.sessionCard}>
+              <LingoCard key={session.id} style={styles.sessionCard}>
                 <View style={styles.sessionInfo}>
                   <ThemedText style={styles.sessionTitle}>
                     {cleanDisplayText(session.courses?.title) || 'Class Session'}
@@ -366,18 +453,13 @@ export default function ChildProfileScreen() {
                     {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
                   </ThemedText>
                 </View>
-              </View>
+              </LingoCard>
             ))
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color="#D1D5DB" />
-              <ThemedText style={styles.emptyStateText}>No upcoming classes scheduled</ThemedText>
-              <TouchableOpacity 
-                style={styles.browseButton}
-                onPress={() => router.push('/(parent)/browse-teachers')}>
-                <ThemedText style={styles.browseButtonText}>Book a Teacher</ThemedText>
-              </TouchableOpacity>
-            </View>
+            <LingoCard>
+              <LingoEmptyState icon="calendar-outline" title="No upcoming classes" subtitle="Book a teacher to schedule the next lesson for this child." tone="gold" />
+              <LingoButton label="Book a teacher" onPress={() => router.push('/(parent)/browse-teachers')} style={styles.browseButton} />
+            </LingoCard>
           )}
         </View>
 
@@ -387,7 +469,7 @@ export default function ChildProfileScreen() {
           
           {progress.enrollments.length > 0 ? (
             progress.enrollments.map((enrollment) => (
-              <View key={enrollment.id} style={styles.courseCard}>
+              <LingoCard key={enrollment.id} style={styles.courseCard}>
                 <View style={styles.courseIcon}>
                   <Ionicons name="book" size={20} color="#4ECDC4" />
                 </View>
@@ -400,16 +482,12 @@ export default function ChildProfileScreen() {
                   </ThemedText>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </View>
+              </LingoCard>
             ))
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="school-outline" size={48} color="#D1D5DB" />
-              <ThemedText style={styles.emptyStateText}>Not enrolled in any courses yet</ThemedText>
-              <ThemedText style={styles.emptyStateHint}>
-                Book a teacher to start learning
-              </ThemedText>
-            </View>
+            <LingoCard>
+              <LingoEmptyState icon="school-outline" title="No courses yet" subtitle="Book a teacher to start learning and track course progress here." tone="teal" />
+            </LingoCard>
           )}
         </View>
 
@@ -436,22 +514,18 @@ export default function ChildProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.background,
   },
+  errorCard: { width: '100%', maxWidth: 340 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingBottom: 12,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
   },
   scrollView: {
     flex: 1,
@@ -469,8 +543,6 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
     padding: 20,
   },
   avatarContainer: {
@@ -480,7 +552,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -494,13 +566,13 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
   },
   profileAge: {
     fontSize: 14,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginBottom: 8,
   },
   subjectTags: {
@@ -508,46 +580,29 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  subjectTag: {
-    backgroundColor: '#E8FAF8',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  subjectTagText: {
-    fontSize: 12,
-    color: '#4ECDC4',
-    fontWeight: '600',
-  },
   statsRow: {
     flexDirection: 'row',
     gap: 12,
   },
   statItem: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
     padding: 16,
-    borderRadius: 12,
     alignItems: 'center',
   },
   statValue: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     textAlign: 'center',
   },
   studentPortalCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   studentPortalHeader: {
     flexDirection: 'row',
@@ -557,19 +612,19 @@ const styles = StyleSheet.create({
   },
   studentPortalTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   studentPortalText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     lineHeight: 20,
   },
   studentPortalButton: {
     marginTop: 12,
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.primary,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: 'center',
   },
   studentPortalButtonLinked: {
@@ -580,43 +635,81 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 13,
   },
-  emptyState: {
-    backgroundColor: '#F9FAFB',
-    padding: 32,
-    borderRadius: 12,
-    alignItems: 'center',
+  browseButton: { marginTop: 16 },
+  attendanceCard: {
+    padding: 16,
   },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 12,
+  attendanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
   },
-  emptyStateHint: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
+  attendanceHint: {
+    fontSize: 13,
+    color: LingoTheme.colors.muted,
+    lineHeight: 19,
     marginTop: 4,
   },
-  browseButton: {
-    marginTop: 16,
-    backgroundColor: '#4ECDC4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
+  attendanceSummaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
   },
-  browseButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+  attendanceSummaryItem: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  attendanceSummaryValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  attendanceSummaryLabel: {
+    fontSize: 11,
+    marginTop: 4,
+    color: LingoTheme.colors.muted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  attendanceList: {
+    gap: 10,
+  },
+  attendanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+  },
+  attendanceRowInfo: {
+    flex: 1,
+  },
+  attendanceCourse: {
     fontSize: 14,
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
+  },
+  attendanceDate: {
+    fontSize: 12,
+    color: LingoTheme.colors.muted,
+    marginTop: 2,
   },
   sessionCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
     padding: 16,
-    borderRadius: 12,
     marginBottom: 12,
   },
   sessionInfo: {
@@ -624,13 +717,13 @@ const styles = StyleSheet.create({
   },
   sessionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
   },
   sessionTeacher: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginBottom: 4,
   },
   sessionDate: {
@@ -650,16 +743,14 @@ const styles = StyleSheet.create({
   courseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
     padding: 16,
-    borderRadius: 12,
     marginBottom: 12,
   },
   courseIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8FAF8',
+    backgroundColor: LingoTheme.colors.softTeal,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -669,13 +760,13 @@ const styles = StyleSheet.create({
   },
   courseTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
     marginBottom: 2,
   },
   courseTeacher: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
   },
   centerContent: {
     justifyContent: 'center',
@@ -683,19 +774,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginBottom: 16,
   },
-  retryButton: {
-    backgroundColor: '#4ECDC4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
+  retryButton: { marginTop: 20 },
   deleteButton: {
     backgroundColor: '#DC2626',
     paddingVertical: 12,

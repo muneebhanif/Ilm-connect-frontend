@@ -8,6 +8,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LingoBadge, LingoButton, LingoCard, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface ProfileData {
@@ -20,7 +22,7 @@ interface ProfileData {
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, refreshUserProfile } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
@@ -324,7 +326,10 @@ export default function EditProfileScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#4ECDC4" />
+        <LingoCard style={styles.loadingCard}>
+          <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
+          <ThemedText style={styles.loadingText}>Loading your parent profile...</ThemedText>
+        </LingoCard>
       </View>
     );
   }
@@ -334,7 +339,8 @@ export default function EditProfileScreen() {
       {notification && (
         <View style={[
           styles.notificationBanner,
-          notification.type === 'success' ? styles.notificationSuccess : styles.notificationError
+          notification.type === 'success' ? styles.notificationSuccess : styles.notificationError,
+          { top: Math.max(topPadding - 8, 12) },
         ]}>
           <Ionicons 
             name={notification.type === 'success' ? 'checkmark-circle' : 'alert-circle'} 
@@ -345,79 +351,86 @@ export default function EditProfileScreen() {
         </View>
       )}
       
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
-        <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
-          {saving ? (
-            <ActivityIndicator size="small" color="#4ECDC4" />
-          ) : (
-            <ThemedText style={styles.saveText}>Save</ThemedText>
-          )}
-        </TouchableOpacity>
-      </View>
-
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.avatarSection}>
-          <TouchableOpacity onPress={showImageOptions} style={styles.avatarContainer}>
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <ThemedText style={styles.avatarInitial}>
-                  {profile.full_name?.charAt(0).toUpperCase() || 'P'}
-                </ThemedText>
-              </View>
-            )}
-            <View style={styles.editBadge}>
-              <Ionicons name="camera" size={18} color="#4ECDC4" />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding + 24 }}>
+        <View style={styles.content}>
+          <LingoScreenHeader
+            title="Edit profile"
+            subtitle="Keep your parent profile polished so teachers and support can recognize your account quickly."
+            badge="Parent account"
+            icon="person-circle-outline"
+            onBack={() => router.back()}
+          >
+            <View style={styles.headerBadges}>
+              <LingoBadge label={profile.email || 'Email on file'} icon="mail-outline" tone="teal" />
+              <LingoBadge label="Secure details" icon="shield-checkmark-outline" tone="purple" />
             </View>
-          </TouchableOpacity>
-          <ThemedText style={styles.changePhotoText}>Tap to change photo</ThemedText>
-        </View>
+          </LingoScreenHeader>
 
-        <View style={styles.formSection}>
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Full Name</ThemedText>
-            <TextInput
-              style={styles.input}
-              value={profile.full_name}
-              onChangeText={(text) => setProfile({ ...profile, full_name: text })}
-              placeholder="Enter your full name"
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
+          <LingoCard style={styles.avatarSection}>
+            <TouchableOpacity onPress={showImageOptions} style={styles.avatarContainer}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <ThemedText style={styles.avatarInitial}>
+                    {profile.full_name?.charAt(0).toUpperCase() || 'P'}
+                  </ThemedText>
+                </View>
+              )}
+              <View style={styles.editBadge}>
+                <Ionicons name="camera" size={18} color={LingoTheme.colors.primary} />
+              </View>
+            </TouchableOpacity>
+            <ThemedText style={styles.changePhotoText}>Tap to change photo</ThemedText>
+            <ThemedText style={styles.photoHelpText}>Choose a clear picture so teachers can identify your family account.</ThemedText>
+          </LingoCard>
 
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Email</ThemedText>
-            <TextInput
-              style={[styles.input, styles.inputDisabled]}
-              value={profile.email}
-              editable={false}
-              placeholder="Email address"
-              placeholderTextColor="#9CA3AF"
-            />
-            <ThemedText style={styles.helperText}>Email cannot be changed</ThemedText>
-          </View>
+          <LingoCard style={styles.formSection}>
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.label}>Full Name</ThemedText>
+              <TextInput
+                style={styles.input}
+                value={profile.full_name}
+                onChangeText={(text) => setProfile({ ...profile, full_name: text })}
+                placeholder="Enter your full name"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Phone Number</ThemedText>
-            <TextInput
-              style={styles.input}
-              value={profile.phone}
-              onChangeText={(text) => setProfile({ ...profile, phone: text })}
-              placeholder="Enter your phone number"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="phone-pad"
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <View style={styles.lockedLabelRow}>
+                <ThemedText style={styles.label}>Email</ThemedText>
+                <LingoBadge label="Locked" icon="lock-closed-outline" tone="gold" />
+              </View>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                value={profile.email}
+                editable={false}
+                placeholder="Email address"
+                placeholderTextColor="#9CA3AF"
+              />
+              <ThemedText style={styles.helperText}>Email cannot be changed from the app.</ThemedText>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.label}>Phone Number</ThemedText>
+              <TextInput
+                style={styles.input}
+                value={profile.phone}
+                onChangeText={(text) => setProfile({ ...profile, phone: text })}
+                placeholder="Enter your phone number"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+              />
+            </View>
+          </LingoCard>
+
+          <LingoButton label="Save changes" onPress={handleSave} loading={saving} icon="save-outline" style={styles.saveCta} />
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
@@ -475,40 +488,42 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: LingoTheme.colors.background },
   centerContent: { justifyContent: 'center', alignItems: 'center' },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    flexDirection: 'row',
+  loadingCard: {
+    width: '100%',
+    maxWidth: 320,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    gap: 14,
   },
-  backButton: { padding: 4 },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#000' },
-  saveButton: { padding: 4 },
-  saveText: { fontSize: 16, fontWeight: '600', color: '#4ECDC4' },
+  loadingText: { fontSize: 14, color: LingoTheme.colors.muted, fontWeight: '700' },
   scrollView: { flex: 1 },
+  content: {
+    paddingHorizontal: 20,
+    gap: 18,
+  },
+  headerBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+  },
   avatarSection: {
     alignItems: 'center',
-    paddingVertical: 32,
-    backgroundColor: '#FFFFFF',
-    marginBottom: 16,
   },
   avatarContainer: { position: 'relative', marginBottom: 12 },
-  avatarImage: { width: 120, height: 120, borderRadius: 60 },
+  avatarImage: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: LingoTheme.colors.border },
   avatarPlaceholder: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.softPrimary,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: LingoTheme.colors.border,
   },
-  avatarInitial: { fontSize: 48, fontWeight: '700', color: '#FFFFFF' },
+  avatarInitial: { fontSize: 48, fontWeight: '800', color: LingoTheme.colors.primaryDark },
   editBadge: {
     position: 'absolute',
     bottom: 0,
@@ -520,32 +535,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: LingoTheme.colors.border,
   },
-  changePhotoText: { fontSize: 14, color: '#4ECDC4', fontWeight: '500' },
-  formSection: { backgroundColor: '#FFFFFF', padding: 20 },
+  changePhotoText: { fontSize: 15, color: LingoTheme.colors.ink, fontWeight: '800' },
+  photoHelpText: { fontSize: 13, color: LingoTheme.colors.muted, textAlign: 'center', lineHeight: 18, marginTop: 6 },
+  formSection: { gap: 20 },
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+  lockedLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '800', color: LingoTheme.colors.ink, marginBottom: 8 },
   input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#000',
+    color: LingoTheme.colors.ink,
   },
-  inputDisabled: { backgroundColor: '#F3F4F6', color: '#9CA3AF' },
-  helperText: { fontSize: 12, color: '#9CA3AF', marginTop: 4 },
+  inputDisabled: { backgroundColor: LingoTheme.colors.surfaceAlt, color: '#9CA3AF' },
+  helperText: { fontSize: 12, color: LingoTheme.colors.muted, marginTop: 6 },
   notificationBanner: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
     zIndex: 1000,
@@ -555,43 +566,53 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     gap: 8,
+    marginHorizontal: 20,
+    borderRadius: 16,
   },
   notificationSuccess: { backgroundColor: '#10B981' },
-  notificationError: { backgroundColor: '#EF4444' },
+  notificationError: { backgroundColor: LingoTheme.colors.danger },
   notificationText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(37, 49, 60, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 24,
-    width: '90%',
+    width: '100%',
     maxWidth: 320,
     alignItems: 'center',
   },
-  modalTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 4 },
-  modalSubtitle: { fontSize: 14, color: '#6B7280', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: LingoTheme.colors.ink, marginBottom: 4 },
+  modalSubtitle: { fontSize: 14, color: LingoTheme.colors.muted, marginBottom: 20 },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    borderRadius: 18,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     marginBottom: 10,
   },
-  modalOptionDestructive: { backgroundColor: '#FEF2F2' },
+  modalOptionDestructive: { backgroundColor: LingoTheme.colors.softDanger, borderColor: '#F7A7A7' },
   modalOptionCancel: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     marginTop: 8,
   },
-  modalOptionText: { fontSize: 16, fontWeight: '500', color: '#374151', marginLeft: 12 },
-  modalCancelText: { fontSize: 16, fontWeight: '500', color: '#6B7280', textAlign: 'center', width: '100%' },
+  modalOptionText: { fontSize: 16, fontWeight: '700', color: LingoTheme.colors.ink, marginLeft: 12 },
+  modalCancelText: { fontSize: 16, fontWeight: '700', color: LingoTheme.colors.muted, textAlign: 'center', width: '100%' },
+  saveCta: {
+    marginTop: 4,
+  },
 });

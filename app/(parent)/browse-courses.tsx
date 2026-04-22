@@ -4,9 +4,9 @@ import { BrowseCoursesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import { Fonts } from '@/constants/theme';
+import { LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useRouter } from 'expo-router';
 
@@ -107,20 +107,13 @@ export default function BrowseCoursesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <View style={styles.headerTop}>
-          <ThemedText style={styles.headerTitle}>Browse Courses</ThemedText>
-          <TouchableOpacity
-            style={[styles.freeToggle, showFreeOnly && styles.freeToggleActive]}
-            onPress={() => setShowFreeOnly(!showFreeOnly)}
-          >
-            <Ionicons name="pricetag" size={14} color={showFreeOnly ? '#FFF' : '#6B7280'} />
-            <ThemedText style={[styles.freeToggleText, showFreeOnly && { color: '#FFF' }]}>
-              Free Only
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.headerPad}>
+        <LingoScreenHeader
+          badge="Parent hub"
+          icon="library"
+          title="Browse courses with less guesswork"
+          subtitle="Compare subjects, levels, and lesson counts in a calmer, easier-to-scan course browser."
+        />
 
         <View style={styles.modeSwitch}>
           <TouchableOpacity style={styles.modePill} onPress={() => router.push('/(parent)/browse-teachers')}>
@@ -131,50 +124,59 @@ export default function BrowseCoursesScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#9CA3AF" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search courses or teachers..."
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        <LingoCard style={styles.filterCard}>
+          <TouchableOpacity
+            style={[styles.freeToggle, showFreeOnly && styles.freeToggleActive]}
+            onPress={() => setShowFreeOnly(!showFreeOnly)}
+          >
+            <Ionicons name="pricetag" size={14} color={showFreeOnly ? '#FFF' : LingoTheme.colors.ink} />
+            <ThemedText style={[styles.freeToggleText, showFreeOnly && { color: '#FFF' }]}> 
+              Free Only
+            </ThemedText>
+          </TouchableOpacity>
 
-        {/* Subject Filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
-          {SUBJECTS.map(s => (
-            <TouchableOpacity
-              key={s}
-              style={[styles.pill, selectedSubject === s && styles.pillActive]}
-              onPress={() => setSelectedSubject(s)}
-            >
-              <ThemedText style={[styles.pillText, selectedSubject === s && styles.pillTextActive]}>{s}</ThemedText>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color={LingoTheme.colors.muted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search courses or teachers..."
+              placeholderTextColor={LingoTheme.colors.muted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={LingoTheme.colors.muted} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
 
-        {/* Level Filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelPills}>
-          {LEVELS.map(l => (
-            <TouchableOpacity
-              key={l}
-              style={[styles.levelPill, selectedLevel === l && styles.levelPillActive]}
-              onPress={() => setSelectedLevel(l)}
-            >
-              <ThemedText style={[styles.levelPillText, selectedLevel === l && styles.levelPillTextActive]}>
-                {l === 'All' ? 'All Levels' : l.charAt(0).toUpperCase() + l.slice(1)}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
+            {SUBJECTS.map(s => (
+              <TouchableOpacity
+                key={s}
+                style={[styles.pill, selectedSubject === s && styles.pillActive]}
+                onPress={() => setSelectedSubject(s)}
+              >
+                <ThemedText style={[styles.pillText, selectedSubject === s && styles.pillTextActive]}>{s}</ThemedText>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelPills}>
+            {LEVELS.map(l => (
+              <TouchableOpacity
+                key={l}
+                style={[styles.levelPill, selectedLevel === l && styles.levelPillActive]}
+                onPress={() => setSelectedLevel(l)}
+              >
+                <ThemedText style={[styles.levelPillText, selectedLevel === l && styles.levelPillTextActive]}>
+                  {l === 'All' ? 'All Levels' : l.charAt(0).toUpperCase() + l.slice(1)}
+                </ThemedText>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </LingoCard>
       </View>
 
       {/* Course List */}
@@ -187,13 +189,9 @@ export default function BrowseCoursesScreen() {
         }
       >
         {filteredCourses.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="library-outline" size={40} color="#D1D5DB" />
-            </View>
-            <ThemedText style={styles.emptyTitle}>No courses found</ThemedText>
-            <ThemedText style={styles.emptyDesc}>Try adjusting your filters or search</ThemedText>
-          </View>
+          <LingoCard>
+            <LingoEmptyState icon="library-outline" title="No courses found" subtitle="Try adjusting your filters or search to widen the results." tone="gold" />
+          </LingoCard>
         ) : (
           filteredCourses.map(course => (
             <TouchableOpacity
@@ -259,40 +257,18 @@ export default function BrowseCoursesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
 
-  /* Header */
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 12,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
-    zIndex: 10,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 14,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
+  headerPad: {
+    paddingHorizontal: 16,
   },
   modeSwitch: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    marginHorizontal: 20,
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 4,
     marginBottom: 14,
   },
@@ -304,72 +280,81 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   modePillActive: {
-    backgroundColor: '#111827',
+    backgroundColor: LingoTheme.colors.ink,
   },
   modePillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
   },
   modePillTextActive: {
     color: '#FFFFFF',
   },
+  filterCard: {
+    marginBottom: 14,
+  },
   freeToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
   },
   freeToggleActive: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primary,
   },
   freeToggleText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
 
   /* Search */
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     height: 48,
     borderRadius: 14,
-    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    marginTop: 14,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     height: '100%',
   },
 
   /* Subject Pills */
   pillsContainer: {
-    paddingHorizontal: 20,
+    paddingTop: 14,
     gap: 8,
-    paddingBottom: 8,
   },
   pill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   pillActive: {
-    backgroundColor: '#111827',
+    backgroundColor: LingoTheme.colors.primary,
   },
   pillText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
   },
   pillTextActive: {
     color: '#FFF',
@@ -377,29 +362,28 @@ const styles = StyleSheet.create({
 
   /* Level Pills */
   levelPills: {
-    paddingHorizontal: 20,
+    paddingTop: 12,
     gap: 8,
-    paddingBottom: 4,
   },
   levelPill: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   levelPillActive: {
-    backgroundColor: '#4ECDC4',
-    borderColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.softTeal,
+    borderColor: '#90E2D8',
   },
   levelPillText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
   },
   levelPillTextActive: {
-    color: '#FFF',
+    color: LingoTheme.colors.teal,
   },
 
   /* List */
@@ -506,31 +490,4 @@ const styles = StyleSheet.create({
   },
 
   /* States */
-  loadingState: {
-    paddingTop: 60,
-    alignItems: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
 });

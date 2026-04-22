@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, Platform, RefreshControl, ActivityIndicator, Image } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { StyleSheet, View, FlatList, TouchableOpacity, RefreshControl, Image } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,10 @@ import { api } from '@/lib/config';
 import { useFocusEffect } from '@react-navigation/native';
 import { authFetch } from '@/lib/auth-fetch';
 import { MessagesSkeleton } from '@/components/ui/dashboard-skeletons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface Conversation {
   id: string;
@@ -25,6 +29,7 @@ interface Conversation {
 export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,6 +60,16 @@ export default function MessagesScreen() {
     fetchConversations();
   };
 
+  const unreadConversations = useMemo(
+    () => conversations.filter((conversation) => conversation.unreadCount > 0).length,
+    [conversations]
+  );
+
+  const totalUnreadMessages = useMemo(
+    () => conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0),
+    [conversations]
+  );
+
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -76,83 +91,73 @@ export default function MessagesScreen() {
     
     return (
       <TouchableOpacity
-        style={[styles.conversationItem, isUnread && styles.unreadItem]}
+        style={styles.touchCard}
         activeOpacity={0.7}
         onPress={() => router.push({
           pathname: '/chat/[id]' as any,
         params: { id: item.otherUserId, name: item.otherUser.full_name, avatar: item.otherUser.avatar_url || '' }
       })}
     >
-      <View style={styles.avatarContainer}>
-        {item.otherUser.avatar_url ? (
-          <Image 
-            source={{ uri: item.otherUser.avatar_url }} 
-            style={styles.avatarImage}
-          />
-        ) : (
-          <View style={styles.avatar}>
-            <ThemedText style={styles.avatarText}>
-              {item.otherUser.full_name.charAt(0).toUpperCase()}
-            </ThemedText>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.conversationContent}>
-          <View style={styles.conversationHeader}>
-            <ThemedText 
-              style={[styles.userName, isUnread && styles.userNameUnread]} 
-              numberOfLines={1}
-            >
-              {item.otherUser.full_name}
-            </ThemedText>
-            <ThemedText style={[styles.timeText, isUnread && styles.timeTextUnread]}>
-              {formatTime(item.last_message_at)}
-            </ThemedText>
-          </View>
-
-          <View style={styles.messagePreview}>
-            <ThemedText 
-              style={[styles.previewText, isUnread && styles.previewTextUnread]} 
-              numberOfLines={1}
-            >
-              Tap to view conversation
-            </ThemedText>
-            
-            {item.unreadCount > 0 ? (
-              <View style={styles.unreadBadge}>
-                <ThemedText style={styles.unreadText}>
-                  {item.unreadCount > 99 ? '99+' : item.unreadCount}
-                </ThemedText>
-              </View>
+      <LingoCard style={[styles.conversationItem, isUnread && styles.unreadItem]}>
+        <View style={styles.conversationRow}>
+          <View style={styles.avatarContainer}>
+            {item.otherUser.avatar_url ? (
+              <Image
+                source={{ uri: item.otherUser.avatar_url }}
+                style={styles.avatarImage}
+              />
             ) : (
-              <Ionicons name="chevron-forward" size={16} color="#E5E7EB" style={styles.chevron} />
+              <LinearGradient colors={[LingoTheme.colors.primary, '#22C55E']} style={styles.avatar}>
+                <ThemedText style={styles.avatarText}>
+                  {item.otherUser.full_name.charAt(0).toUpperCase()}
+                </ThemedText>
+              </LinearGradient>
             )}
           </View>
+
+          <View style={styles.conversationContent}>
+            <View style={styles.conversationHeader}>
+              <ThemedText style={styles.userName} numberOfLines={1}>
+                {item.otherUser.full_name}
+              </ThemedText>
+              <ThemedText style={styles.timeText}>{formatTime(item.last_message_at)}</ThemedText>
+            </View>
+
+            <View style={styles.messagePreview}>
+              <ThemedText style={[styles.previewText, isUnread && styles.previewTextUnread]} numberOfLines={1}>
+                {isUnread ? 'You have a new teacher reply waiting' : 'Tap to view conversation'}
+              </ThemedText>
+
+              {item.unreadCount > 0 ? (
+                <View style={styles.unreadBadge}>
+                  <ThemedText style={styles.unreadText}>
+                    {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                  </ThemedText>
+                </View>
+              ) : (
+                <Ionicons name="chevron-forward" size={16} color="#E5E7EB" style={styles.chevron} />
+              )}
+            </View>
+          </View>
         </View>
+      </LingoCard>
       </TouchableOpacity>
     );
   };
 
   const EmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconBg}>
-        <Ionicons name="chatbubbles-outline" size={48} color="#4ECDC4" />
-      </View>
-      <ThemedText style={styles.emptyTitle}>No Messages Yet</ThemedText>
-      <ThemedText style={styles.emptySubtitle}>
-        Connect with your teachers to start chatting. Conversations will appear here.
-      </ThemedText>
-    </View>
+    <LingoCard>
+      <LingoEmptyState
+        icon="chatbubbles-outline"
+        title="No messages yet"
+        subtitle="Start a chat with a teacher and your conversations will appear here in a simple inbox view."
+        tone="primary"
+      />
+    </LingoCard>
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Messages</ThemedText>
-      </View>
-
       {loading ? (
         <MessagesSkeleton />
       ) : (
@@ -160,9 +165,26 @@ export default function MessagesScreen() {
           data={conversations}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={conversations.length === 0 ? styles.emptyList : styles.list}
+          contentContainerStyle={[
+            styles.list,
+            { paddingTop: topPadding, paddingBottom: bottomPadding + 24 },
+            conversations.length === 0 && styles.emptyList,
+          ]}
+          ListHeaderComponent={
+            <LingoScreenHeader
+              badge="Parent hub"
+              icon="chatbubbles"
+              title="Messages that stay friendly"
+              subtitle="Keep teacher replies, follow-ups, and scheduling chats organized in one calm inbox."
+            >
+              <View style={styles.headerStatsRow}>
+                <LingoStatPill icon="💬" value={String(conversations.length)} label="Chats" tone="primary" />
+                <LingoStatPill icon="✨" value={String(unreadConversations)} label="Unread chats" tone="teal" />
+                <LingoStatPill icon="📨" value={String(totalUnreadMessages)} label="New msgs" tone="gold" />
+              </View>
+            </LingoScreenHeader>
+          }
           ListEmptyComponent={<EmptyState />}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -181,57 +203,35 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.background,
   },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    // Subtle shadow for header
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 2,
-    zIndex: 10,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  loadingContainer: {
-    flex: 1,
+  headerStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
     justifyContent: 'center',
-    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   list: {
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   emptyList: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'flex-start',
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginLeft: 84, // Align with text, skipping avatar
+  touchCard: {
+    marginBottom: 12,
   },
   conversationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    padding: 16,
   },
   unreadItem: {
-    backgroundColor: '#F0FDFA', // Very subtle tint for unread rows
+    backgroundColor: '#FCFFFC',
+    borderColor: '#CFEAA9',
+  },
+  conversationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatarContainer: {
     marginRight: 16,
@@ -241,11 +241,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4ECDC4',
     justifyContent: 'center',
     alignItems: 'center',
-    // Avatar shadow
-    shadowColor: '#4ECDC4',
+    shadowColor: LingoTheme.colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -277,23 +275,15 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     flex: 1,
     marginRight: 8,
   },
-  userNameUnread: {
-    fontWeight: '800',
-    color: '#111827',
-  },
   timeText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#9CA3AF',
-  },
-  timeTextUnread: {
-    color: '#4ECDC4',
     fontWeight: '700',
+    color: LingoTheme.colors.muted,
   },
   messagePreview: {
     flexDirection: 'row',
@@ -302,17 +292,17 @@ const styles = StyleSheet.create({
   },
   previewText: {
     fontSize: 14,
-    fontWeight: '400',
-    color: '#6B7280',
+    fontWeight: '500',
+    color: LingoTheme.colors.muted,
     flex: 1,
     marginRight: 8,
   },
   previewTextUnread: {
-    color: '#1F2937',
+    color: LingoTheme.colors.ink,
     fontWeight: '600',
   },
   unreadBadge: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.primary,
     paddingHorizontal: 8,
     minWidth: 22,
     height: 22,
@@ -328,33 +318,5 @@ const styles = StyleSheet.create({
   },
   chevron: {
     opacity: 0.5,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    justifyContent: 'center',
-  },
-  emptyIconBg: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F0FDFA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 22,
   },
 });

@@ -9,14 +9,15 @@ import {
   Animated,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/lib/config';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LingoButton, LingoCard, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
-import { Fonts } from '@/constants/theme';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -112,20 +113,6 @@ export default function AvailabilityScreen() {
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<DayName>(todayDayName());
-
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (!hasUnsaved) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [hasUnsaved]);
 
   useEffect(() => {
     if (!feedback) return;
@@ -224,63 +211,34 @@ export default function AvailabilityScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.loadingCard}>
+        <LingoCard style={styles.loadingCard}>
           <ActivityIndicator size="large" color="#14B8A6" />
           <ThemedText style={styles.loadingText}>Loading your schedule...</ThemedText>
-        </View>
+        </LingoCard>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#0F766E', '#0D9488', '#14B8A6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: topPadding }]}
-      >
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/(teacher)/' as any)}
-            activeOpacity={0.75}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="arrow-back" size={20} color="#FFF" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <View style={styles.headerTitleRow}>
-              <ThemedText style={styles.headerTitle}>Availability</ThemedText>
-              {hasUnsaved && (
-                <Animated.View style={[styles.unsavedDot, { opacity: pulseAnim }]} />
-              )}
-            </View>
-            <ThemedText style={styles.headerSub}>Recurring weekly schedule</ThemedText>
+      <View style={[styles.headerWrap, { paddingTop: topPadding }]}> 
+        <LingoScreenHeader
+          title="Availability"
+          subtitle="Build a weekly schedule that students can book with confidence."
+          badge={hasUnsaved ? 'Unsaved changes' : 'Ready for bookings'}
+          icon="calendar-clear-outline"
+          onBack={() => router.canGoBack() ? router.back() : router.replace('/(teacher)/' as any)}
+        >
+          <View style={styles.headerStats}>
+            <LingoStatPill icon="🗓️" value={String(configuredDays)} label="Days set" tone="primary" />
+            <LingoStatPill icon="⏰" value={String(totalWeeklySlots)} label="Open slots" tone="teal" />
+            <LingoStatPill icon="✨" value={String(selectedSlots.length)} label="Today focus" tone="purple" />
           </View>
-          <View style={styles.weekBadge}>
-            <ThemedText style={styles.weekBadgeNum}>{totalWeeklySlots}</ThemedText>
-            <ThemedText style={styles.weekBadgeLbl}>hrs/wk</ThemedText>
-          </View>
-        </View>
-        <View style={styles.statsRow}>
-          <View style={styles.statChip}>
-            <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.9)" />
-            <ThemedText style={styles.statText}>
-              {configuredDays} day{configuredDays !== 1 ? 's' : ''} configured
-            </ThemedText>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statChip}>
-            <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.9)" />
-            <ThemedText style={styles.statText}>
-              {totalWeeklySlots} open slot{totalWeeklySlots !== 1 ? 's' : ''} this week
-            </ThemedText>
-          </View>
-        </View>
-      </LinearGradient>
+        </LingoScreenHeader>
+      </View>
 
       {/* Day Selector */}
+      <View style={styles.daySelectorWrap}>
       <View style={styles.daySelector}>
         {DAYS.map((day, i) => {
           const isActive = selectedDay === day;
@@ -311,6 +269,7 @@ export default function AvailabilityScreen() {
             </TouchableOpacity>
           );
         })}
+      </View>
       </View>
 
       {/* Day Header Bar */}
@@ -476,7 +435,7 @@ export default function AvailabilityScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: Math.max(bottomPadding, 16) }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(bottomPadding, 16) }]}> 
         {!!feedback && (
           <View style={[
             styles.feedbackBanner,
@@ -497,155 +456,120 @@ export default function AvailabilityScreen() {
             </ThemedText>
           </View>
         )}
-        <TouchableOpacity
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+        <LingoButton
+          label={hasUnsaved ? 'Save changes' : 'Up to date'}
+          icon={hasUnsaved ? 'save-outline' : 'checkmark-circle-outline'}
           onPress={handleSave}
-          disabled={saving}
-          activeOpacity={0.88}
-        >
-          <LinearGradient
-            colors={saving ? ['#9CA3AF', '#9CA3AF'] : ['#0F766E', '#14B8A6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.saveGradient}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Ionicons
-                  name={hasUnsaved ? 'save-outline' : 'checkmark-circle-outline'}
-                  size={20}
-                  color="#FFF"
-                  style={{ marginRight: 8 }}
-                />
-                <ThemedText style={styles.saveBtnText}>
-                  {hasUnsaved ? 'Save Changes' : 'Up to Date'}
-                </ThemedText>
-                {hasUnsaved && <View style={styles.saveDot} />}
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
+          loading={saving}
+          disabled={!hasUnsaved && !saving}
+          style={[styles.saveBtn, !hasUnsaved && styles.saveBtnDisabled]}
+        />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0FDFA' },
-  loadingContainer: { flex: 1, backgroundColor: '#F0FDFA', justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: LingoTheme.colors.background },
+  loadingContainer: { flex: 1, backgroundColor: LingoTheme.colors.background, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
   loadingCard: {
-    backgroundColor: '#FFF', borderRadius: 20, paddingVertical: 36, paddingHorizontal: 48,
     alignItems: 'center', gap: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+    width: '100%',
+    maxWidth: 340,
   },
-  loadingText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
-  header: { paddingHorizontal: 20, paddingBottom: 18 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  backBtn: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-  },
-  headerCenter: { flex: 1 },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 22, fontFamily: Fonts?.rounded ?? 'system', fontWeight: '700', color: '#FFF' },
-  unsavedDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#FCD34D', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2, fontWeight: '500' },
-  weekBadge: {
-    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 8,
-    alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', minWidth: 58,
-  },
-  weekBadgeNum: { fontSize: 20, fontWeight: '800', color: '#FFF', lineHeight: 24 },
-  weekBadgeLbl: { fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: '600', marginTop: 1 },
-  statsRow: {
+  loadingText: { fontSize: 14, color: LingoTheme.colors.muted, fontWeight: '700' },
+  headerWrap: { paddingHorizontal: 20, paddingBottom: 12 },
+  headerStats: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    gap: 12,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
-  statChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
-  statText: { fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: '600' },
-  statDivider: { width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.25)', marginHorizontal: 12 },
+  daySelectorWrap: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
   daySelector: {
     flexDirection: 'row', backgroundColor: '#FFF',
     paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'space-between',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    ...LingoTheme.shadow.card,
   },
   dayPill: {
     flex: 1, alignItems: 'center', paddingVertical: 9, marginHorizontal: 2,
-    borderRadius: 14, backgroundColor: '#F9FAFB', borderWidth: 1.5, borderColor: '#E5E7EB',
+    borderRadius: 14, backgroundColor: LingoTheme.colors.surfaceAlt, borderWidth: 1.5, borderColor: LingoTheme.colors.border,
   },
   dayPillActive: {
-    backgroundColor: '#0F766E', borderColor: '#0F766E',
-    shadowColor: '#0D9488', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+    backgroundColor: LingoTheme.colors.primary, borderColor: LingoTheme.colors.primaryDark,
   },
-  dayPillAbbr: { fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 0.3 },
+  dayPillAbbr: { fontSize: 11, fontWeight: '700', color: LingoTheme.colors.muted, letterSpacing: 0.3 },
   dayPillAbbrActive: { color: '#FFF' },
   dayIndicatorRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 5, height: 14, gap: 2 },
-  todayRing: { width: 6, height: 6, borderRadius: 3, borderWidth: 1.5, borderColor: '#14B8A6' },
-  dayDotFilled: { minWidth: 16, height: 14, borderRadius: 7, backgroundColor: '#CCFBF1', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  todayRing: { width: 6, height: 6, borderRadius: 3, borderWidth: 1.5, borderColor: LingoTheme.colors.teal },
+  dayDotFilled: { minWidth: 16, height: 14, borderRadius: 7, backgroundColor: LingoTheme.colors.softPrimary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   dayDotFilledActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  dayDotCount: { fontSize: 9, fontWeight: '800', color: '#0D9488', lineHeight: 12 },
+  dayDotCount: { fontSize: 9, fontWeight: '800', color: LingoTheme.colors.primaryDark, lineHeight: 12 },
   dayDotCountActive: { color: '#FFF' },
-  dayDotEmpty: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#E5E7EB' },
+  dayDotEmpty: { width: 5, height: 5, borderRadius: 3, backgroundColor: LingoTheme.colors.border },
   dayBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
-    backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFF', borderTopWidth: 2, borderBottomWidth: 2, borderColor: LingoTheme.colors.border,
   },
   dayBarLeft: { flex: 1 },
-  dayBarName: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  dayBarCount: { fontSize: 12, color: '#6B7280', marginTop: 2, flexShrink: 1 },
-  clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FEF2F2', marginLeft: 12 },
-  clearBtnText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
+  dayBarName: { fontSize: 16, fontWeight: '800', color: LingoTheme.colors.ink },
+  dayBarCount: { fontSize: 12, color: LingoTheme.colors.muted, marginTop: 2, flexShrink: 1 },
+  clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: LingoTheme.colors.softDanger, marginLeft: 12, borderWidth: 1.5, borderColor: '#F7A7A7' },
+  clearBtnText: { fontSize: 12, fontWeight: '700', color: LingoTheme.colors.danger },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 14 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 14 },
   groupCard: {
-    backgroundColor: '#FFF', borderRadius: 20, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 12,
+    borderWidth: 2, borderColor: LingoTheme.colors.border,
+    ...LingoTheme.shadow.card,
   },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
   groupIconBg: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   groupHeadLabels: { flex: 1 },
-  groupTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  groupSub: { fontSize: 11, color: '#9CA3AF', marginTop: 1, fontWeight: '500' },
+  groupTitle: { fontSize: 15, fontWeight: '800', color: LingoTheme.colors.ink },
+  groupSub: { fontSize: 11, color: LingoTheme.colors.muted, marginTop: 1, fontWeight: '500' },
   groupCountPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   groupCountText: { fontSize: 11, fontWeight: '700' },
-  groupToggle: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB', borderWidth: 1.5, borderColor: '#E5E7EB' },
-  groupToggleTxt: { fontSize: 11, fontWeight: '700', color: '#6B7280' },
-  groupDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
+  groupToggle: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: LingoTheme.colors.surfaceAlt, borderWidth: 1.5, borderColor: LingoTheme.colors.border },
+  groupToggleTxt: { fontSize: 11, fontWeight: '700', color: LingoTheme.colors.muted },
+  groupDivider: { height: 1, backgroundColor: LingoTheme.colors.border, marginVertical: 12 },
   slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   slot: {
-    width: SLOT_W, paddingVertical: 9, borderRadius: 11, borderWidth: 1.5, borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 3,
+    width: SLOT_W, paddingVertical: 9, borderRadius: 14, borderWidth: 1.5, borderColor: LingoTheme.colors.border,
+    backgroundColor: LingoTheme.colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 3,
   },
   slotCheck: { marginRight: 1 },
-  slotText: { fontSize: 12, fontWeight: '600', color: '#4B5563' },
+  slotText: { fontSize: 12, fontWeight: '700', color: '#4B5563' },
   slotTextOn: { color: '#FFF', fontWeight: '700' },
   overviewCard: {
-    backgroundColor: '#FFF', borderRadius: 20, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 12,
+    borderWidth: 2, borderColor: LingoTheme.colors.border,
+    ...LingoTheme.shadow.card,
   },
   overviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  overviewIconBg: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#CCFBF1', justifyContent: 'center', alignItems: 'center' },
-  overviewTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#111827' },
-  overviewHint: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
+  overviewIconBg: { width: 30, height: 30, borderRadius: 8, backgroundColor: LingoTheme.colors.softTeal, justifyContent: 'center', alignItems: 'center' },
+  overviewTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: LingoTheme.colors.ink },
+  overviewHint: { fontSize: 11, color: LingoTheme.colors.muted, fontWeight: '500' },
   overviewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, paddingHorizontal: 8, borderRadius: 10, marginBottom: 2 },
-  overviewRowActive: { backgroundColor: '#F0FDFA' },
+  overviewRowActive: { backgroundColor: LingoTheme.colors.softPrimary },
   overviewRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 82 },
   overviewAbbr: { fontSize: 12, fontWeight: '800', color: '#9CA3AF', width: 30 },
-  overviewAbbrActive: { color: '#0D9488' },
-  overviewFull: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  barTrack: { flex: 1, height: 7, borderRadius: 4, backgroundColor: '#F3F4F6', overflow: 'hidden' },
+  overviewAbbrActive: { color: LingoTheme.colors.primaryDark },
+  overviewFull: { fontSize: 12, color: LingoTheme.colors.muted, fontWeight: '500' },
+  barTrack: { flex: 1, height: 7, borderRadius: 4, backgroundColor: LingoTheme.colors.surfaceAlt, overflow: 'hidden' },
   barFill: { height: 7, borderRadius: 4 },
-  overviewCount: { fontSize: 12, fontWeight: '700', color: '#6B7280', width: 30, textAlign: 'right' },
-  overviewCountActive: { color: '#0D9488' },
+  overviewCount: { fontSize: 12, fontWeight: '700', color: LingoTheme.colors.muted, width: 30, textAlign: 'right' },
+  overviewCountActive: { color: LingoTheme.colors.primaryDark },
   footer: {
     backgroundColor: '#FFF', paddingHorizontal: 20, paddingTop: 14,
-    borderTopWidth: 1, borderTopColor: '#E5E7EB',
-    shadowColor: '#000', shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 10,
+    borderTopWidth: 2, borderTopColor: LingoTheme.colors.border,
   },
   feedbackBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, marginBottom: 12 },
   feedbackBannerOk: { backgroundColor: '#ECFDF5' },
@@ -653,9 +577,6 @@ const styles = StyleSheet.create({
   feedbackText: { flex: 1, fontSize: 13, fontWeight: '600' },
   feedbackTextOk: { color: '#059669' },
   feedbackTextErr: { color: '#DC2626' },
-  saveBtn: { borderRadius: 16, overflow: 'hidden', shadowColor: '#0D9488', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
-  saveBtnDisabled: { shadowOpacity: 0, opacity: 0.75 },
-  saveGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 24 },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
-  saveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#FCD34D', marginLeft: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
+  saveBtn: { borderRadius: 18 },
+  saveBtnDisabled: { opacity: 0.78 },
 });

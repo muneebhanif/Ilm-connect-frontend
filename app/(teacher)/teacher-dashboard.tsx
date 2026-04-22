@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
+import { Fonts, LingoTheme } from '@/constants/theme';
 import { TeacherDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -319,7 +319,7 @@ export default function TeacherDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header Section */}
-        <View style={[styles.header, { paddingTop: topPadding }]}>
+        <LinearGradient colors={['#FFF7D6', '#FFFFFF', '#FEE2E2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: topPadding }]}> 
           <View style={styles.headerTopRow}>
             <View>
               <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
@@ -353,7 +353,7 @@ export default function TeacherDashboard() {
                 </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
         {/* Notification Banner */}
         {notification && (
@@ -543,7 +543,7 @@ export default function TeacherDashboard() {
           </View>
 
           <LinearGradient
-            colors={['#FF6B6B', '#EE5A24']}
+            colors={['#F97316', '#EF4444']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.mainStatsCard}
@@ -712,7 +712,7 @@ export default function TeacherDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -727,16 +727,12 @@ const styles = StyleSheet.create({
 
   /* Header Styles */
   header: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    backgroundColor: '#FFF',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    borderBottomWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -745,15 +741,15 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginBottom: 2,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   userNameText: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   headerActions: {
     flexDirection: 'row',
@@ -761,10 +757,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -780,26 +778,22 @@ const styles = StyleSheet.create({
     borderColor: '#FFF',
   },
   profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#FFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
   },
   profileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 16,
   },
 
   /* Banners */
   bannerContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     marginTop: 24,
   },
   statusBanner: {
@@ -822,7 +816,7 @@ const styles = StyleSheet.create({
 
   /* Main Content */
   contentContainer: {
-    padding: 24,
+    padding: 20,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -833,27 +827,26 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    fontFamily: Fonts.rounded,
+    color: LingoTheme.colors.ink,
   },
   editLinkBtn: {
     padding: 4,
   },
   editLinkText: {
     fontSize: 14,
-    color: '#FF6B6B',
-    fontWeight: '600',
+    color: '#C2410C',
+    fontWeight: '800',
   },
 
   /* Stats Card */
   mainStatsCard: {
-    borderRadius: 20,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.24)',
     padding: 24,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...LingoTheme.shadow.card,
     marginBottom: 24,
   },
   statsRow: {
@@ -866,16 +859,16 @@ const styles = StyleSheet.create({
   },
   statIconContainer: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   statValueBig: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFF',
     marginBottom: 4,
   },
@@ -899,13 +892,11 @@ const styles = StyleSheet.create({
   gridCard: {
     flex: 1,
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...LingoTheme.shadow.card,
     alignItems: 'flex-start',
   },
   gridIcon: {
@@ -918,26 +909,24 @@ const styles = StyleSheet.create({
   },
   gridValue: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
   },
   gridLabel: {
     fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: LingoTheme.colors.muted,
+    fontWeight: '700',
   },
 
   /* Profile Card */
   profileCard: {
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...LingoTheme.shadow.card,
     marginBottom: 24,
   },
   profileDetailRow: {
@@ -947,8 +936,8 @@ const styles = StyleSheet.create({
   detailIconBox: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    backgroundColor: '#FFF7ED',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -958,13 +947,13 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: LingoTheme.colors.ink,
   },
   detailDivider: {
     height: 1,
@@ -976,13 +965,11 @@ const styles = StyleSheet.create({
   /* Availability Card */
   availabilityCard: {
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...LingoTheme.shadow.card,
     marginBottom: 24,
   },
   availabilityRow: {
@@ -991,10 +978,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dayBadge: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FFF7ED',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 10,
     marginRight: 12,
     width: 50,
     alignItems: 'center',
@@ -1002,13 +989,13 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FF6B6B',
+    color: '#C2410C',
     textTransform: 'uppercase',
   },
   availabilitySlots: {
     flex: 1,
     fontSize: 14,
-    color: '#374151',
+    color: LingoTheme.colors.ink,
   },
   emptyAvailability: {
     alignItems: 'center',
@@ -1016,13 +1003,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   availabilityNone: {
-    color: '#9CA3AF',
+    color: LingoTheme.colors.muted,
     fontStyle: 'italic',
     fontSize: 14,
   },
   moreDaysText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: LingoTheme.colors.muted,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -1035,19 +1022,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...LingoTheme.shadow.card,
   },
   actionIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF5F5',
+    borderRadius: 16,
+    backgroundColor: '#FFF7ED',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -1057,13 +1042,13 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 2,
   },
   actionDesc: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
   },
 
   /* Error/Loading Utilities */
@@ -1084,10 +1069,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   retryButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#F97316',
     paddingVertical: 14,
     paddingHorizontal: 32,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.12)',
   },
   retryButtonText: {
     fontSize: 16,
@@ -1104,7 +1091,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginHorizontal: 16,
     marginTop: 8,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   successBanner: {
     backgroundColor: '#10B981',
@@ -1125,13 +1112,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   verificationCard: {
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 20,
-    shadowColor: '#D97706',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
+    ...LingoTheme.shadow.card,
   },
   verificationHeader: {
     flexDirection: 'row',
@@ -1168,7 +1151,7 @@ const styles = StyleSheet.create({
   documentUploadCard: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1216,7 +1199,7 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 12,
     color: '#92400E',
-    fontWeight: '500',
+    fontWeight: '700',
   },
   rejectionReasonBox: {
     backgroundColor: '#fff',

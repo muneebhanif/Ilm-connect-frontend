@@ -11,6 +11,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 
 interface Course {
   id: string;
@@ -710,25 +712,24 @@ export default function TeacherCoursesScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => loadCourses('refresh')} tintColor="#FF6B6B" />
         }
       >
-        {/* Header */}
-        <LinearGradient
-          colors={['#FF6B6B', '#EE5A24']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.headerTop}>
-            <View>
-              <ThemedText style={styles.headerTitle}>My Courses</ThemedText>
-              <ThemedText style={styles.headerSubtitle}>
-                {courses.length} course{courses.length !== 1 ? 's' : ''} published
-              </ThemedText>
+        <View style={styles.headerWrap}>
+          <LingoScreenHeader
+            title="My Courses"
+            subtitle={`Keep your lessons polished, complete, and ready to publish.`}
+            badge="Teacher studio"
+            icon="library-outline"
+          >
+            <View style={styles.headerMetaRow}>
+              <LingoStatPill label="Published" value={String(publishedCount)} icon="rocket-outline" tone="gold" />
+              <LingoStatPill label="Drafts" value={String(draftCount)} icon="create-outline" tone="teal" />
+              <LingoStatPill label="Need setup" value={String(needsSetupCount)} icon="build-outline" tone="primary" />
             </View>
-            <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
-              <Ionicons name="add" size={24} color="#FF6B6B" />
+            <TouchableOpacity style={styles.addCourseButton} onPress={openCreateModal}>
+              <Ionicons name="add" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.addCourseButtonText}>New course</ThemedText>
             </TouchableOpacity>
-          </View>
-        </LinearGradient>
+          </LingoScreenHeader>
+        </View>
 
         {/* Notification Banner */}
         {notification && (
@@ -738,42 +739,13 @@ export default function TeacherCoursesScreen() {
           </View>
         )}
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={[styles.miniStat, { backgroundColor: '#FEF3C7' }]}>
-            <ThemedText style={styles.miniStatValue}>
-              {publishedCount}
-            </ThemedText>
-            <ThemedText style={styles.miniStatLabel}>Published</ThemedText>
-          </View>
-          <View style={[styles.miniStat, { backgroundColor: '#ECFDF5' }]}>
-            <ThemedText style={styles.miniStatValue}>
-              {draftCount}
-            </ThemedText>
-            <ThemedText style={styles.miniStatLabel}>Drafts</ThemedText>
-          </View>
-          <View style={[styles.miniStat, { backgroundColor: '#EFF6FF' }]}>
-            <ThemedText style={styles.miniStatValue}>
-              {needsSetupCount}
-            </ThemedText>
-            <ThemedText style={styles.miniStatLabel}>Need setup</ThemedText>
-          </View>
-        </View>
-
         {/* Courses List */}
         <View style={styles.contentPad}>
           {courses.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="library-outline" size={40} color="#D1D5DB" />
-              </View>
-              <ThemedText style={styles.emptyTitle}>No courses yet</ThemedText>
-              <ThemedText style={styles.emptyDesc}>Create your first course to share your knowledge</ThemedText>
-              <TouchableOpacity style={styles.emptyButton} onPress={openCreateModal}>
-                <Ionicons name="add-circle" size={20} color="#FFF" />
-                <ThemedText style={styles.emptyButtonText}>Create Course</ThemedText>
-              </TouchableOpacity>
-            </View>
+            <LingoCard style={styles.emptyState}>
+              <LingoEmptyState icon="library-outline" title="No courses yet" subtitle="Create your first course to share your knowledge." tone="gold" />
+              <LingoButton label="Create course" icon="add-circle-outline" onPress={openCreateModal} />
+            </LingoCard>
           ) : (
             courses.map((course) => (
               <View key={course.id} style={styles.courseCard}>
@@ -804,6 +776,11 @@ export default function TeacherCoursesScreen() {
                     <ThemedText style={styles.courseTitle} numberOfLines={1}>{course.title}</ThemedText>
                     <ThemedText style={styles.courseSubject}>{course.subject}</ThemedText>
                   </View>
+                  <LingoBadge
+                    label={course.is_free ? 'Free' : `$${course.price}`}
+                    icon={course.is_free ? 'gift-outline' : 'cash-outline'}
+                    tone={course.is_free ? 'teal' : 'gold'}
+                  />
                 </View>
 
                 {course.description ? (
@@ -1213,40 +1190,32 @@ const styles = StyleSheet.create({
   },
 
   /* Header */
-  header: {
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
-  headerTop: {
+  headerMetaRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  addCourseButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    backgroundColor: LingoTheme.colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.primaryDark,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-  headerSubtitle: {
+  addCourseButtonText: {
+    color: '#FFFFFF',
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    fontWeight: '800',
   },
 
   /* Notification */
@@ -1264,36 +1233,10 @@ const styles = StyleSheet.create({
   errorBanner: { backgroundColor: '#EF4444' },
   notifText: { color: '#FFF', fontSize: 14, fontWeight: '500', flex: 1 },
 
-  /* Stats */
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  miniStat: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  miniStatValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  miniStatLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 2,
-  },
-
   /* Content */
   contentPad: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 10,
   },
 
   /* Course Card */
@@ -1302,6 +1245,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     marginBottom: 14,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -1575,45 +1520,8 @@ const styles = StyleSheet.create({
 
   /* Empty State */
   emptyState: {
-    alignItems: 'center',
     padding: 40,
-    backgroundColor: '#FFF',
     borderRadius: 20,
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  emptyButtonText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 15,
   },
 
   /* FAB */

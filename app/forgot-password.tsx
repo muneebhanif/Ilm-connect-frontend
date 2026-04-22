@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-// Back button removed
+import { LingoBadge, LingoButton, LingoCard } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
 import { api } from '@/lib/config';
 
 export default function ForgotPasswordScreen() {
@@ -56,11 +57,10 @@ export default function ForgotPasswordScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
       >
         <View style={styles.content}>
-
-
           <View style={styles.hero}>
+            <LingoBadge label="Secure account recovery" icon="mail-open-outline" />
             <View style={styles.iconBadge}>
-              <Ionicons name="mail-open-outline" size={26} color="#14B8A6" />
+              <Ionicons name="mail-open-outline" size={30} color={LingoTheme.colors.primaryDark} />
             </View>
             <ThemedText style={styles.title}>Forgot password?</ThemedText>
             <ThemedText style={styles.subtitle}>
@@ -68,7 +68,7 @@ export default function ForgotPasswordScreen() {
             </ThemedText>
           </View>
 
-          <View style={styles.formCard}>
+          <LingoCard style={styles.formCard}>
             <ThemedText style={styles.inputLabel}>Email</ThemedText>
             <TextInput
               style={styles.input}
@@ -94,14 +94,20 @@ export default function ForgotPasswordScreen() {
               </View>
             ) : null}
 
-            <TouchableOpacity style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={handleReset} disabled={loading}>
-              {loading ? <ActivityIndicator color="#FFFFFF" /> : <ThemedText style={styles.primaryButtonText}>Send Reset Link</ThemedText>}
-            </TouchableOpacity>
+            <View style={styles.primaryWrap}>
+              {loading ? (
+                <View style={[styles.loadingButton, styles.primaryButtonDisabled]}>
+                  <ActivityIndicator color="#FFFFFF" />
+                </View>
+              ) : (
+                <LingoButton label="Send Reset Link" icon="paper-plane" onPress={handleReset} />
+              )}
+            </View>
 
             <TouchableOpacity style={styles.secondaryButton} onPress={() => router.replace('/login')}>
               <ThemedText style={styles.secondaryButtonText}>Back to login</ThemedText>
             </TouchableOpacity>
-          </View>
+          </LingoCard>
         </View>
       </KeyboardAvoidingView>
     </ThemedView>
@@ -111,7 +117,7 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -119,60 +125,53 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 12,
-  },
-  topNav: {
-    alignItems: 'flex-start',
-    marginTop: 10,
-    marginBottom: 20,
+    paddingTop: 24,
   },
   hero: {
     alignItems: 'center',
     marginBottom: 28,
+    gap: 10,
   },
   iconBadge: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#CCFBF1',
+    width: 78,
+    height: 78,
+    borderRadius: 28,
+    backgroundColor: LingoTheme.colors.softPrimary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 18,
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.12)',
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
-    marginBottom: 8,
+    fontFamily: Fonts.rounded,
+    color: LingoTheme.colors.ink,
   },
   subtitle: {
     fontSize: 15,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
     textAlign: 'center',
     lineHeight: 22,
   },
   formCard: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 18,
-    padding: 18,
-    backgroundColor: '#FFFFFF',
+    gap: 2,
   },
   inputLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#374151',
+    color: LingoTheme.colors.ink,
     marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
+    color: LingoTheme.colors.ink,
+    backgroundColor: '#FFFFFF',
   },
   errorBox: {
     marginTop: 14,
@@ -202,20 +201,19 @@ const styles = StyleSheet.create({
     color: '#047857',
     fontSize: 14,
   },
-  primaryButton: {
+  primaryWrap: {
     marginTop: 18,
-    backgroundColor: '#14B8A6',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
   },
   primaryButtonDisabled: {
     opacity: 0.7,
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
+  loadingButton: {
+    backgroundColor: LingoTheme.colors.primary,
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.12)',
   },
   secondaryButton: {
     marginTop: 12,
@@ -223,7 +221,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   secondaryButtonText: {
-    color: '#111827',
+    color: LingoTheme.colors.ink,
     fontSize: 14,
     fontWeight: '700',
   },

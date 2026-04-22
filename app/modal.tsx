@@ -1,16 +1,35 @@
 import { Link } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { LingoButton, LingoCard, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 
 export default function ModalScreen() {
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
-        <ThemedText type="link">Go to home screen</ThemedText>
-      </Link>
+      <LingoScreenHeader
+        badge="Quick note"
+        icon="sparkles"
+        title="A bright little modal"
+        subtitle="Use this space for short actions, confirmations, or small pieces of helpful context."
+      />
+
+      <LingoCard style={styles.card}>
+        <ThemedText style={styles.title}>You’re in a focused modal view</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          Keep modal content short, actionable, and easy to dismiss so the main flow stays clear.
+        </ThemedText>
+
+        <View style={styles.actions}>
+          <Link href="/" dismissTo asChild>
+            <View>
+              <LingoButton label="Back home" icon="arrow-forward" />
+            </View>
+          </Link>
+        </View>
+      </LingoCard>
     </ThemedView>
   );
 }
@@ -18,12 +37,28 @@ export default function ModalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+    padding: 20,
     justifyContent: 'center',
+    backgroundColor: LingoTheme.colors.background,
+  },
+  card: {
     padding: 20,
   },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
+  title: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+    textAlign: 'center',
+  },
+  subtitle: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 21,
+    color: LingoTheme.colors.muted,
+    textAlign: 'center',
+  },
+  actions: {
+    marginTop: 18,
   },
 });

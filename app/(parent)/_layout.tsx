@@ -7,6 +7,7 @@ import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
 import { ThemedText } from '@/components/themed-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LingoTheme } from '@/constants/theme';
 
 export default function ParentLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -44,8 +45,8 @@ export default function ParentLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#4ECDC4',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: LingoTheme.colors.primary,
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarShowLabel: false,
         tabBarIconStyle: {
           marginBottom: 0,
@@ -53,20 +54,30 @@ export default function ParentLayout() {
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
+          marginHorizontal: 4,
+          marginVertical: 4,
+          borderRadius: 18,
         },
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
+          borderTopWidth: 0,
           height: tabBarBaseHeight + Math.max(bottomInset, 16),
-          paddingTop: 8,
+          paddingTop: 10,
           paddingBottom: Math.max(bottomInset, 16),
-          elevation: 0,
+          marginHorizontal: 12,
+          marginBottom: Platform.OS === 'web' ? 0 : 10,
+          borderRadius: 28,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          ...LingoTheme.shadow.card,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.05,
           shadowRadius: 8,
         },
+        tabBarActiveBackgroundColor: LingoTheme.colors.softPrimary,
       }}
     >
       <Tabs.Screen

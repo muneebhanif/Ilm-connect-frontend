@@ -3,10 +3,11 @@ import { ActivityIndicator, Linking, RefreshControl, ScrollView, StyleSheet, Tou
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
-// Back button removed
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 interface ConnectStatus {
   connected: boolean;
@@ -34,9 +35,10 @@ const defaultStatus: ConnectStatus = {
 
 export default function TeacherPayoutSettingsScreen() {
   const router = useRouter();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<'onboarding' | 'dashboard' | null>(null);
   const [status, setStatus] = useState<ConnectStatus>(defaultStatus);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +71,7 @@ export default function TeacherPayoutSettingsScreen() {
 
   const openOnboarding = async () => {
     try {
-      setBusy(true);
+      setBusyAction('onboarding');
       const response = await authFetch(api.payments.teacherConnectOnboarding(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,13 +89,13 @@ export default function TeacherPayoutSettingsScreen() {
     } catch (e: any) {
       setError(e?.message || 'Failed to open Stripe onboarding');
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   };
 
   const openStripeDashboard = async () => {
     try {
-      setBusy(true);
+      setBusyAction('dashboard');
       const response = await authFetch(api.payments.teacherDashboardLink(), {
         method: 'POST',
       });
@@ -106,100 +108,145 @@ export default function TeacherPayoutSettingsScreen() {
     } catch (e: any) {
       setError(e?.message || 'Failed to open Stripe dashboard');
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   };
 
+  const actionNeededCount = status.requirementsDue?.length || 0;
+  const statusLabel = status.payoutsEnabled ? 'Ready for payouts' : status.connected ? 'Setup still needed' : 'Not connected';
+
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#111827', '#0F766E']} style={styles.header}>
-        <View style={styles.headerTop} />
-        <ThemedText style={styles.headerTitle}>Payout Settings</ThemedText>
-        <ThemedText style={styles.headerSubtitle}>
-          Connect Stripe to receive teacher payouts and manage payout details.
-        </ThemedText>
-      </LinearGradient>
-
       {loading ? (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color="#14B8A6" />
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
         </View>
       ) : (
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadStatus('refresh')} tintColor="#14B8A6" />}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadStatus('refresh')} tintColor={LingoTheme.colors.primary} />}
         >
+          <LingoScreenHeader
+            badge="Teacher earnings"
+            icon="wallet"
+            title="Payouts made simple"
+            subtitle="Connect Stripe once, finish any missing steps, and keep your payout setup easy to understand."
+            onBack={() => router.back()}
+          >
+            <View style={styles.statsRow}>
+              <LingoStatPill icon="💸" value={status.payoutsEnabled ? 'Ready' : 'Setup'} label="Status" tone="primary" />
+              <LingoStatPill icon="📄" value={String(actionNeededCount)} label="Actions" tone="gold" />
+              <LingoStatPill icon="🌍" value={(status.country || '--').slice(0, 2).toUpperCase()} label="Country" tone="teal" />
+            </View>
+          </LingoScreenHeader>
+
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <ThemedText style={styles.cardTitle}>Stripe account</ThemedText>
-              <View style={[styles.statusPill, status.payoutsEnabled ? styles.statusPillSuccess : styles.statusPillPending]}>
-                <ThemedText style={[styles.statusPillText, status.payoutsEnabled ? styles.statusPillTextSuccess : styles.statusPillTextPending]}>
-                  {status.payoutsEnabled ? 'Ready' : status.connected ? 'Setup needed' : 'Not connected'}
-                </ThemedText>
-              </View>
-            </View>
-
-            <View style={styles.checklist}>
-              <View style={styles.checklistRow}>
-                <Ionicons name={status.connected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.connected ? '#059669' : '#9CA3AF'} />
-                <ThemedText style={styles.checklistText}>Connected account created</ThemedText>
-              </View>
-              <View style={styles.checklistRow}>
-                <Ionicons name={status.detailsSubmitted ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.detailsSubmitted ? '#059669' : '#9CA3AF'} />
-                <ThemedText style={styles.checklistText}>Details submitted</ThemedText>
-              </View>
-              <View style={styles.checklistRow}>
-                <Ionicons name={status.chargesEnabled ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.chargesEnabled ? '#059669' : '#9CA3AF'} />
-                <ThemedText style={styles.checklistText}>Charges enabled</ThemedText>
-              </View>
-              <View style={styles.checklistRow}>
-                <Ionicons name={status.payoutsEnabled ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.payoutsEnabled ? '#059669' : '#9CA3AF'} />
-                <ThemedText style={styles.checklistText}>Payouts enabled</ThemedText>
-              </View>
-            </View>
-
-            {status.country || status.defaultCurrency ? (
-              <View style={styles.metaRow}>
-                {status.country ? <ThemedText style={styles.metaText}>Country: {status.country}</ThemedText> : null}
-                {status.defaultCurrency ? <ThemedText style={styles.metaText}>Currency: {String(status.defaultCurrency).toUpperCase()}</ThemedText> : null}
-              </View>
-            ) : null}
-
-            {status.requirementsDue?.length ? (
-              <View style={styles.warningBox}>
-                <Ionicons name="alert-circle" size={18} color="#C2410C" />
+            <LingoCard>
+              <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.warningTitle}>Action required</ThemedText>
-                  <ThemedText style={styles.warningText}>
-                    {status.requirementsDue.join(', ')}
-                  </ThemedText>
+                  <ThemedText style={styles.cardTitle}>Stripe account</ThemedText>
+                  <ThemedText style={styles.cardSubtitle}>{statusLabel}</ThemedText>
+                </View>
+                <LingoBadge
+                  label={status.payoutsEnabled ? 'Ready' : status.connected ? 'Needs setup' : 'Connect'}
+                  icon={status.payoutsEnabled ? 'checkmark-circle' : 'alert-circle'}
+                  tone={status.payoutsEnabled ? 'primary' : 'gold'}
+                />
+              </View>
+
+              <View style={styles.checklist}>
+                <View style={styles.checklistRow}>
+                  <Ionicons name={status.connected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.connected ? LingoTheme.colors.primary : LingoTheme.colors.muted} />
+                  <ThemedText style={styles.checklistText}>Connected account created</ThemedText>
+                </View>
+                <View style={styles.checklistRow}>
+                  <Ionicons name={status.detailsSubmitted ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.detailsSubmitted ? LingoTheme.colors.primary : LingoTheme.colors.muted} />
+                  <ThemedText style={styles.checklistText}>Details submitted</ThemedText>
+                </View>
+                <View style={styles.checklistRow}>
+                  <Ionicons name={status.chargesEnabled ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.chargesEnabled ? LingoTheme.colors.primary : LingoTheme.colors.muted} />
+                  <ThemedText style={styles.checklistText}>Charges enabled</ThemedText>
+                </View>
+                <View style={styles.checklistRow}>
+                  <Ionicons name={status.payoutsEnabled ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={status.payoutsEnabled ? LingoTheme.colors.primary : LingoTheme.colors.muted} />
+                  <ThemedText style={styles.checklistText}>Payouts enabled</ThemedText>
                 </View>
               </View>
-            ) : null}
 
-            {error ? (
-              <View style={styles.errorBox}>
-                <Ionicons name="alert-circle" size={18} color="#DC2626" />
-                <ThemedText style={styles.errorText}>{error}</ThemedText>
+              <View style={styles.metaRow}>
+                <View style={styles.metaPill}>
+                  <ThemedText style={styles.metaLabel}>Country</ThemedText>
+                  <ThemedText style={styles.metaValue}>{status.country || '--'}</ThemedText>
+                </View>
+                <View style={styles.metaPill}>
+                  <ThemedText style={styles.metaLabel}>Currency</ThemedText>
+                  <ThemedText style={styles.metaValue}>{status.defaultCurrency ? String(status.defaultCurrency).toUpperCase() : '--'}</ThemedText>
+                </View>
               </View>
-            ) : null}
 
-            <TouchableOpacity style={[styles.primaryButton, busy && styles.buttonDisabled]} onPress={openOnboarding} disabled={busy}>
-              {busy ? <ActivityIndicator color="#FFFFFF" /> : <ThemedText style={styles.primaryButtonText}>{status.connected ? 'Continue Stripe setup' : 'Connect Stripe'}</ThemedText>}
-            </TouchableOpacity>
+              {status.requirementsDue?.length ? (
+                <View style={styles.warningBox}>
+                  <Ionicons name="alert-circle" size={18} color="#B7791F" />
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={styles.warningTitle}>Still needed from Stripe</ThemedText>
+                    <ThemedText style={styles.warningText}>{status.requirementsDue.join(', ')}</ThemedText>
+                  </View>
+                </View>
+              ) : null}
 
-            <TouchableOpacity style={[styles.secondaryButton, busy && styles.buttonDisabled]} onPress={openStripeDashboard} disabled={busy || !status.connected}>
-              <ThemedText style={styles.secondaryButtonText}>Open Stripe dashboard</ThemedText>
-            </TouchableOpacity>
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={18} color={LingoTheme.colors.danger} />
+                  <ThemedText style={styles.errorText}>{error}</ThemedText>
+                </View>
+              ) : null}
+
+              <View style={styles.actionsWrap}>
+                <LingoButton
+                  label={status.connected ? 'Continue Stripe setup' : 'Connect Stripe'}
+                  icon="arrow-forward"
+                  onPress={openOnboarding}
+                  loading={busyAction === 'onboarding'}
+                />
+                <LingoButton
+                  label="Open Stripe dashboard"
+                  variant="secondary"
+                  onPress={openStripeDashboard}
+                  loading={busyAction === 'dashboard'}
+                  disabled={!status.connected}
+                />
+              </View>
+            </LingoCard>
           </View>
 
-          <View style={styles.infoCard}>
+          <LingoCard style={styles.infoCard}>
             <ThemedText style={styles.infoTitle}>How payouts work</ThemedText>
-            <ThemedText style={styles.infoText}>Booking amounts are calculated on the server from your hourly rate and selected package.</ThemedText>
-            <ThemedText style={styles.infoText}>IlmConnect stores gross amount, platform fee, and teacher net amount in Stripe metadata for each payment.</ThemedText>
-            <ThemedText style={styles.infoText}>Once Stripe enables payouts, your verified account can receive transfers based on your payout schedule.</ThemedText>
-          </View>
+            <View style={styles.infoRows}>
+              <View style={styles.infoRow}>
+                <Ionicons name="calculator-outline" size={18} color={LingoTheme.colors.teal} />
+                <ThemedText style={styles.infoText}>Booking totals are calculated on the server from your hourly rate and the chosen package.</ThemedText>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={LingoTheme.colors.teal} />
+                <ThemedText style={styles.infoText}>Gross amount, platform fee, and teacher net amount are stored in Stripe metadata for each payment.</ThemedText>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="cash-outline" size={18} color={LingoTheme.colors.teal} />
+                <ThemedText style={styles.infoText}>Once Stripe enables payouts, transfers follow your verified account and payout schedule.</ThemedText>
+              </View>
+            </View>
+          </LingoCard>
+
+          {!status.connected ? (
+            <LingoCard>
+              <LingoEmptyState
+                icon="wallet-outline"
+                title="Connect Stripe when you’re ready"
+                subtitle="You only need a few onboarding steps to start receiving teacher payouts securely."
+                tone="gold"
+              />
+            </LingoCard>
+          ) : null}
         </ScrollView>
       )}
     </View>
@@ -207,66 +254,42 @@ export default function TeacherPayoutSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: {
-    paddingTop: 56,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+  container: { flex: 1, backgroundColor: LingoTheme.colors.background },
+  loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: LingoTheme.colors.background },
+  scrollContent: { paddingHorizontal: 16, gap: 16 },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
-  headerTop: {
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  headerSubtitle: {
-    marginTop: 6,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    lineHeight: 20,
-  },
-  centerState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40, gap: 16 },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  statusPillSuccess: { backgroundColor: '#DCFCE7' },
-  statusPillPending: { backgroundColor: '#FFEDD5' },
-  statusPillText: { fontSize: 11, fontWeight: '800' },
-  statusPillTextSuccess: { color: '#166534' },
-  statusPillTextPending: { color: '#9A3412' },
+  card: { marginBottom: 0 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 12 },
+  cardTitle: { fontSize: 20, fontWeight: '800', color: LingoTheme.colors.ink },
+  cardSubtitle: { marginTop: 4, fontSize: 14, lineHeight: 20, color: LingoTheme.colors.muted },
   checklist: { gap: 10 },
   checklistRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  checklistText: { fontSize: 14, color: '#334155', fontWeight: '600' },
-  metaRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap', marginTop: 14 },
-  metaText: { fontSize: 12, color: '#64748B', fontWeight: '700' },
-  warningBox: { marginTop: 16, backgroundColor: '#FFF7ED', borderRadius: 14, padding: 12, flexDirection: 'row', gap: 8 },
-  warningTitle: { fontSize: 13, fontWeight: '800', color: '#C2410C', marginBottom: 2 },
-  warningText: { fontSize: 12, color: '#9A3412', lineHeight: 18 },
-  errorBox: { marginTop: 16, backgroundColor: '#FEF2F2', borderRadius: 14, padding: 12, flexDirection: 'row', gap: 8 },
-  errorText: { flex: 1, color: '#DC2626', fontSize: 13, lineHeight: 18 },
-  primaryButton: { marginTop: 18, backgroundColor: '#111827', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
-  secondaryButton: { marginTop: 10, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-  secondaryButtonText: { color: '#111827', fontSize: 14, fontWeight: '800' },
-  buttonDisabled: { opacity: 0.65 },
-  infoCard: { backgroundColor: '#ECFEFF', borderRadius: 20, padding: 18 },
-  infoTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 10 },
-  infoText: { fontSize: 13, color: '#155E75', lineHeight: 20, marginBottom: 6 },
+  checklistText: { fontSize: 14, color: LingoTheme.colors.ink, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  metaPill: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+  },
+  metaLabel: { fontSize: 11, fontWeight: '800', color: LingoTheme.colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  metaValue: { marginTop: 6, fontSize: 16, fontWeight: '800', color: LingoTheme.colors.ink },
+  warningBox: { marginTop: 16, backgroundColor: LingoTheme.colors.softGold, borderRadius: 18, padding: 14, flexDirection: 'row', gap: 10, borderWidth: 2, borderColor: '#F4D778' },
+  warningTitle: { fontSize: 13, fontWeight: '800', color: '#B7791F', marginBottom: 2 },
+  warningText: { fontSize: 13, color: '#8A5A13', lineHeight: 19 },
+  errorBox: { marginTop: 16, backgroundColor: LingoTheme.colors.softDanger, borderRadius: 18, padding: 14, flexDirection: 'row', gap: 10, borderWidth: 2, borderColor: '#F7A7A7' },
+  errorText: { flex: 1, color: '#B42318', fontSize: 13, lineHeight: 19 },
+  actionsWrap: { marginTop: 18, gap: 10 },
+  infoCard: { backgroundColor: '#FFFFFF' },
+  infoTitle: { fontSize: 18, fontWeight: '800', color: LingoTheme.colors.ink, marginBottom: 12 },
+  infoRows: { gap: 12 },
+  infoRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  infoText: { flex: 1, fontSize: 13, color: LingoTheme.colors.muted, lineHeight: 20 },
 });

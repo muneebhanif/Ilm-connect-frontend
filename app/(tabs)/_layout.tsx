@@ -3,7 +3,7 @@ import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { Colors, LingoTheme } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
@@ -12,12 +12,24 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: LingoTheme.colors.primary,
+        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].icon,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopColor: LingoTheme.colors.border,
+          borderTopWidth: 2,
+          height: 74,
+          paddingTop: 8,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '800',
+        },
       }}
-      // Set which tab shows first (default is first in list)
-      initialRouteName="index"  // or "explore" to start with explore
+      initialRouteName="index"
     >
       <Tabs.Screen
         name="index"
@@ -30,7 +42,7 @@ export default function TabLayout() {
         name="explore"
         options={{
           title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="sparkles" color={color} />,
         }}
       />
     </Tabs>

@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, Alert, Platform, ActivityIndicator, TextInput, ScrollView, Animated, Dimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Alert, Platform, ActivityIndicator, TextInput, ScrollView, Animated, Dimensions, PermissionsAndroid, Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/config';
@@ -8,6 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { authFetch, authFetchJson } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 
 const isWeb = Platform.OS === 'web';
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -208,7 +210,8 @@ export default function ClassRoomScreen() {
   const renewToken = async () => {
     if (!id || !user?.id) return;
     const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
-    const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role));
+    const nativeAgoraUid = !isWeb ? hashStringToUid(user.id) : undefined;
+    const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, nativeAgoraUid));
     if (tr.error || !tr.data?.token) return;
     if (isWeb && rtcClientRef.current) {
       await rtcClientRef.current.renewToken(tr.data.token);
@@ -233,6 +236,29 @@ export default function ClassRoomScreen() {
   };
   const removeRemoteUid = (uid: number) => setRemoteUids((prev) => prev.filter((x) => x !== uid));
 
+  const ensureClassroomPermissions = async () => {
+    if (Platform.OS !== 'android') return true;
+
+    const result = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    ]);
+
+    const denied = Object.values(result).some((value) => value !== PermissionsAndroid.RESULTS.GRANTED);
+    if (!denied) return true;
+
+    Alert.alert(
+      'Permissions required',
+      'Camera and microphone permissions are required for live classes.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+      ]
+    );
+
+    return false;
+  };
+
   const setupDataStream = async () => {
     const client = rtcClientRef.current;
     if (!client || dataStreamIdRef.current !== null) return;
@@ -250,6 +276,11 @@ export default function ClassRoomScreen() {
     setJoining(true); joiningRef.current = true; setError(null);
 
     try {
+      const hasPermissions = await ensureClassroomPermissions();
+      if (!hasPermissions) {
+        throw new Error('Camera/Microphone permission denied.');
+      }
+
       if (user.role === 'teacher') {
         const sr = await authFetch(api.startClass(id), { method: 'POST' });
         const sd = await sr.json().catch(() => ({}));
@@ -257,7 +288,8 @@ export default function ClassRoomScreen() {
       }
 
       const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
-      const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role));
+      const nativeAgoraUid = !isWeb ? hashStringToUid(user.id) : undefined;
+      const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, nativeAgoraUid));
       if (tr.error || !tr.data?.token) throw new Error(tr.error || 'Failed to get Agora token');
       const { token, appId, channel } = tr.data;
 
@@ -484,9 +516,11 @@ export default function ClassRoomScreen() {
       <View style={st.container}>
         <StatusBar style="light" />
         <View style={st.centered}>
-          <View style={st.loadingRing}><ActivityIndicator size="large" color="#4ECDC4" /></View>
-          <ThemedText style={st.loadingTitle}>Preparing Classroom</ThemedText>
-          <ThemedText style={st.loadingSub}>Setting up your live session…</ThemedText>
+          <LingoCard style={st.stateCard}>
+            <View style={st.loadingRing}><ActivityIndicator size="large" color={LingoTheme.colors.primary} /></View>
+            <ThemedText style={st.loadingTitle}>Preparing Classroom</ThemedText>
+            <ThemedText style={st.loadingSub}>Setting up your live session…</ThemedText>
+          </LingoCard>
         </View>
       </View>
     );
@@ -497,13 +531,13 @@ export default function ClassRoomScreen() {
       <View style={st.container}>
         <StatusBar style="light" />
         <View style={st.centered}>
-          <View style={st.errorCircle}><Ionicons name="warning" size={36} color="#FCA5A5" /></View>
-          <ThemedText style={st.errorTitle}>Something went wrong</ThemedText>
-          <ThemedText style={st.errorMsg}>{error}</ThemedText>
-          <TouchableOpacity style={st.errorBtn} onPress={goBackWithoutEnding}>
-            <Ionicons name="arrow-back" size={18} color="#FFF" />
-            <ThemedText style={st.errorBtnText}>Go Back</ThemedText>
-          </TouchableOpacity>
+          <LingoCard style={st.stateCard}>
+            <LingoEmptyState icon="warning-outline" title="Something went wrong" subtitle={error} tone="danger" />
+            <TouchableOpacity style={st.errorBtn} onPress={goBackWithoutEnding}>
+              <Ionicons name="arrow-back" size={18} color="#FFF" />
+              <ThemedText style={st.errorBtnText}>Go Back</ThemedText>
+            </TouchableOpacity>
+          </LingoCard>
         </View>
       </View>
     );
@@ -513,12 +547,21 @@ export default function ClassRoomScreen() {
     return (
       <View style={st.container}>
         <StatusBar style="light" />
-        <View style={st.lobbyHeader}>
-          <TouchableOpacity onPress={goBackWithoutEnding} style={st.backBtn}>
-            <Ionicons name="arrow-back" size={22} color="#E2E8F0" />
-          </TouchableOpacity>
-          <ThemedText style={st.lobbyTitle}>IlmConnect Classroom</ThemedText>
-          <View style={{ width: 40 }} />
+        <View style={st.lobbyHeaderWrap}>
+          <LingoScreenHeader
+            title="IlmConnect Classroom"
+            subtitle={classDetails?.teacher_name ? `Get ready for ${classDetails.teacher_name}` : 'Get your camera and mic ready before joining.'}
+            badge="Live lesson"
+            icon="videocam-outline"
+            onBack={goBackWithoutEnding}
+          >
+            <View style={st.lobbyMetaRow}>
+              <LingoBadge label={classDetails?.subject || 'Class Session'} icon="book-outline" tone="teal" />
+              {!!classDetails?.duration_minutes && (
+                <LingoBadge label={`${classDetails.duration_minutes} min`} icon="time-outline" tone="gold" />
+              )}
+            </View>
+          </LingoScreenHeader>
         </View>
         <View style={st.centered}>
           <View style={st.previewBox}>
@@ -540,12 +583,6 @@ export default function ClassRoomScreen() {
           </View>
           <ThemedText style={st.lobbySubject}>{classDetails?.subject || 'Class Session'}</ThemedText>
           <ThemedText style={st.lobbyTeacher}>{user?.role === 'teacher' ? 'You are hosting' : `With ${classDetails?.teacher_name || 'Teacher'}`}</ThemedText>
-          {classDetails?.duration_minutes && (
-            <View style={st.durationBadge}>
-              <Ionicons name="time-outline" size={14} color="#94A3B8" />
-              <ThemedText style={st.durationText}>{classDetails.duration_minutes} min</ThemedText>
-            </View>
-          )}
           <TouchableOpacity style={[st.joinBtn, joining && { opacity: 0.6 }]} onPress={joinClass} disabled={joining} activeOpacity={0.85}>
             <LinearGradient colors={joining ? ['#475569', '#475569'] : ['#14B8A6', '#0D9488']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={st.joinGrad}>
               {joining ? <ActivityIndicator size="small" color="#FFF" /> : (
@@ -621,7 +658,19 @@ export default function ClassRoomScreen() {
         ) : RtcSurfaceView ? (
           <View style={st.nativeVideoContainer}>
             {remoteUids.length > 0 ? (
-              <RtcSurfaceView style={st.nativeRemoteVideo} canvas={{ uid: remoteUids[0] }} />
+              <View style={st.nativeRemoteGrid}>
+                {remoteUids.map((remoteUid) => (
+                  <View
+                    key={remoteUid}
+                    style={[
+                      st.nativeRemoteTile,
+                      remoteUids.length === 1 ? st.nativeRemoteTileSingle : st.nativeRemoteTileSplit,
+                    ]}
+                  >
+                    <RtcSurfaceView style={st.nativeRemoteVideo} canvas={{ uid: remoteUid }} />
+                  </View>
+                ))}
+              </View>
             ) : (
               <View style={st.nativeWaiting}>
                 <View style={st.nativeWaitingCircle}>
@@ -679,10 +728,9 @@ export default function ClassRoomScreen() {
           </View>
           <ScrollView ref={chatScrollRef} style={st.chatList} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
             {chatMessages.length === 0 && (
-              <View style={st.emptyChat}>
-                <Ionicons name="chatbubbles-outline" size={24} color="#334155" />
-                <ThemedText style={st.emptyChatText}>No messages yet</ThemedText>
-              </View>
+              <LingoCard style={st.emptyChatCard}>
+                <LingoEmptyState icon="chatbubbles-outline" title="No messages yet" subtitle="Messages shared during the lesson will appear here." tone="teal" />
+              </LingoCard>
             )}
             {chatMessages.map((m) => (
               <View key={m.id} style={[st.bubble, m.mine ? st.bubbleMine : st.bubbleOther]}>
@@ -711,17 +759,14 @@ export default function ClassRoomScreen() {
 const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B1120' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  stateCard: { width: '100%', maxWidth: 420, alignItems: 'center' },
   loadingRing: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(78,205,196,0.08)', borderWidth: 2, borderColor: 'rgba(78,205,196,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   loadingTitle: { color: '#F1F5F9', fontSize: 18, fontWeight: '700', marginBottom: 4 },
   loadingSub: { color: '#64748B', fontSize: 14 },
-  errorCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2, borderColor: 'rgba(239,68,68,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  errorTitle: { color: '#F1F5F9', fontSize: 18, fontWeight: '700', marginBottom: 6 },
-  errorMsg: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 20, lineHeight: 20, paddingHorizontal: 20 },
   errorBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   errorBtnText: { color: '#FFF', fontWeight: '600', fontSize: 15 },
-  lobbyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 54, paddingHorizontal: 20, paddingBottom: 12 },
-  lobbyTitle: { color: '#94A3B8', fontSize: 15, fontWeight: '600' },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
+  lobbyHeaderWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
+  lobbyMetaRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   previewBox: { width: Math.min(SCREEN_W - 80, 300), height: 220, borderRadius: 20, overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   previewInner: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
   previewAvatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(78,205,196,0.12)', borderWidth: 2, borderColor: 'rgba(78,205,196,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
@@ -733,8 +778,6 @@ const st = StyleSheet.create({
   previewCtrlOff: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.25)' },
   lobbySubject: { color: '#F1F5F9', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 4 },
   lobbyTeacher: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 14 },
-  durationBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(148,163,184,0.08)', paddingVertical: 5, paddingHorizontal: 14, borderRadius: 20, marginBottom: 24 },
-  durationText: { color: '#94A3B8', fontSize: 13, fontWeight: '600' },
   joinBtn: { borderRadius: 16, overflow: 'hidden', shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
   joinGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, paddingHorizontal: 44 },
   joinText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
@@ -751,6 +794,10 @@ const st = StyleSheet.create({
   participantText: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
   videoArea: { flex: 1, position: 'relative' },
   nativeVideoContainer: { flex: 1, backgroundColor: '#0B1120' },
+  nativeRemoteGrid: { flex: 1, flexDirection: 'row', flexWrap: 'wrap' },
+  nativeRemoteTile: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
+  nativeRemoteTileSingle: { width: '100%', height: '100%' },
+  nativeRemoteTileSplit: { width: '50%', height: '50%' },
   nativeRemoteVideo: { flex: 1 },
   nativeWaiting: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B1120' },
   nativeWaitingCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(30,41,59,0.8)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
@@ -768,8 +815,7 @@ const st = StyleSheet.create({
   chatHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 54, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
   chatTitle: { color: '#F1F5F9', fontWeight: '700', fontSize: 17 },
   chatList: { flex: 1, paddingHorizontal: 14, paddingTop: 10 },
-  emptyChat: { alignItems: 'center', paddingVertical: 40, gap: 6 },
-  emptyChatText: { color: '#475569', fontWeight: '600', fontSize: 13 },
+  emptyChatCard: { marginTop: 16 },
   bubble: { marginBottom: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, maxWidth: '85%' },
   bubbleMine: { alignSelf: 'flex-end', backgroundColor: '#0D9488', borderBottomRightRadius: 4 },
   bubbleOther: { alignSelf: 'flex-start', backgroundColor: '#1E293B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderBottomLeftRadius: 4 },

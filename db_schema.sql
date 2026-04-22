@@ -67,6 +67,19 @@ CREATE TABLE public.courses (
   CONSTRAINT courses_pkey PRIMARY KEY (id),
   CONSTRAINT courses_instructor_id_fkey FOREIGN KEY (instructor_id) REFERENCES public.profiles(id)
 );
+CREATE TABLE public.device_push_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  token text NOT NULL UNIQUE,
+  platform text NOT NULL CHECK (platform = ANY (ARRAY['android'::text, 'ios'::text, 'web'::text])),
+  device_name text,
+  app_version text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_seen_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT device_push_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT device_push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
 CREATE TABLE public.enrollments (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   student_id uuid NOT NULL,

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { api } from './config';
+import { syncDevicePushToken } from './notifications';
 
 interface User {
   id: string;
@@ -161,6 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
   }, [user, loading, segments]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    syncDevicePushToken().catch((error) => {
+      console.warn('Push registration failed:', error);
+    });
+  }, [user?.id]);
 
   const loadUserProfile = async (userId: string) => {
     setLoading(true);

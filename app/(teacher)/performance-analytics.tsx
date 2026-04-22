@@ -6,7 +6,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
-import { Fonts } from '@/constants/theme';
+import { LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { PerformanceAnalyticsSkeleton } from '@/components/ui/dashboard-skeletons';
 
@@ -60,7 +61,7 @@ const getEffectiveStatus = (session: ScheduleSession): SessionStatus => {
 export default function PerformanceAnalyticsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sessions, setSessions] = useState<ScheduleSession[]>([]);
@@ -204,19 +205,27 @@ export default function PerformanceAnalyticsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Performance Analytics</ThemedText>
-        <View style={{ width: 40 }} />
-      </View>
-
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding + 24 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
       >
+        <View style={styles.contentPad}>
+        <LingoScreenHeader
+          badge="Teacher insights"
+          icon="stats-chart"
+          title="Performance you can scan fast"
+          subtitle="Track class momentum, progress, and outcomes with simpler visuals and clearer teaching signals."
+          onBack={() => router.back()}
+        >
+          <View style={styles.headerStatsWrap}>
+            <LingoStatPill icon="📚" value={String(analytics.total30)} label="30d classes" tone="primary" />
+            <LingoStatPill icon="✅" value={`${analytics.completionRate}%`} label="Completion" tone="teal" />
+            <LingoStatPill icon="👥" value={String(analytics.activeStudents)} label="Students" tone="purple" />
+          </View>
+        </LingoScreenHeader>
+
         <View style={styles.metricsGrid}>
           <View style={[styles.metricCard, { borderLeftColor: '#4ECDC4', borderLeftWidth: 4 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -347,8 +356,7 @@ export default function PerformanceAnalyticsScreen() {
             </View>
           </View>
         </View>
-
-        <View style={{ height: 100 }} />
+        </View>
       </ScrollView>
     </View>
   );
@@ -357,37 +365,19 @@ export default function PerformanceAnalyticsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#1F2937',
+    backgroundColor: LingoTheme.colors.background,
   },
   scrollView: {
     flex: 1,
+  },
+  contentPad: {
     paddingHorizontal: 16,
+  },
+  headerStatsWrap: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
   metricsGrid: {
     marginTop: 16,

@@ -6,7 +6,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { DateTime } from 'luxon'; 
 import { SkeletonScreen } from '@/components/ui/skeleton';
@@ -31,7 +32,7 @@ interface ClassSession {
 export default function ScheduleScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [todayClasses, setTodayClasses] = useState<ClassSession[]>([]);
@@ -238,11 +239,7 @@ export default function ScheduleScreen() {
           <View style={[styles.timelineLine, (isCompleted || isCancelled) && styles.lineInactive]} />
         </View>
 
-        <TouchableOpacity 
-          style={[styles.classCard, (isCompleted || isCancelled) && styles.cardInactive]}
-          activeOpacity={0.9}
-          disabled={isCompleted || isCancelled}
-        >
+        <LingoCard style={[styles.classCard, (isCompleted || isCancelled) && styles.cardInactive]}>
           <View style={[styles.statusStrip, 
              isCancelled ? { backgroundColor: '#EF4444' } :
              isCompleted ? { backgroundColor: '#9CA3AF' } :
@@ -352,7 +349,7 @@ export default function ScheduleScreen() {
               </View>
             )}
           </View>
-        </TouchableOpacity>
+        </LingoCard>
       </View>
     );
   };
@@ -365,64 +362,68 @@ export default function ScheduleScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <View style={styles.headerContent}>
-           <ThemedText style={styles.headerTitle}>My Schedule</ThemedText>
-           <View style={styles.dateBadge}>
-              <Ionicons name="calendar" size={14} color="#FF6B6B" />
-              <ThemedText style={styles.dateText}>
-                  {(serverNowIso
-                   ? DateTime.fromISO(serverNowIso, { zone: 'utc' }).setZone(teacherTz)
-                   : DateTime.now().setZone(teacherTz)
-                  ).toFormat('ccc, LLL dd')}
-              </ThemedText>
-           </View>
-        </View>
+      <View style={[styles.header, { paddingTop: topPadding }]}> 
+        <LingoScreenHeader
+          title="My schedule"
+          subtitle="Track live lessons, prepare uploads, and keep every session organized."
+          badge="Teacher view"
+          icon="calendar-outline"
+        >
+          <View style={styles.headerStatsRow}>
+            <LingoStatPill icon="📅" value={String(todayClasses.length)} label="Today" tone="primary" />
+            <LingoStatPill icon="⏭️" value={String(upcomingClasses.length)} label="Upcoming" tone="teal" />
+          </View>
+          <View style={styles.headerBadgeRow}>
+            <LingoBadge
+              label={(serverNowIso
+                ? DateTime.fromISO(serverNowIso, { zone: 'utc' }).setZone(teacherTz)
+                : DateTime.now().setZone(teacherTz)
+              ).toFormat('ccc, LLL dd')}
+              icon="calendar-outline"
+              tone="gold"
+            />
+            <LingoBadge label={teacherTz.replace(/_/g, ' ')} icon="time-outline" tone="purple" />
+          </View>
+        </LingoScreenHeader>
 
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'today' && styles.activeTab]}
-            onPress={() => setActiveTab('today')}
-          >
-            <ThemedText style={[styles.tabText, activeTab === 'today' && styles.activeTabText]}>
-              Today
-            </ThemedText>
-            {activeTab === 'today' && <View style={styles.activeDot} />}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'upcoming' && styles.activeTab]}
-            onPress={() => setActiveTab('upcoming')}
-          >
-            <ThemedText style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>
-              Upcoming
-            </ThemedText>
-            {activeTab === 'upcoming' && <View style={styles.activeDot} />}
-          </TouchableOpacity>
-        </View>
+        <LingoCard style={styles.tabsShell}>
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'today' && styles.activeTab]}
+              onPress={() => setActiveTab('today')}
+            >
+              <ThemedText style={[styles.tabText, activeTab === 'today' && styles.activeTabText]}>
+                Today
+              </ThemedText>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'upcoming' && styles.activeTab]}
+              onPress={() => setActiveTab('upcoming')}
+            >
+              <ThemedText style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>
+                Upcoming
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </LingoCard>
       </View>
 
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 24 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
       >
         {displayClasses.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconBg}>
-               <Ionicons name="calendar-clear-outline" size={40} color="#9CA3AF" />
-            </View>
-            <ThemedText style={styles.emptyTitle}>
-              {activeTab === 'today' ? 'No classes today' : 'No upcoming classes'}
-            </ThemedText>
-            <ThemedText style={styles.emptyText}>
-              {activeTab === 'today' 
-                ? 'All clear for the day!'
-                : 'Your future schedule will appear here.'
-              }
-            </ThemedText>
-          </View>
+          <LingoCard style={styles.emptyCard}>
+            <LingoEmptyState
+              icon="calendar-clear-outline"
+              title={activeTab === 'today' ? 'No classes today' : 'No upcoming classes'}
+              subtitle={activeTab === 'today' ? 'All clear for the day. New sessions will appear here when they are booked.' : 'Future lessons will appear here automatically once parents confirm them.'}
+              tone={activeTab === 'today' ? 'teal' : 'primary'}
+            />
+          </LingoCard>
         ) : (
           displayClasses.map(renderClassCard)
         )}
@@ -434,7 +435,7 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   centerContent: {
     justifyContent: 'center',
@@ -443,88 +444,62 @@ const styles = StyleSheet.create({
   
   /* Header */
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 0,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
-    zIndex: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
-  headerContent: {
+  headerStatsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 20,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 14,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  dateBadge: {
+  headerBadgeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF5F5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  dateText: {
-    fontSize: 13,
-    color: '#FF6B6B',
-    fontWeight: '600',
+  tabsShell: {
+    padding: 8,
   },
-
-  /* Tabs */
   tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    gap: 10,
   },
   tab: {
-    marginRight: 24,
-    paddingBottom: 16,
+    flex: 1,
+    paddingVertical: 12,
     alignItems: 'center',
+    borderRadius: 16,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
-  activeTab: {},
+  activeTab: {
+    backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primaryDark,
+  },
   tabText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#9CA3AF',
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
   },
   activeTabText: {
-    color: '#FF6B6B',
-  },
-  activeDot: {
-    position: 'absolute',
-    bottom: 0,
-    width: 20,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#FF6B6B',
+    color: '#FFFFFF',
   },
 
-  /* Scroll Area */
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    gap: 18,
   },
 
-  /* Timeline Row */
   timelineRow: {
     flexDirection: 'row',
-    marginBottom: 20,
   },
   timeColumn: {
     width: 60,
@@ -533,8 +508,8 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: LingoTheme.colors.muted,
     marginBottom: 4,
   },
   dateTextSmall: {
@@ -546,32 +521,22 @@ const styles = StyleSheet.create({
   timelineLine: {
     width: 2,
     flex: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: LingoTheme.colors.border,
     borderRadius: 1,
   },
   lineInactive: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.surfaceAlt,
   },
 
-  /* Class Card */
   classCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
     marginLeft: 12,
     flexDirection: 'row',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    padding: 0,
   },
   cardInactive: {
-    backgroundColor: '#F9FAFB',
-    shadowOpacity: 0,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    opacity: 0.82,
   },
   statusStrip: {
     width: 6,
@@ -589,8 +554,8 @@ const styles = StyleSheet.create({
   },
   subjectText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     flex: 1,
     marginRight: 8,
   },
@@ -598,9 +563,9 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   badgeLive: { backgroundColor: '#ECFDF5' },
   badgeScheduled: { backgroundColor: '#FFFBEB' },
@@ -609,7 +574,7 @@ const styles = StyleSheet.create({
   
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   textLive: { color: '#059669' },
@@ -626,7 +591,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.softTeal,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -637,14 +602,14 @@ const styles = StyleSheet.create({
   studentName: {
     fontSize: 14,
     color: '#4B5563',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   deliveryBadge: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#ECFEFF',
+    backgroundColor: LingoTheme.colors.softTeal,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -662,14 +627,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#F9FAFB',
+    borderTopColor: LingoTheme.colors.border,
     paddingTop: 12,
   },
   durationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.surfaceAlt,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -690,9 +655,9 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 10,
-    backgroundColor: '#ECFEFF',
-    borderWidth: 1,
+    borderRadius: 12,
+    backgroundColor: LingoTheme.colors.softTeal,
+    borderWidth: 2,
     borderColor: '#99F6E4',
   },
   secondaryActionText: {
@@ -701,7 +666,7 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   actionButton: {
-    borderRadius: 10,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   actionButtonDisabled: {
@@ -710,7 +675,7 @@ const styles = StyleSheet.create({
   actionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     gap: 6,
   },
@@ -723,30 +688,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
 
-  /* Empty State */
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-  },
-  emptyIconBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
+  emptyCard: {
+    marginTop: 12,
   },
 });

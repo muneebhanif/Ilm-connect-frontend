@@ -1,323 +1,201 @@
-import { StyleSheet, View, TouchableOpacity, Dimensions, Platform, Image } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Fonts } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/lib/auth-context';
+import { StyleSheet, View, ScrollView, Image } from 'react-native';
 import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+
+import { ThemedText } from '@/components/themed-text';
 import { SkeletonScreen } from '@/components/ui/skeleton';
+import { LingoBadge, LingoButton, LingoCard, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
+import { useAuth } from '@/lib/auth-context';
 
 const logo = require('@/assets/images/logo.png');
-
-const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) return;
+    if (loading || !user) return;
+
     const target = user.role === 'teacher'
       ? '/(teacher)/teacher-dashboard'
       : user.role === 'student'
         ? '/(student)/dashboard'
         : '/(parent)/dashboard';
+
     router.replace(target);
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   if (loading) {
     return <SkeletonScreen />;
   }
 
-  if (user) return null;
+  if (user) {
+    return null;
+  }
 
   return (
-    <View style={styles.container}>
-      {/* 1. Top Section */}
-      <View style={styles.topSection}>
-        <LinearGradient
-          colors={['#4ECDC4', '#2BCBBA', '#2193b0']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientBackground}
-        >
-          <View style={styles.patternContainer}>
-            <Ionicons name="moon" size={36} color="rgba(255,255,255,0.1)" style={[styles.floatingIcon, { top: '15%', left: '10%' }]} />
-            <Ionicons name="star" size={20} color="rgba(255,255,255,0.15)" style={[styles.floatingIcon, { top: '25%', right: '15%' }]} />
-            <Ionicons name="book" size={28} color="rgba(255,255,255,0.08)" style={[styles.floatingIcon, { top: '55%', left: '20%' }]} />
-            <Ionicons name="grid" size={24} color="rgba(255,255,255,0.08)" style={[styles.floatingIcon, { top: '45%', right: '8%' }]} />
-            
-            <View style={styles.heroGraphicContainer}>
-              <View style={styles.heroCircleOuter}>
-                <View style={styles.heroCircleInner}>
-                  <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
-                </View>
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                  <ThemedText style={styles.verifiedText}>Trusted</ThemedText>
-                </View>
-              </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <LinearGradient
+        colors={['#ECFCD8', '#FFFFFF', '#F2E8FF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <LingoBadge label="Trusted Islamic learning" icon="sparkles" />
+
+        <View style={styles.logoBubbleWrap}>
+          <View style={styles.logoBubbleOuter}>
+            <View style={styles.logoBubbleInner}>
+              <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
             </View>
           </View>
-        </LinearGradient>
-      </View>
-
-      {/* 2. Bottom Section */}
-      <View style={styles.bottomSheet}>
-        <View style={styles.contentContainer}>
-          
-          <View style={styles.textBlock}>
-            <View style={styles.pillContainer}>
-              <ThemedText style={styles.pillText}>ILM CONNECT</ThemedText>
-            </View>
-            <ThemedText style={styles.mainTitle}>
-              Nurturing <ThemedText style={styles.highlightText}>Faith</ThemedText>{'\n'}
-              Through Knowledge
-            </ThemedText>
-            <ThemedText style={styles.subtitle}>
-              Connect with verified tutors for Quran, Arabic, and Islamic studies.
-            </ThemedText>
-          </View>
-
-          <View style={styles.actions}>
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => router.push('/role-selection')}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={['#1A202C', '#2D3748']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.primaryGradient}
-              >
-                <ThemedText style={styles.primaryBtnText}>Get Started</ThemedText>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <View style={styles.dividerContainer}>
-               <View style={styles.dividerLine} />
-               <ThemedText style={styles.dividerText}>or</ThemedText>
-               <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity 
-              style={styles.secondaryButton}
-              onPress={() => router.push('/login')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.secondaryBtnText}>Log In</ThemedText>
-            </TouchableOpacity>
-          </View>
-
         </View>
+
+        <ThemedText style={styles.mainTitle}>
+          Grow with Quran, Arabic, and faith-filled learning
+        </ThemedText>
+        <ThemedText style={styles.subtitle}>
+          A bright, simple place for parents, students, and teachers to learn together.
+        </ThemedText>
+
+        <View style={styles.statRow}>
+          <LingoStatPill icon="👨‍🏫" value="100+" label="Teachers" tone="teal" />
+          <LingoStatPill icon="📚" value="1,000+" label="Students" tone="gold" />
+        </View>
+      </LinearGradient>
+
+      <LingoCard>
+        <ThemedText style={styles.sectionTitle}>Why families choose IlmConnect</ThemedText>
+        <View style={styles.featureList}>
+          {[
+            ['checkmark-circle', 'Verified teachers and trusted profiles'],
+            ['videocam', 'Live classes from anywhere'],
+            ['chatbubble-ellipses', 'Easy chat and scheduling'],
+          ].map(([icon, text]) => (
+            <View key={text} style={styles.featureItem}>
+              <View style={styles.featureIcon}>
+                <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={LingoTheme.colors.primaryDark} />
+              </View>
+              <ThemedText style={styles.featureText}>{text}</ThemedText>
+            </View>
+          ))}
+        </View>
+      </LingoCard>
+
+      <View style={styles.actions}>
+        <LingoButton label="Get Started" icon="arrow-forward" onPress={() => router.push('/role-selection')} />
+        <View style={styles.spacer} />
+        <LingoButton label="Log In" variant="secondary" onPress={() => router.push('/login')} />
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: LingoTheme.colors.background,
   },
-
-  /* Top Section */
-  topSection: {
-    height: height * 0.45,
-    width: '100%',
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 36,
+    paddingBottom: 40,
+    gap: 18,
   },
-  gradientBackground: {
-    flex: 1,
-    justifyContent: 'center',
+  heroCard: {
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 26,
     alignItems: 'center',
+    ...LingoTheme.shadow.card,
   },
-  patternContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoBubbleWrap: {
+    marginVertical: 12,
   },
-  floatingIcon: {
-    position: 'absolute',
-  },
-  
-  /* Hero Graphic */
-  heroGraphicContainer: {
+  logoBubbleOuter: {
+    width: 120,
+    height: 120,
+    borderRadius: 40,
+    backgroundColor: 'rgba(88,204,2,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -10,
   },
-  heroCircleOuter: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
+  logoBubbleInner: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  heroCircleInner: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#fff',
     justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 10,
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.12)',
   },
   heroLogo: {
-    width: 70,
-    height: 70,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: -5,
-    right: -5,
-    backgroundColor: '#2BCBBA', 
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  verifiedText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
-  /* Bottom Sheet Section */
-  bottomSheet: {
-    flex: 1,
-    marginTop: -30, 
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    paddingBottom: 20,
-    justifyContent: 'flex-start',
-    gap: 16,
-  },
-  textBlock: {
-    alignItems: 'center',
-  },
-  pillContainer: {
-    backgroundColor: '#E6FFFA',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  pillText: {
-    color: '#4ECDC4',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
+    width: 62,
+    height: 62,
   },
   mainTitle: {
     fontSize: 30,
     fontFamily: Fonts.rounded,
     fontWeight: '800',
-    color: '#1A202C',
+    color: LingoTheme.colors.ink,
     textAlign: 'center',
     lineHeight: 38,
     marginBottom: 8,
   },
-  highlightText: {
-    color: '#4ECDC4',
-  },
   subtitle: {
     fontSize: 15,
-    color: '#718096',
+    color: LingoTheme.colors.muted,
     textAlign: 'center',
     lineHeight: 22,
-    paddingHorizontal: 10,
+    paddingHorizontal: 6,
   },
-
-  /* Actions */
+  statRow: {
+    marginTop: 18,
+    width: '100%',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+    marginBottom: 14,
+  },
+  featureList: {
+    gap: 12,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  featureIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: LingoTheme.colors.softPrimary,
+  },
+  featureText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: LingoTheme.colors.ink,
+    fontWeight: '600',
+  },
   actions: {
-    width: '100%',
-    marginTop: 8,
+    marginTop: 4,
   },
-  primaryButton: {
-    width: '100%',
-    height: 54,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#1A202C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  primaryBtnText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  
-  /* Divider */
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    color: '#A0AEC0',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-
-  secondaryButton: {
-    width: '100%',
-    height: 54,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 14,
-    backgroundColor: '#F7FAFC',
-    borderWidth: 1,
-    borderColor: '#EDF2F7', 
-  },
-  secondaryBtnText: {
-    color: '#4A5568', 
-    fontSize: 17, 
-    fontWeight: '700',
+  spacer: {
+    height: 12,
   },
 });

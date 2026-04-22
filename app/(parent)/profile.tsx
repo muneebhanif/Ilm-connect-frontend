@@ -8,6 +8,9 @@ import { api } from '@/lib/config';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SkeletonScreen } from '@/components/ui/skeleton';
+import { LinearGradient } from 'expo-linear-gradient';
+import { NotificationStatusCard } from '@/components/ui/notification-status-card';
+import { Fonts, LingoTheme } from '@/constants/theme';
 
 interface ParentProfile {
   full_name: string;
@@ -121,14 +124,14 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: topPadding }]}>
-        <ThemedText style={styles.headerTitle}>Profile</ThemedText>
+        <ThemedText style={styles.headerTitle}>Parent Hub</ThemedText>
       </View>
       
       <ScrollView
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.profileSection}>
+        <LinearGradient colors={['#ECFCD8', '#FFFFFF', '#DDF7F4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             {profile?.avatar_url ? (
               <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
@@ -142,7 +145,8 @@ export default function ProfileScreen() {
           </View>
           <ThemedText style={styles.userName}>{profile?.full_name || 'Parent'}</ThemedText>
           <ThemedText style={styles.userEmail}>{profile?.email || ''}</ThemedText>
-        </View>
+          <ThemedText style={styles.heroSubtext}>Your family dashboard for classes, teachers, and progress.</ThemedText>
+        </LinearGradient>
 
         {/* Stats Section */}
         <View style={styles.statsContainer}>
@@ -160,6 +164,10 @@ export default function ProfileScreen() {
             <ThemedText style={styles.statNumber}>{stats.teachers}</ThemedText>
             <ThemedText style={styles.statLabel}>Teachers</ThemedText>
           </View>
+        </View>
+
+        <View style={styles.contentPad}>
+          <NotificationStatusCard title="Family notifications" subtitle="Receive reminders about upcoming classes, teacher messages, and booking updates." />
         </View>
 
         <View style={styles.menuSection}>
@@ -220,32 +228,36 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.background,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#000',
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
   },
   scrollView: {
     flex: 1,
   },
   profileSection: {
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    paddingVertical: 40,
+    marginHorizontal: 20,
     marginBottom: 16,
+    borderRadius: 28,
+    alignItems: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    ...LingoTheme.shadow.card,
   },
   avatarContainer: {
     marginBottom: 16,
@@ -254,9 +266,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#4ECDC4',
+    backgroundColor: LingoTheme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
   },
   avatarImage: {
     width: 100,
@@ -270,21 +284,35 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#000',
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#6B7280',
+    color: LingoTheme.colors.muted,
+  },
+  heroSubtext: {
+    marginTop: 10,
+    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 19,
+    color: LingoTheme.colors.muted,
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     paddingVertical: 20,
     marginBottom: 16,
+    marginHorizontal: 20,
     justifyContent: 'space-evenly',
     alignItems: 'center',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    ...LingoTheme.shadow.card,
   },
   statItem: {
     alignItems: 'center',
@@ -308,6 +336,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 8,
+    marginHorizontal: 20,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    ...LingoTheme.shadow.card,
+  },
+  contentPad: {
+    paddingHorizontal: 20,
   },
   menuItem: {
     flexDirection: 'row',

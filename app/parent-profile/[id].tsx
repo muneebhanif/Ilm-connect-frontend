@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
-// Back button removed
 import { SimpleProfileSkeleton } from '@/components/ui/dashboard-skeletons';
+import { LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import { api } from '@/lib/config';
 
 interface ParentProfile {
@@ -25,6 +27,7 @@ const cleanText = (value: unknown, fallback: string) => {
 export default function ParentProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ParentProfile | null>(null);
@@ -65,12 +68,27 @@ export default function ParentProfileScreen() {
 
   if (error || !profile) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <Ionicons name="alert-circle-outline" size={44} color="#9CA3AF" />
-        <ThemedText style={styles.errorText}>{error || 'Parent profile unavailable'}</ThemedText>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchProfile}>
-          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={[styles.errorContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}> 
+          <LingoScreenHeader
+            badge="Profile"
+            icon="people"
+            title="Parent profile"
+            subtitle="See a simple view of the parent account and jump into a message when needed."
+            onBack={() => router.back()}
+          />
+          <LingoCard>
+            <LingoEmptyState
+              icon="alert-circle-outline"
+              title="Profile unavailable"
+              subtitle={error || 'This parent profile could not be loaded right now.'}
+              tone="gold"
+            />
+            <View style={styles.retryWrap}>
+              <LingoButton label="Try again" onPress={fetchProfile} icon="refresh" />
+            </View>
+          </LingoCard>
+        </ScrollView>
       </View>
     );
   }
@@ -80,39 +98,46 @@ export default function ParentProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Ionicons name="arrow-back" size={22} color="#1F2937" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Parent Profile</ThemedText>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}> 
+        <LingoScreenHeader
+          badge="Profile"
+          icon="people"
+          title="Parent profile"
+          subtitle="Review the account details and open a direct conversation with the parent."
+          onBack={() => router.back()}
+        />
 
-      <View style={styles.content}>
-        {profile.avatar_url ? (
-          <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-        ) : (
-          <View style={styles.avatarFallback}>
-            <ThemedText style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</ThemedText>
+        <LingoCard style={styles.profileCard}>
+          {profile.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarFallback}>
+              <ThemedText style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</ThemedText>
+            </View>
+          )}
+
+          <ThemedText style={styles.name}>{displayName}</ThemedText>
+          <ThemedText style={styles.email}>{displayEmail}</ThemedText>
+
+          <View style={styles.detailPill}>
+            <Ionicons name="mail-outline" size={16} color={LingoTheme.colors.teal} />
+            <ThemedText style={styles.detailPillText}>{displayEmail}</ThemedText>
           </View>
-        )}
 
-        <ThemedText style={styles.name}>{displayName}</ThemedText>
-        <ThemedText style={styles.email}>{displayEmail}</ThemedText>
-
-        <TouchableOpacity
-          style={styles.messageButton}
-          onPress={() =>
-            router.push({
-              pathname: '/chat/[id]' as any,
-              params: { id: profile.id, name: displayName, avatar: profile.avatar_url || '' }
-            })
-          }
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFF" />
-          <ThemedText style={styles.messageText}>Message Parent</ThemedText>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.buttonWrap}>
+            <LingoButton
+              label="Message parent"
+              icon="chatbubble-ellipses"
+              onPress={() =>
+                router.push({
+                  pathname: '/chat/[id]' as any,
+                  params: { id: profile.id, name: displayName, avatar: profile.avatar_url || '' }
+                })
+              }
+            />
+          </View>
+        </LingoCard>
+      </ScrollView>
     </View>
   );
 }
@@ -120,94 +145,72 @@ export default function ParentProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+  errorContent: {
+    paddingHorizontal: 16,
   },
   content: {
+    paddingHorizontal: 16,
+  },
+  profileCard: {
     alignItems: 'center',
-    marginTop: 32,
-    paddingHorizontal: 20,
+    paddingTop: 24,
   },
   avatarImage: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    marginBottom: 12,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    marginBottom: 14,
   },
   avatarFallback: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    marginBottom: 12,
-    backgroundColor: '#4ECDC4',
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    marginBottom: 14,
+    backgroundColor: LingoTheme.colors.softTeal,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#90E2D8',
   },
   avatarText: {
-    color: '#FFF',
-    fontSize: 36,
-    fontWeight: '700',
+    color: LingoTheme.colors.teal,
+    fontSize: 38,
+    fontWeight: '800',
   },
   name: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     marginBottom: 6,
   },
   email: {
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 24,
+    color: LingoTheme.colors.muted,
+    marginBottom: 18,
   },
-  messageButton: {
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+  detailPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  messageText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  errorText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: 14,
-    backgroundColor: '#4ECDC4',
-    borderRadius: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
-  retryButtonText: {
-    color: '#FFF',
+  detailPillText: {
+    color: LingoTheme.colors.ink,
+    fontSize: 14,
     fontWeight: '700',
+  },
+  buttonWrap: {
+    marginTop: 18,
+    width: '100%',
+  },
+  retryWrap: {
+    marginTop: 18,
   },
 });

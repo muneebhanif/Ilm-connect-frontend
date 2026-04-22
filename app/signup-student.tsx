@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+
 import { ThemedText } from '@/components/themed-text';
-// Back button removed
+import { ThemedView } from '@/components/themed-view';
+import { LingoBadge, LingoButton, LingoCard, LingoHero } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
 import { api } from '@/lib/config';
 
 export default function SignUpStudentScreen() {
@@ -84,108 +87,116 @@ export default function SignUpStudentScreen() {
     }
   };
 
+  const fields = [
+    { label: 'Student ID', value: studentId, setValue: setStudentId, editable: !params?.studentId, placeholder: 'Enter your student ID' },
+    { label: 'Full Name', value: fullName, setValue: setFullName, placeholder: 'Your full name' },
+    { label: 'Email', value: email, setValue: setEmail, placeholder: 'student@example.com', keyboardType: 'email-address' as const },
+    { label: 'Password', value: password, setValue: setPassword, placeholder: 'Create a password', secureTextEntry: true },
+    { label: 'Confirm Password', value: confirmPassword, setValue: setConfirmPassword, placeholder: 'Repeat your password', secureTextEntry: true },
+  ];
+
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       <KeyboardAvoidingView
         enabled={Platform.OS === 'ios'}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
-        style={{ flex: 1 }}
+        style={styles.keyboardWrap}
       >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
-      >
-        <BackButton />
-        <ThemedText style={styles.title}>Student Sign Up</ThemedText>
-        <ThemedText style={styles.subtitle}>Create your learning portal account</ThemedText>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <LingoHero
+            icon="school"
+            badge="Student portal"
+            title="Create your learning account"
+            subtitle="Join classes, review progress, and keep your recordings all in one bright place."
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Student ID"
-          value={studentId}
-          onChangeText={setStudentId}
-          editable={!params?.studentId}
-        />
-        <TextInput style={styles.input} placeholder="Full Name" value={fullName} onChangeText={setFullName} />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          secureTextEntry
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
+          <LingoCard>
+            <View style={styles.headerRow}>
+              <ThemedText style={styles.cardTitle}>Student sign up</ThemedText>
+              <LingoBadge label="Quick setup" tone="purple" icon="flash" />
+            </View>
 
-        <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={onSubmit} disabled={loading}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <ThemedText style={styles.buttonText}>Create Student Account</ThemedText>}
-        </TouchableOpacity>
-      </ScrollView>
+            {fields.map((field) => (
+              <View key={field.label} style={styles.fieldWrap}>
+                <ThemedText style={styles.fieldLabel}>{field.label}</ThemedText>
+                <TextInput
+                  style={[styles.input, field.editable === false && styles.readOnlyInput]}
+                  placeholder={field.placeholder}
+                  placeholderTextColor="#9CA3AF"
+                  value={field.value}
+                  onChangeText={field.setValue}
+                  editable={field.editable}
+                  keyboardType={field.keyboardType}
+                  autoCapitalize="none"
+                  secureTextEntry={field.secureTextEntry}
+                />
+              </View>
+            ))}
+
+            <View style={styles.buttonWrap}>
+              <LingoButton label="Create Student Account" icon="arrow-forward" onPress={onSubmit} loading={loading} />
+            </View>
+          </LingoCard>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.background,
+  },
+  keyboardWrap: {
+    flex: 1,
   },
   content: {
-    paddingTop: 50,
-    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingHorizontal: 20,
     paddingBottom: 40,
+    gap: 18,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 10,
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 10,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 18,
-    marginTop: 4,
+  cardTitle: {
+    flex: 1,
+    fontSize: 24,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  fieldWrap: {
+    marginBottom: 12,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#E5E7EB',
-    borderWidth: 1,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderColor: LingoTheme.colors.border,
+    borderWidth: 2,
+    borderRadius: 18,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
-    color: '#111827',
-  },
-  button: {
-    marginTop: 10,
-    backgroundColor: '#4ECDC4',
-    borderRadius: 14,
     paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: LingoTheme.colors.ink,
     fontSize: 15,
+  },
+  readOnlyInput: {
+    backgroundColor: '#F8FAFC',
+  },
+  buttonWrap: {
+    marginTop: 8,
   },
 });

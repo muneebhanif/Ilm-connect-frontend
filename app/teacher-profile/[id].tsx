@@ -6,7 +6,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
-import { Fonts } from '@/constants/theme';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoTheme } from '@/constants/theme';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { WebView } from 'react-native-webview';
@@ -108,14 +109,10 @@ export default function TeacherProfileScreen() {
   if (!teacher) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <Ionicons name="alert-circle-outline" size={48} color="#9CA3AF" />
-        <ThemedText style={styles.errorText}>Teacher not found</ThemedText>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
-        </TouchableOpacity>
+        <LingoCard style={styles.errorCard}>
+          <LingoEmptyState icon="alert-circle-outline" title="Teacher not found" subtitle="This teacher profile could not be loaded right now." tone="danger" />
+          <LingoButton label="Go back" variant="secondary" onPress={() => router.back()} style={styles.backButton} />
+        </LingoCard>
       </View>
     );
   }
@@ -124,11 +121,19 @@ export default function TeacherProfileScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPadding }]}> 
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Ionicons name="arrow-back" size={22} color="#FFF" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Teacher Profile</ThemedText>
-        <View style={{ width: 38 }} />
+        <LingoScreenHeader
+          title="Teacher profile"
+          subtitle="Review teaching highlights, portfolio, availability, and parent feedback before booking."
+          badge="Public profile"
+          icon="school-outline"
+          onBack={() => router.back()}
+        >
+          <View style={styles.headerStats}>
+            <LingoStatPill icon="⭐" value={teacher.rating ? teacher.rating.toFixed(1) : 'New'} label="Rating" tone="gold" />
+            <LingoStatPill icon="💵" value={`$${teacher.hourly_rate}`} label="Hourly" tone="teal" />
+            <LingoStatPill icon="🗣️" value={teacher.languages?.[0] || 'English'} label="Language" tone="purple" />
+          </View>
+        </LingoScreenHeader>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: bottomPadding + 112 }} showsVerticalScrollIndicator={false}>
@@ -136,7 +141,7 @@ export default function TeacherProfileScreen() {
         {/* Profile Card */}
         <View style={styles.profileHeaderContainer}>
           <LinearGradient
-            colors={['#4ECDC4', '#2BCBBA']}
+            colors={['#ECFCD8', '#FFFFFF', '#F2E8FF']}
             style={styles.profileGradient}
           >
             <View style={styles.avatarFallbackGlow} />
@@ -183,6 +188,11 @@ export default function TeacherProfileScreen() {
                 </ThemedText>
               </View>
             </View>
+
+            <View style={styles.profileBadges}>
+              <LingoBadge label={teacher.verification_status === 'verified' ? 'Verified teacher' : 'Verification pending'} icon="shield-checkmark-outline" tone={teacher.verification_status === 'verified' ? 'primary' : 'gold'} />
+              {teacher.languages?.[1] ? <LingoBadge label={`${teacher.languages.length} languages`} icon="language-outline" tone="purple" /> : null}
+            </View>
           </LinearGradient>
         </View>
 
@@ -190,16 +200,16 @@ export default function TeacherProfileScreen() {
         <View style={styles.contentBody}>
           
           {/* About Section */}
-          <View style={styles.section}>
+          <LingoCard style={styles.section}>
             <ThemedText style={styles.sectionTitle}>About Me</ThemedText>
             <ThemedText style={styles.bioText}>
               {teacher.bio || "This teacher hasn't added a bio yet."}
             </ThemedText>
-          </View>
+          </LingoCard>
 
           {/* Intro Video Placeholder */}
           {teacher.intro_video_url && (
-            <View style={styles.section}>
+            <LingoCard style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Introduction</ThemedText>
               <TouchableOpacity style={styles.videoCard} onPress={() => teacher.intro_video_url && Linking.openURL(teacher.intro_video_url)}>
                 <LinearGradient
@@ -212,12 +222,12 @@ export default function TeacherProfileScreen() {
                   <ThemedText style={styles.videoLabel}>Watch Video</ThemedText>
                 </LinearGradient>
               </TouchableOpacity>
-            </View>
+            </LingoCard>
           )}
 
           {/* Portfolio */}
           {!!orderedPortfolioMedia.length && (
-            <View style={styles.section}>
+            <LingoCard style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Portfolio</ThemedText>
               <ThemedText style={styles.portfolioHint}>Videos appear first, then swipe right to view images.</ThemedText>
 
@@ -274,11 +284,11 @@ export default function TeacherProfileScreen() {
                   ))}
                 </View>
               ) : null}
-            </View>
+            </LingoCard>
           )}
 
           {/* Availability Preview */}
-          <View style={styles.section}>
+          <LingoCard style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Availability</ThemedText>
             <View style={styles.availabilityCard}>
               <View style={styles.weekRow}>
@@ -305,11 +315,11 @@ export default function TeacherProfileScreen() {
                 Green dots indicate days with open slots.
               </ThemedText>
             </View>
-          </View>
+          </LingoCard>
 
           {/* Reviews Section */}
           {teacher.reviews && teacher.reviews.length > 0 && (
-            <View style={styles.section}>
+            <LingoCard style={styles.section}>
               <View style={styles.sectionHeader}>
                 <ThemedText style={styles.sectionTitle}>
                   Reviews ({teacher.reviews.length})
@@ -363,7 +373,7 @@ export default function TeacherProfileScreen() {
                   +{teacher.reviews.length - 5} more reviews
                 </ThemedText>
               )}
-            </View>
+            </LingoCard>
           )}
 
         </View>
@@ -425,34 +435,19 @@ export default function TeacherProfileScreen() {
       {/* Footer Action */}
       <View style={[styles.footer, { paddingBottom: Math.max(bottomPadding, 24) + 12 }]}> 
         <View style={styles.footerButtons}>
-          <TouchableOpacity 
+          <LingoButton 
+            label="Message"
+            variant="secondary"
+            icon="chatbubble-outline"
+            onPress={() => router.push({ pathname: '/chat/[id]', params: { id: teacher.id, name: teacher.profiles.full_name } })}
             style={styles.messageButton}
-            activeOpacity={0.8}
-            onPress={() => router.push({
-              pathname: '/chat/[id]',
-              params: { id: teacher.id, name: teacher.profiles.full_name }
-            })}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color="#4ECDC4" />
-          </TouchableOpacity>
-          <TouchableOpacity 
+          />
+          <LingoButton 
+            label="Book class"
+            icon="arrow-forward"
+            onPress={() => router.push({ pathname: '/book-teacher/[id]', params: { id: teacher.id } })}
             style={styles.bookButton}
-            activeOpacity={0.8}
-            onPress={() => router.push({
-              pathname: '/book-teacher/[id]',
-              params: { id: teacher.id }
-            })}
-          >
-            <LinearGradient
-              colors={['#4ECDC4', '#2BCBBA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.bookGradient}
-            >
-              <ThemedText style={styles.bookButtonText}>Book Class</ThemedText>
-              <Ionicons name="arrow-forward" size={18} color="#FFF" />
-            </LinearGradient>
-          </TouchableOpacity>
+          />
         </View>
       </View>
     </View>
@@ -462,11 +457,15 @@ export default function TeacherProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorCard: {
+    width: '100%',
+    maxWidth: 340,
   },
   scrollView: {
     flex: 1,
@@ -474,33 +473,25 @@ const styles = StyleSheet.create({
   
   /* Header */
   header: {
-    paddingBottom: 16,
+    paddingBottom: 12,
     paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#4ECDC4', // Matches theme
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFF',
-    fontFamily: Fonts.rounded,
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
   },
 
   /* Profile Card (Gradient) */
   profileHeaderContainer: {
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    overflow: 'hidden',
     marginBottom: 20,
-    elevation: 4,
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    marginHorizontal: 20,
   },
   profileGradient: {
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
     paddingTop: 18,
     paddingBottom: 28,
     paddingHorizontal: 24,
@@ -528,11 +519,11 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderColor: LingoTheme.colors.border,
   },
   avatarImage: {
     width: 90,
@@ -542,7 +533,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#FFF',
+    color: LingoTheme.colors.primaryDark,
   },
   verifiedBadge: {
     position: 'absolute',
@@ -560,26 +551,27 @@ const styles = StyleSheet.create({
   teacherName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFF',
+    color: LingoTheme.colors.ink,
     marginBottom: 4,
-    fontFamily: Fonts.rounded,
     zIndex: 2,
   },
   teacherSubjects: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    color: LingoTheme.colors.muted,
     marginBottom: 16,
     fontWeight: '500',
     zIndex: 2,
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 20,
     alignItems: 'center',
     zIndex: 2,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   statItem: {
     flexDirection: 'row',
@@ -587,15 +579,22 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statText: {
-    color: '#FFF',
+    color: LingoTheme.colors.ink,
     fontWeight: '600',
     fontSize: 13,
   },
   statDivider: {
     width: 1,
     height: 16,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: LingoTheme.colors.border,
     marginHorizontal: 16,
+  },
+  profileBadges: {
+    marginTop: 14,
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
 
   /* Content Body */
@@ -610,7 +609,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 12,
-    fontFamily: Fonts.rounded,
   },
   bioText: {
     fontSize: 15,
@@ -806,11 +804,11 @@ const styles = StyleSheet.create({
 
   /* Availability Preview */
   availabilityCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: LingoTheme.colors.surfaceAlt,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   weekRow: {
     flexDirection: 'row',
@@ -870,8 +868,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -929,16 +927,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 24,
   },
-  backButton: {
-    backgroundColor: '#4ECDC4',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  backButtonText: {
-    color: '#FFF',
-    fontWeight: '700',
-  },
+  backButton: { marginTop: 20 },
 
   bottomPadding: {
     height: 24,
@@ -960,36 +949,6 @@ const styles = StyleSheet.create({
     gap: 10,
     width: '100%',
   },
-  messageButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#4ECDC4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  bookButton: {
-    flex: 1,
-    borderRadius: 18,
-    overflow: 'hidden',
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  bookGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 8,
-  },
-  bookButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  messageButton: { width: 140 },
+  bookButton: { flex: 1 },
 });

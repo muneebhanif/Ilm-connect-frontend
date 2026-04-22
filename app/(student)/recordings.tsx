@@ -3,11 +3,12 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, 
 import { StudentRecordingsSkeleton } from '@/components/ui/dashboard-skeletons';
 import * as WebBrowser from 'expo-web-browser';
 import { ThemedText } from '@/components/themed-text';
+import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -32,7 +33,7 @@ const formatDuration = (seconds?: number | null) => {
 
 export default function StudentRecordingsScreen() {
   const { user } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -91,42 +92,32 @@ export default function StudentRecordingsScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => loadRecordings('refresh')} tintColor="#14B8A6" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => loadRecordings('refresh')} tintColor={LingoTheme.colors.primary} />
         }
       >
-        {/* Header */}
-        <LinearGradient
-          colors={['#6366F1', '#8B5CF6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: topPadding }]}
-        >
-          <View style={styles.headerIconWrap}>
-            <Ionicons name="play-circle" size={32} color="#FFF" />
-          </View>
-          <ThemedText style={styles.headerTitle}>Recordings</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>
-            {recordings.length} recording{recordings.length !== 1 ? 's' : ''} available
-          </ThemedText>
-        </LinearGradient>
-
         <View style={styles.contentPad}>
-          {recordings.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="videocam-off-outline" size={40} color="#D1D5DB" />
-              </View>
-              <ThemedText style={styles.emptyTitle}>No recordings yet</ThemedText>
-              <ThemedText style={styles.emptyDesc}>
-                Class recordings will appear here once available
-              </ThemedText>
+          <LingoScreenHeader
+            badge="Student library"
+            icon="play-circle"
+            title="Recordings ready when you are"
+            subtitle="Open class replays, revisit lessons, and quickly spot what is unlocked or restricted."
+          >
+            <View style={styles.headerStatsWrap}>
+              <LingoStatPill icon="🎬" value={String(recordings.length)} label="Recordings" tone="purple" />
+              <LingoStatPill icon="🔓" value={String(recordings.filter((item) => item.can_access).length)} label="Open" tone="primary" />
             </View>
+          </LingoScreenHeader>
+
+          {recordings.length === 0 ? (
+            <LingoCard>
+              <LingoEmptyState icon="videocam-off-outline" title="No recordings yet" subtitle="Class recordings will appear here once they become available." tone="purple" />
+            </LingoCard>
           ) : (
             recordings.map((item) => (
-              <View key={item.id} style={styles.card}>
+              <LingoCard key={item.id} style={styles.card}>
                 <View style={styles.cardTop}>
                   <View style={[styles.cardIcon, { backgroundColor: item.can_access ? '#EFF6FF' : '#FEE2E2' }]}>
                     <Ionicons
@@ -186,7 +177,7 @@ export default function StudentRecordingsScreen() {
                     </>
                   )}
                 </TouchableOpacity>
-              </View>
+              </LingoCard>
             ))
           )}
         </View>
@@ -199,7 +190,7 @@ export default function StudentRecordingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   center: {
     justifyContent: 'center',
@@ -209,41 +200,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 0,
   },
-
-  /* Header */
-  header: {
-    paddingBottom: 28,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-  headerIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFF',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-
-  /* Content */
   contentPad: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: 16,
+  },
+  headerStatsWrap: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
 
   /* Card */
@@ -338,31 +304,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  /* Empty */
-  emptyState: {
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
 });

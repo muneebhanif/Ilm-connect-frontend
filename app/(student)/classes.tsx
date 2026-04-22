@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl } from 'react-native';
 import { StudentClassesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
+import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { RateTeacherModal } from '@/components/rate-teacher-modal';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -25,13 +26,26 @@ interface ClassSession {
   };
 }
 
+interface AttendanceSummary {
+  totalClasses: number;
+  attendedClasses: number;
+  missedClasses: number;
+  attendancePercentage: number;
+}
+
 export default function StudentClassesScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [classes, setClasses] = useState<ClassSession[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceSummary>({
+    totalClasses: 0,
+    attendedClasses: 0,
+    missedClasses: 0,
+    attendancePercentage: 0,
+  });
   const [ratingOpen, setRatingOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
 
@@ -52,7 +66,15 @@ export default function StudentClassesScreen() {
       if (mode === 'refresh') setRefreshing(true);
       const response = await authFetch(api.studentClasses(user.id));
       const data = await response.json();
-      if (response.ok) setClasses(data.classes || []);
+      if (response.ok) {
+        setClasses(data.classes || []);
+        setAttendance(data.attendance || {
+          totalClasses: 0,
+          attendedClasses: 0,
+          missedClasses: 0,
+          attendancePercentage: 0,
+        });
+      }
     } catch (error) {
       console.error('Failed to load student classes', error);
     } finally {
@@ -164,59 +186,72 @@ export default function StudentClassesScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => loadClasses('refresh')} tintColor="#14B8A6" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => loadClasses('refresh')} tintColor={LingoTheme.colors.primary} />
         }
       >
-        {/* Header */}
-        <LinearGradient
-          colors={['#0F766E', '#14B8A6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: topPadding }]}
-        >
-          <ThemedText style={styles.headerTitle}>My Classes</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>Join live sessions & review history</ThemedText>
-          <View style={styles.headerStats}>
-            <View style={styles.headerStat}>
-              <ThemedText style={styles.headerStatValue}>{upcoming.length}</ThemedText>
-              <ThemedText style={styles.headerStatLabel}>Upcoming</ThemedText>
-            </View>
-            <View style={styles.headerStatDivider} />
-            <View style={styles.headerStat}>
-              <ThemedText style={styles.headerStatValue}>{completed.length}</ThemedText>
-              <ThemedText style={styles.headerStatLabel}>Completed</ThemedText>
-            </View>
-          </View>
-        </LinearGradient>
-
         <View style={styles.contentPad}>
-          {/* Upcoming */}
+          <LingoScreenHeader
+            badge="Student hub"
+            icon="school"
+            title="Classes that stay easy to follow"
+            subtitle="See live lessons, upcoming sessions, and completed classes in one bright, clear view."
+          >
+            <View style={styles.headerStatsWrap}>
+              <LingoStatPill icon="📅" value={String(upcoming.length)} label="Upcoming" tone="primary" />
+              <LingoStatPill icon="✅" value={String(completed.length)} label="Completed" tone="teal" />
+              <LingoStatPill icon="🎯" value={`${attendance.attendancePercentage}%`} label="Attendance" tone="gold" />
+            </View>
+          </LingoScreenHeader>
+
+          <LingoCard style={styles.attendanceCard}>
+            <View style={styles.attendanceHeader}>
+              <View>
+                <ThemedText style={styles.attendanceTitle}>Attendance overview</ThemedText>
+                <ThemedText style={styles.attendanceSubtitle}>Track how many classes you joined and your attendance percentage.</ThemedText>
+              </View>
+              <View style={styles.attendanceBadge}>
+                <ThemedText style={styles.attendanceBadgeText}>{attendance.attendancePercentage}%</ThemedText>
+              </View>
+            </View>
+            <View style={styles.attendanceMetrics}>
+              <View style={styles.attendanceMetricBox}>
+                <ThemedText style={styles.attendanceMetricValue}>{attendance.attendedClasses}</ThemedText>
+                <ThemedText style={styles.attendanceMetricLabel}>Taken</ThemedText>
+              </View>
+              <View style={styles.attendanceMetricBox}>
+                <ThemedText style={styles.attendanceMetricValue}>{attendance.missedClasses}</ThemedText>
+                <ThemedText style={styles.attendanceMetricLabel}>Missed</ThemedText>
+              </View>
+              <View style={styles.attendanceMetricBox}>
+                <ThemedText style={styles.attendanceMetricValue}>{attendance.totalClasses}</ThemedText>
+                <ThemedText style={styles.attendanceMetricLabel}>Total</ThemedText>
+              </View>
+            </View>
+          </LingoCard>
+
           <View style={styles.sectionHeader}>
-            <Ionicons name="time" size={18} color="#059669" />
-            <ThemedText style={styles.sectionTitle}>Upcoming</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Upcoming classes</ThemedText>
+            <ThemedText style={styles.sectionCount}>{upcoming.length}</ThemedText>
           </View>
           {upcoming.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="calendar-outline" size={28} color="#D1D5DB" />
-              <ThemedText style={styles.emptyText}>No upcoming classes</ThemedText>
-            </View>
+            <LingoCard>
+              <LingoEmptyState icon="calendar-outline" title="No upcoming classes" subtitle="Your next scheduled lesson will appear here when it is ready." tone="primary" />
+            </LingoCard>
           ) : (
             upcoming.map((c) => renderClassCard(c, false))
           )}
 
-          {/* Completed */}
           <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-            <Ionicons name="checkmark-circle" size={18} color="#6B7280" />
-            <ThemedText style={styles.sectionTitle}>Completed</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Completed classes</ThemedText>
+            <ThemedText style={styles.sectionCount}>{completed.length}</ThemedText>
           </View>
           {completed.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="time-outline" size={28} color="#D1D5DB" />
-              <ThemedText style={styles.emptyText}>No completed classes yet</ThemedText>
-            </View>
+            <LingoCard>
+              <LingoEmptyState icon="checkmark-circle-outline" title="No completed classes yet" subtitle="Finished sessions will move here automatically so you can review them later." tone="teal" />
+            </LingoCard>
           ) : (
             completed.map((c) => renderClassCard(c, true))
           )}
@@ -239,7 +274,7 @@ export default function StudentClassesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: LingoTheme.colors.background,
   },
   center: {
     justifyContent: 'center',
@@ -249,68 +284,91 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 0,
   },
-
-  /* Header */
-  header: {
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+  contentPad: {
+    paddingHorizontal: 16,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFF',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 16,
-  },
-  headerStats: {
+  headerStatsWrap: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
-    padding: 14,
+    gap: 10,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
-  headerStat: {
+  attendanceCard: {
+    marginBottom: 20,
+  },
+  attendanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
+  },
+  attendanceTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  attendanceSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: LingoTheme.colors.muted,
+    marginTop: 4,
+  },
+  attendanceBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 2,
+    borderColor: '#FCD34D',
+  },
+  attendanceBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  attendanceMetrics: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  attendanceMetricBox: {
     flex: 1,
     alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    paddingVertical: 14,
   },
-  headerStatValue: {
+  attendanceMetricValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#FFF',
+    color: LingoTheme.colors.ink,
   },
-  headerStatLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-  },
-  headerStatDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    marginHorizontal: 8,
-  },
-
-  /* Content */
-  contentPad: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
+  attendanceMetricLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: LingoTheme.colors.muted,
+    marginTop: 4,
+    textTransform: 'uppercase',
   },
   sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  sectionCount: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
   },
 
   /* Class Card */
@@ -439,19 +497,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  /* Empty */
-  emptyCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 28,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    fontWeight: '500',
-  },
 });
