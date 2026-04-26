@@ -1,0 +1,13 @@
+# Graphify exclusions
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+app-example/
+.graphifyignore
+graphify-out/
+.github/
+*.log
+*.tsbuildinfo

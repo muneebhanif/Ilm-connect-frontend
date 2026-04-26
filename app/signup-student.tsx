@@ -1,99 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { LingoBadge, LingoButton, LingoCard, LingoHero } from '@/components/ui/lingo-mobile';
+import { LingoButton, LingoCard, LingoHero } from '@/components/ui/lingo-mobile';
 import { Fonts, LingoTheme } from '@/constants/theme';
-import { api } from '@/lib/config';
 
 export default function SignUpStudentScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ studentId?: string; fullName?: string }>();
-  const [loading, setLoading] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [studentId, setStudentId] = useState('');
-
-  useEffect(() => {
-    if (typeof params?.studentId === 'string' && params.studentId.trim()) {
-      setStudentId(params.studentId.trim());
-    }
-    if (typeof params?.fullName === 'string' && params.fullName.trim()) {
-      setFullName(params.fullName.trim());
-    }
-  }, [params?.studentId, params?.fullName]);
-
-  const onSubmit = async () => {
-    if (!fullName.trim() || !email.trim() || !password || !studentId.trim()) {
-      Alert.alert('Missing fields', 'Please fill all required fields.');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Invalid password', 'Password must be at least 6 characters.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Passwords do not match.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch(api.signupStudent(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          password,
-          studentId: studentId.trim(),
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        const errorText = String(data?.error || '').toLowerCase();
-        if (
-          response.status === 409 ||
-          errorText.includes('already linked') ||
-          errorText.includes('already registered') ||
-          errorText.includes('already exists')
-        ) {
-          Alert.alert(
-            'Student account already exists',
-            'This student is already linked to an account. Please log in with that account.',
-            [{ text: 'Go to Login', onPress: () => router.replace('/login') }]
-          );
-          return;
-        }
-        throw new Error(data.error || 'Failed to create student account');
-      }
-
-      Alert.alert(
-        'Account Created',
-        'Your student account has been created. Please login to continue.',
-        [{ text: 'Go to Login', onPress: () => router.replace('/login') }]
-      );
-    } catch (error: any) {
-      Alert.alert('Signup Failed', String(error?.message || 'Unable to create account'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fields = [
-    { label: 'Student ID', value: studentId, setValue: setStudentId, editable: !params?.studentId, placeholder: 'Enter your student ID' },
-    { label: 'Full Name', value: fullName, setValue: setFullName, placeholder: 'Your full name' },
-    { label: 'Email', value: email, setValue: setEmail, placeholder: 'student@example.com', keyboardType: 'email-address' as const },
-    { label: 'Password', value: password, setValue: setPassword, placeholder: 'Create a password', secureTextEntry: true },
-    { label: 'Confirm Password', value: confirmPassword, setValue: setConfirmPassword, placeholder: 'Repeat your password', secureTextEntry: true },
-  ];
 
   return (
     <ThemedView style={styles.container}>
@@ -107,35 +21,34 @@ export default function SignUpStudentScreen() {
           <LingoHero
             icon="school"
             badge="Student portal"
-            title="Create your learning account"
-            subtitle="Join classes, review progress, and keep your recordings all in one bright place."
+            title="Student sign-up moved to parent dashboard"
+            subtitle="Parents now create student login credentials first, then students sign in with those details on web or mobile."
           />
 
           <LingoCard>
-            <View style={styles.headerRow}>
-              <ThemedText style={styles.cardTitle}>Student sign up</ThemedText>
-              <LingoBadge label="Quick setup" tone="purple" icon="flash" />
+            <ThemedText style={styles.cardTitle}>What changed?</ThemedText>
+            <ThemedText style={styles.bodyText}>
+              Student self-registration has been removed. A parent must first add the child and create login credentials from the parent dashboard.
+            </ThemedText>
+
+            <View style={styles.stepList}>
+              <View style={styles.stepRow}>
+                <View style={styles.stepBadge}><ThemedText style={styles.stepBadgeText}>1</ThemedText></View>
+                <ThemedText style={styles.stepText}>Parent creates the child profile.</ThemedText>
+              </View>
+              <View style={styles.stepRow}>
+                <View style={styles.stepBadge}><ThemedText style={styles.stepBadgeText}>2</ThemedText></View>
+                <ThemedText style={styles.stepText}>Parent generates the student email and password.</ThemedText>
+              </View>
+              <View style={styles.stepRow}>
+                <View style={styles.stepBadge}><ThemedText style={styles.stepBadgeText}>3</ThemedText></View>
+                <ThemedText style={styles.stepText}>Student signs in using those credentials.</ThemedText>
+              </View>
             </View>
 
-            {fields.map((field) => (
-              <View key={field.label} style={styles.fieldWrap}>
-                <ThemedText style={styles.fieldLabel}>{field.label}</ThemedText>
-                <TextInput
-                  style={[styles.input, field.editable === false && styles.readOnlyInput]}
-                  placeholder={field.placeholder}
-                  placeholderTextColor="#9CA3AF"
-                  value={field.value}
-                  onChangeText={field.setValue}
-                  editable={field.editable}
-                  keyboardType={field.keyboardType}
-                  autoCapitalize="none"
-                  secureTextEntry={field.secureTextEntry}
-                />
-              </View>
-            ))}
-
-            <View style={styles.buttonWrap}>
-              <LingoButton label="Create Student Account" icon="arrow-forward" onPress={onSubmit} loading={loading} />
+            <View style={styles.actions}>
+              <LingoButton label="Go to Login" icon="log-in" onPress={() => router.replace('/login')} />
+              <LingoButton label="Back to Sign Up" icon="arrow-back" variant="secondary" onPress={() => router.replace('/role-selection')} />
             </View>
           </LingoCard>
         </ScrollView>
@@ -159,44 +72,50 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 10,
+    display: 'none',
   },
   cardTitle: {
-    flex: 1,
     fontSize: 24,
     fontFamily: Fonts.rounded,
     fontWeight: '800',
     color: LingoTheme.colors.ink,
+    marginBottom: 10,
   },
-  fieldWrap: {
-    marginBottom: 12,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: LingoTheme.colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderColor: LingoTheme.colors.border,
-    borderWidth: 2,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    color: LingoTheme.colors.ink,
+  bodyText: {
     fontSize: 15,
+    lineHeight: 23,
+    color: LingoTheme.colors.muted,
   },
-  readOnlyInput: {
-    backgroundColor: '#F8FAFC',
+  stepList: {
+    marginTop: 18,
+    gap: 12,
   },
-  buttonWrap: {
-    marginTop: 8,
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBadgeText: {
+    color: '#4F46E5',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
+    color: LingoTheme.colors.ink,
+  },
+  actions: {
+    marginTop: 18,
+    gap: 12,
   },
 });

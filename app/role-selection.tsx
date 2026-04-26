@@ -27,15 +27,6 @@ const roles = [
     route: '/signup-teacher',
     points: ['Create your teaching profile', 'Set availability and rates', 'Grow your student base'],
   },
-  {
-    title: "I'm a Student",
-    description: 'Join classes, learn with clarity, and revisit lessons that matter most.',
-    icon: 'person-circle',
-    colors: ['#EEF2FF', '#F5F3FF'],
-    accent: '#6366F1',
-    route: '/signup-student',
-    points: ['Join upcoming classes', 'Review your teachers', 'Watch unlocked recordings'],
-  },
 ] as const;
 
 export default function RoleSelectionScreen() {
@@ -82,6 +73,16 @@ export default function RoleSelectionScreen() {
           ))}
         </View>
 
+        <LingoCard style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <Ionicons name="information-circle" size={22} color="#6366F1" />
+            <ThemedText style={styles.infoTitle}>Student accounts come from parents</ThemedText>
+          </View>
+          <ThemedText style={styles.infoText}>
+            Parents now create student login credentials from their dashboard, so students no longer need a separate sign-up form here.
+          </ThemedText>
+        </LingoCard>
+
         <View style={styles.footer}>
           <Ionicons name="shield-checkmark" size={18} color={LingoTheme.colors.muted} />
           <ThemedText style={styles.footerText}>Safe sign-up, verified learning, and secure access.</ThemedText>
@@ -124,6 +125,26 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     gap: 16,
+  },
+  infoCard: {
+    gap: 10,
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  infoTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: LingoTheme.colors.muted,
   },
   roleWrap: {
     borderRadius: 28,

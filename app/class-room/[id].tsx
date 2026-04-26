@@ -52,6 +52,12 @@ interface ChatMessage {
   mine: boolean;
 }
 
+interface RemoteParticipant {
+  uid: number | string;
+  hasVideo: boolean;
+  hasAudio: boolean;
+}
+
 export default function ClassRoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -68,6 +74,7 @@ export default function ClassRoomScreen() {
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [remoteUids, setRemoteUids] = useState<number[]>([]);
+  const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [participantCount, setParticipantCount] = useState(1);
 
@@ -142,14 +149,15 @@ export default function ClassRoomScreen() {
 
   // Web-only: play remote video
   useEffect(() => {
-    if (!isWeb || !joined || remoteUids.length === 0) return;
-    const t = setTimeout(() => remoteUids.forEach((uid) => renderRemoteVideo(String(uid))), 0);
+    const videoParticipants = remoteParticipants.filter((participant) => participant.hasVideo);
+    if (!isWeb || !joined || videoParticipants.length === 0) return;
+    const t = setTimeout(() => videoParticipants.forEach((participant) => renderRemoteVideo(String(participant.uid))), 0);
     return () => clearTimeout(t);
-  }, [remoteUids, joined]);
+  }, [remoteParticipants, joined]);
 
   useEffect(() => {
-    setParticipantCount(1 + remoteUids.length);
-  }, [remoteUids]);
+    setParticipantCount(1 + (isWeb ? remoteParticipants.length : remoteUids.length));
+  }, [isWeb, remoteParticipants, remoteUids]);
 
   // ─── Load Class Details ──────────────────────────────────
   const loadClassDetails = async () => {
@@ -191,7 +199,7 @@ export default function ClassRoomScreen() {
         await rtcClientRef.current.leave();
       }
     } catch (e) { console.warn('Web cleanup warning:', e); }
-    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; setJoined(false); setRemoteUids([]); }
+    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); }
   };
 
   const cleanupNativeAgora = async () => {
@@ -203,15 +211,15 @@ export default function ClassRoomScreen() {
         engine.release();
       }
     } catch (e) { console.warn('Native cleanup warning:', e); }
-    finally { nativeEngineRef.current = null; setJoined(false); setRemoteUids([]); }
+    finally { nativeEngineRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); }
   };
 
   // ─── Token Renewal ───────────────────────────────────────
   const renewToken = async () => {
     if (!id || !user?.id) return;
     const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
-    const nativeAgoraUid = !isWeb ? hashStringToUid(user.id) : undefined;
-    const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, nativeAgoraUid));
+    const agoraUid = hashStringToUid(user.id);
+    const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, agoraUid));
     if (tr.error || !tr.data?.token) return;
     if (isWeb && rtcClientRef.current) {
       await rtcClientRef.current.renewToken(tr.data.token);
@@ -235,6 +243,24 @@ export default function ClassRoomScreen() {
     if (isWeb) setTimeout(() => renderRemoteVideo(String(uid)), 0);
   };
   const removeRemoteUid = (uid: number) => setRemoteUids((prev) => prev.filter((x) => x !== uid));
+  const upsertRemoteParticipant = (uid: number | string, patch: Partial<RemoteParticipant> = {}) => {
+    const normalizedUid = Number(uid) || uid;
+    setRemoteParticipants((prev) => {
+      const existing = prev.find((item) => String(item.uid) === String(normalizedUid));
+      if (!existing) {
+        return [...prev, { uid: normalizedUid, hasVideo: false, hasAudio: false, ...patch } as RemoteParticipant];
+      }
+      return prev.map((item) => (
+        String(item.uid) === String(normalizedUid)
+          ? { ...item, ...patch, uid: normalizedUid }
+          : item
+      ));
+    });
+  };
+  const removeRemoteParticipant = (uid: number | string) => {
+    const normalizedUid = Number(uid) || uid;
+    setRemoteParticipants((prev) => prev.filter((item) => String(item.uid) !== String(normalizedUid)));
+  };
 
   const ensureClassroomPermissions = async () => {
     if (Platform.OS !== 'android') return true;
@@ -288,13 +314,13 @@ export default function ClassRoomScreen() {
       }
 
       const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
-      const nativeAgoraUid = !isWeb ? hashStringToUid(user.id) : undefined;
-      const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, nativeAgoraUid));
+      const agoraUid = hashStringToUid(user.id);
+      const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, agoraUid));
       if (tr.error || !tr.data?.token) throw new Error(tr.error || 'Failed to get Agora token');
-      const { token, appId, channel } = tr.data;
+      const { token, appId, channel, agoraUid: resolvedAgoraUid } = tr.data;
 
       if (isWeb) {
-        await joinWeb(appId, channel, token);
+        await joinWeb(appId, channel, token, resolvedAgoraUid || agoraUid);
       } else {
         await joinNative(appId, channel, token);
       }
@@ -344,7 +370,7 @@ export default function ClassRoomScreen() {
   };
 
   // ─── Web Agora Join ──────────────────────────────────────
-  const joinWeb = async (appId: string, channel: string, token: string) => {
+  const joinWeb = async (appId: string, channel: string, token: string, joinUid: number) => {
     const AgoraModule = await import('agora-rtc-sdk-ng');
     const AgoraRTC: any = (AgoraModule as any).default || AgoraModule;
     AgoraRTCRef.current = AgoraRTC;
@@ -353,7 +379,8 @@ export default function ClassRoomScreen() {
 
     const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
     rtcClientRef.current = client;
-    await client.join(appId, String(channel), token, String(user!.id));
+    await client.join(appId, String(channel), token, joinUid);
+    joinedRef.current = true;
 
     client.on('stream-message', (_uid: any, data: any) => {
       try {
@@ -380,21 +407,41 @@ export default function ClassRoomScreen() {
 
     const handleUserPublished = async (remoteUser: any, mediaType: string) => {
       try {
-        if (!joinedRef.current || client.connectionState !== 'CONNECTED') return;
+        if (client.connectionState !== 'CONNECTED') return;
+        upsertRemoteParticipant(remoteUser.uid, {
+          hasVideo: mediaType === 'video' ? true : Boolean(remoteUser.hasVideo),
+          hasAudio: mediaType === 'audio' ? true : Boolean(remoteUser.hasAudio),
+        });
         await client.subscribe(remoteUser, mediaType);
         if (mediaType === 'audio') remoteUser.audioTrack?.play();
-        if (mediaType === 'video') addRemoteUid(Number(remoteUser.uid) || remoteUser.uid);
       } catch (subErr: any) {
         if (!String(subErr?.message || '').includes('not joined')) console.warn('Subscribe:', subErr);
       }
     };
+    client.on('user-joined', (remoteUser: any) => {
+      upsertRemoteParticipant(remoteUser.uid, {
+        hasVideo: Boolean(remoteUser.hasVideo),
+        hasAudio: Boolean(remoteUser.hasAudio),
+      });
+    });
     client.on('user-published', handleUserPublished);
-    client.on('user-unpublished', (ru: any, mt: string) => { if (mt === 'video') removeRemoteUid(Number(ru.uid) || ru.uid); });
-    client.on('user-left', (ru: any) => removeRemoteUid(Number(ru.uid) || ru.uid));
+    client.on('user-unpublished', (ru: any, mt: string) => {
+      if (mt === 'video') {
+        upsertRemoteParticipant(ru.uid, { hasVideo: false, hasAudio: Boolean(ru.hasAudio) });
+      }
+      if (mt === 'audio') {
+        upsertRemoteParticipant(ru.uid, { hasAudio: false, hasVideo: Boolean(ru.hasVideo) });
+      }
+    });
+    client.on('user-left', (ru: any) => removeRemoteParticipant(Number(ru.uid) || ru.uid));
     client.on('token-privilege-will-expire', () => void renewToken());
     client.on('token-privilege-did-expire', () => void renewToken());
 
     for (const ru of client.remoteUsers || []) {
+      upsertRemoteParticipant(ru.uid, {
+        hasVideo: Boolean(ru.hasVideo),
+        hasAudio: Boolean(ru.hasAudio),
+      });
       if (ru.hasVideo) await handleUserPublished(ru, 'video');
       if (ru.hasAudio) await handleUserPublished(ru, 'audio');
     }
@@ -408,6 +455,11 @@ export default function ClassRoomScreen() {
         await client.publish([at, vt]);
         setMicOn(true); setCameraOn(true);
       } catch { setMicOn(false); setCameraOn(false); }
+    }
+
+    for (const ru of client.remoteUsers || []) {
+      if (ru.hasVideo) await handleUserPublished(ru, 'video');
+      if (ru.hasAudio) await handleUserPublished(ru, 'audio');
     }
 
     await setupDataStream();
@@ -624,8 +676,9 @@ export default function ClassRoomScreen() {
       <View style={st.videoArea}>
         {isWeb ? (
           <>
-            <div id="remote-grid" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B1120' }}>
-              {remoteUids.length === 0 ? (
+            <div id="remote-grid" style={{ position: 'absolute', inset: 0, padding: 16, background: '#0B1120' }}>
+              {remoteParticipants.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' as any, alignItems: 'center', gap: 16 }}>
                   <div style={{ width: 88, height: 88, borderRadius: 44, background: 'linear-gradient(135deg, #1E293B, #334155)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.08)' }}>
                     <span style={{ fontSize: 36, color: 'rgba(255,255,255,0.25)' }}>👤</span>
@@ -636,14 +689,29 @@ export default function ClassRoomScreen() {
                     <span style={{ color: '#4ECDC4', fontSize: 12, fontWeight: '600' }}>Connected</span>
                   </div>
                 </div>
+                </div>
               ) : (
-                remoteUids.map((uid) => (
-                  <div key={uid} id={`remote-player-${uid}`} style={{
-                    position: 'absolute', inset: 0,
-                    ...(remoteUids.length === 1 ? {} : { position: 'relative' as any, width: remoteUids.length <= 2 ? '100%' : '50%', height: '50%', flex: '1 1 auto' }),
-                    background: '#111827', borderRadius: remoteUids.length > 1 ? 4 : 0, overflow: 'hidden',
-                  }} />
-                ))
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: remoteParticipants.length === 1 ? '1fr' : remoteParticipants.length === 2 ? '1fr 1fr' : '1fr 1fr',
+                  gap: 12,
+                  height: '100%',
+                }}>
+                  {remoteParticipants.map((participant) => (
+                    <div key={participant.uid} style={{ position: 'relative', overflow: 'hidden', borderRadius: 18, background: '#111827', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div id={`remote-player-${participant.uid}`} style={{ position: 'absolute', inset: 0, display: participant.hasVideo ? 'block' : 'none' as any, background: '#111827' }} />
+                      {!participant.hasVideo && (
+                        <div style={{ height: '100%', minHeight: 220, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', justifyContent: 'center', gap: 10, background: 'linear-gradient(135deg, #111827, #0F172A)' }}>
+                          <div style={{ width: 72, height: 72, borderRadius: 36, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ color: '#FFF', fontSize: 24, fontWeight: 700 }}>{String(participant.uid).charAt(0).toUpperCase()}</span>
+                          </div>
+                          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>Participant connected</span>
+                          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>Camera is off or still connecting</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
             <div id="local-player" style={{
