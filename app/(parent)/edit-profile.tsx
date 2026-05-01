@@ -42,7 +42,6 @@ export default function EditProfileScreen() {
   const loadProfile = async () => {
     try {
       if (!user?.id) {
-        // Auth context handles redirect to /login
         setLoading(false);
         return;
       }
@@ -76,10 +75,9 @@ export default function EditProfileScreen() {
   };
 
   const pickImage = async () => {
-    console.log('🖼️ pickImage called');
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
         if (Platform.OS === 'web') {
           setNotification({ type: 'error', message: 'Please allow access to your photo library.' });
@@ -97,21 +95,18 @@ export default function EditProfileScreen() {
         quality: 0.5,
       });
 
-      console.log('🖼️ Image picker result:', result);
       if (!result.canceled && result.assets[0]) {
-        console.log('🖼️ Setting image URI:', result.assets[0].uri);
         setImageUri(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('🖼️ pickImage error:', error);
+      console.error('pickImage error:', error);
     }
   };
 
   const takePhoto = async () => {
-    console.log('📷 takePhoto called');
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
         if (Platform.OS === 'web') {
           setNotification({ type: 'error', message: 'Please allow camera access.' });
@@ -129,18 +124,15 @@ export default function EditProfileScreen() {
         quality: 0.5,
       });
 
-      console.log('📷 Camera result:', result);
       if (!result.canceled && result.assets[0]) {
-        console.log('📷 Setting image URI:', result.assets[0].uri);
         setImageUri(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('📷 takePhoto error:', error);
+      console.error('takePhoto error:', error);
     }
   };
 
   const showImageOptions = () => {
-    console.log('👆 showImageOptions called - Platform:', Platform.OS);
     if (Platform.OS === 'web') {
       setShowImageModal(true);
     } else {
@@ -175,31 +167,25 @@ export default function EditProfileScreen() {
     setSaving(true);
     try {
       let avatarUrl: string | undefined = profile.avatar_url;
-      
+
       const isNewLocalImage = imageUri && (
         imageUri.startsWith('file://') || 
         imageUri.startsWith('blob:') ||
         imageUri.startsWith('data:')
       );
-      
-      console.log('📸 Image check:', { imageUri, isNewLocalImage });
-      
+
       if (isNewLocalImage) {
-        console.log('📸 Starting image upload...');
-        
         try {
           let base64: string;
           let extension: string;
-          
+
           if (Platform.OS === 'web') {
-            console.log('📸 Web platform: fetching blob...');
             const response = await fetch(imageUri);
             const blob = await response.blob();
-            
+
             const mimeType = blob.type;
             extension = mimeType.split('/')[1] || 'jpg';
-            console.log('📸 Blob type:', mimeType, 'Extension:', extension);
-            
+
             base64 = await new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onloadend = () => {
@@ -210,19 +196,15 @@ export default function EditProfileScreen() {
               reader.onerror = reject;
               reader.readAsDataURL(blob);
             });
-            console.log('📸 Base64 length (web):', base64.length);
           } else {
-            console.log('📸 Mobile platform: reading file...');
             base64 = await FileSystem.readAsStringAsync(imageUri, {
               encoding: 'base64',
             });
             extension = imageUri.split('.').pop() || 'jpg';
-            console.log('📸 Base64 length (mobile):', base64.length);
           }
-          
+
           const uploadUrl = api.uploadProfileImage(user.id);
-          console.log('📸 Upload URL:', uploadUrl);
-          
+
           const uploadResponse = await fetch(uploadUrl, {
             method: 'POST',
             headers: {
@@ -234,26 +216,20 @@ export default function EditProfileScreen() {
             }),
           });
 
-          console.log('📸 Upload response status:', uploadResponse.status);
-          
           const contentType = uploadResponse.headers.get('content-type');
           let uploadData: any;
-          
+
           if (contentType && contentType.includes('application/json')) {
             uploadData = await uploadResponse.json();
-            console.log('📸 Upload response data:', JSON.stringify(uploadData, null, 2));
           } else {
             const text = await uploadResponse.text();
-            console.log('📸 Upload response (non-JSON):', text);
             uploadData = { error: uploadResponse.status === 413 ? 'Image too large.' : `Server error: ${uploadResponse.status}` };
           }
-          
+
           if (uploadResponse.ok && uploadData.avatar_url) {
             avatarUrl = uploadData.avatar_url;
-            console.log('✅ Image uploaded successfully:', avatarUrl);
           } else {
             const errorMsg = uploadData.error || 'Unknown error';
-            console.error('❌ Image upload failed:', errorMsg);
             if (Platform.OS === 'web') {
               setNotification({ type: 'error', message: `Upload failed: ${errorMsg}` });
               setTimeout(() => setNotification(null), 4000);
@@ -262,7 +238,6 @@ export default function EditProfileScreen() {
             }
           }
         } catch (uploadError: any) {
-          console.error('❌ Failed to upload image:', uploadError);
           if (Platform.OS === 'web') {
             setNotification({ type: 'error', message: `Upload failed: ${uploadError.message}` });
             setTimeout(() => setNotification(null), 4000);
@@ -270,11 +245,8 @@ export default function EditProfileScreen() {
         }
       } else if (imageUri === null) {
         avatarUrl = undefined;
-        console.log('🗑️ Image removed');
       }
-      
-      console.log('📤 Final avatarUrl:', avatarUrl);
-      
+
       const accessToken = await AsyncStorage.getItem('access_token');
       if (!accessToken) throw new Error('No token');
 
@@ -291,7 +263,6 @@ export default function EditProfileScreen() {
       });
 
       const data = await response.json();
-      console.log('📝 Profile update response:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update profile');
@@ -345,12 +316,12 @@ export default function EditProfileScreen() {
           <Ionicons 
             name={notification.type === 'success' ? 'checkmark-circle' : 'alert-circle'} 
             size={20} 
-            color="#FFFFFF" 
+            color={LingoTheme.colors.textInverse} 
           />
           <ThemedText style={styles.notificationText}>{notification.message}</ThemedText>
         </View>
       )}
-      
+
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -372,7 +343,7 @@ export default function EditProfileScreen() {
           </LingoScreenHeader>
 
           <LingoCard style={styles.avatarSection}>
-            <TouchableOpacity onPress={showImageOptions} style={styles.avatarContainer}>
+            <TouchableOpacity onPress={showImageOptions} style={styles.avatarContainer} activeOpacity={0.8}>
               {imageUri ? (
                 <Image source={{ uri: imageUri }} style={styles.avatarImage} />
               ) : (
@@ -398,7 +369,7 @@ export default function EditProfileScreen() {
                 value={profile.full_name}
                 onChangeText={(text) => setProfile({ ...profile, full_name: text })}
                 placeholder="Enter your full name"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={LingoTheme.colors.textTertiary}
               />
             </View>
 
@@ -412,7 +383,7 @@ export default function EditProfileScreen() {
                 value={profile.email}
                 editable={false}
                 placeholder="Email address"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={LingoTheme.colors.textTertiary}
               />
               <ThemedText style={styles.helperText}>Email cannot be changed from the app.</ThemedText>
             </View>
@@ -424,7 +395,7 @@ export default function EditProfileScreen() {
                 value={profile.phone}
                 onChangeText={(text) => setProfile({ ...profile, phone: text })}
                 placeholder="Enter your phone number"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={LingoTheme.colors.textTertiary}
                 keyboardType="phone-pad"
               />
             </View>
@@ -449,34 +420,38 @@ export default function EditProfileScreen() {
           <View style={styles.modalContent}>
             <ThemedText style={styles.modalTitle}>Profile Picture</ThemedText>
             <ThemedText style={styles.modalSubtitle}>Choose an option</ThemedText>
-            
+
             <TouchableOpacity 
               style={styles.modalOption} 
               onPress={() => { setShowImageModal(false); takePhoto(); }}
+              activeOpacity={0.8}
             >
-              <Ionicons name="camera" size={24} color="#4ECDC4" />
+              <Ionicons name="camera" size={24} color={LingoTheme.colors.teal} />
               <ThemedText style={styles.modalOptionText}>Take Photo</ThemedText>
             </TouchableOpacity>
-            
+
             <TouchableOpacity 
               style={styles.modalOption} 
               onPress={() => { setShowImageModal(false); pickImage(); }}
+              activeOpacity={0.8}
             >
-              <Ionicons name="image" size={24} color="#4ECDC4" />
+              <Ionicons name="image" size={24} color={LingoTheme.colors.teal} />
               <ThemedText style={styles.modalOptionText}>Choose from Library</ThemedText>
             </TouchableOpacity>
-            
+
             <TouchableOpacity 
               style={[styles.modalOption, styles.modalOptionDestructive]} 
               onPress={() => { setShowImageModal(false); setImageUri(null); }}
+              activeOpacity={0.8}
             >
-              <Ionicons name="trash" size={24} color="#EF4444" />
-              <ThemedText style={[styles.modalOptionText, { color: '#EF4444' }]}>Remove Photo</ThemedText>
+              <Ionicons name="trash" size={24} color={LingoTheme.colors.danger} />
+              <ThemedText style={[styles.modalOptionText, { color: LingoTheme.colors.danger }]}>Remove Photo</ThemedText>
             </TouchableOpacity>
-            
+
             <TouchableOpacity 
               style={[styles.modalOption, styles.modalOptionCancel]} 
               onPress={() => setShowImageModal(false)}
+              activeOpacity={0.8}
             >
               <ThemedText style={styles.modalCancelText}>Cancel</ThemedText>
             </TouchableOpacity>
@@ -488,16 +463,28 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: LingoTheme.colors.background },
-  centerContent: { justifyContent: 'center', alignItems: 'center' },
+  container: { 
+    flex: 1, 
+    backgroundColor: LingoTheme.colors.background 
+  },
+  centerContent: { 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
   loadingCard: {
     width: '100%',
     maxWidth: 320,
     alignItems: 'center',
     gap: 14,
   },
-  loadingText: { fontSize: 14, color: LingoTheme.colors.muted, fontWeight: '700' },
-  scrollView: { flex: 1 },
+  loadingText: { 
+    fontSize: 14, 
+    color: LingoTheme.colors.muted, 
+    fontWeight: '700' 
+  },
+  scrollView: { 
+    flex: 1 
+  },
   content: {
     paddingHorizontal: 20,
     gap: 18,
@@ -511,50 +498,95 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: 'center',
   },
-  avatarContainer: { position: 'relative', marginBottom: 12 },
-  avatarImage: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: LingoTheme.colors.border },
+  avatarContainer: { 
+    position: 'relative', 
+    marginBottom: 12 
+  },
+  avatarImage: { 
+    width: 120, 
+    height: 120, 
+    borderRadius: LingoTheme.radius.pill, 
+    borderWidth: 3, 
+    borderColor: LingoTheme.colors.border 
+  },
   avatarPlaceholder: {
     width: 120,
     height: 120,
-    borderRadius: 60,
+    borderRadius: LingoTheme.radius.pill,
     backgroundColor: LingoTheme.colors.softPrimary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
     borderColor: LingoTheme.colors.border,
   },
-  avatarInitial: { fontSize: 48, fontWeight: '800', color: LingoTheme.colors.primaryDark },
+  avatarInitial: { 
+    fontSize: 48, 
+    fontWeight: '800', 
+    color: LingoTheme.colors.primaryDark 
+  },
   editBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
+    borderRadius: LingoTheme.radius.pill,
+    backgroundColor: LingoTheme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
   },
-  changePhotoText: { fontSize: 15, color: LingoTheme.colors.ink, fontWeight: '800' },
-  photoHelpText: { fontSize: 13, color: LingoTheme.colors.muted, textAlign: 'center', lineHeight: 18, marginTop: 6 },
-  formSection: { gap: 20 },
-  inputGroup: { marginBottom: 20 },
-  lockedLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: '800', color: LingoTheme.colors.ink, marginBottom: 8 },
+  changePhotoText: { 
+    fontSize: 15, 
+    color: LingoTheme.colors.ink, 
+    fontWeight: '800' 
+  },
+  photoHelpText: { 
+    fontSize: 13, 
+    color: LingoTheme.colors.muted, 
+    textAlign: 'center', 
+    lineHeight: 18, 
+    marginTop: 6 
+  },
+  formSection: { 
+    gap: 20 
+  },
+  inputGroup: { 
+    marginBottom: 20 
+  },
+  lockedLabelRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    gap: 12, 
+    marginBottom: 8 
+  },
+  label: { 
+    fontSize: 14, 
+    fontWeight: '800', 
+    color: LingoTheme.colors.ink, 
+    marginBottom: 8 
+  },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.surface,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
-    borderRadius: 18,
+    borderRadius: LingoTheme.radius.md,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     color: LingoTheme.colors.ink,
   },
-  inputDisabled: { backgroundColor: LingoTheme.colors.surfaceAlt, color: '#9CA3AF' },
-  helperText: { fontSize: 12, color: LingoTheme.colors.muted, marginTop: 6 },
+  inputDisabled: { 
+    backgroundColor: LingoTheme.colors.surfaceAlt, 
+    color: LingoTheme.colors.textTertiary 
+  },
+  helperText: { 
+    fontSize: 12, 
+    color: LingoTheme.colors.muted, 
+    marginTop: 6 
+  },
   notificationBanner: {
     position: 'absolute',
     left: 0,
@@ -567,21 +599,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 8,
     marginHorizontal: 20,
-    borderRadius: 16,
+    borderRadius: LingoTheme.radius.md,
   },
-  notificationSuccess: { backgroundColor: '#10B981' },
-  notificationError: { backgroundColor: LingoTheme.colors.danger },
-  notificationText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  notificationSuccess: { 
+    backgroundColor: LingoTheme.colors.success 
+  },
+  notificationError: { 
+    backgroundColor: LingoTheme.colors.danger 
+  },
+  notificationText: { 
+    color: LingoTheme.colors.textInverse, 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(37, 49, 60, 0.45)',
+    backgroundColor: LingoTheme.colors.scrim,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    backgroundColor: LingoTheme.colors.surface,
+    borderRadius: LingoTheme.radius.lg,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
     padding: 24,
@@ -589,29 +629,52 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     alignItems: 'center',
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: LingoTheme.colors.ink, marginBottom: 4 },
-  modalSubtitle: { fontSize: 14, color: LingoTheme.colors.muted, marginBottom: 20 },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: '800', 
+    color: LingoTheme.colors.ink, 
+    marginBottom: 4 
+  },
+  modalSubtitle: { 
+    fontSize: 14, 
+    color: LingoTheme.colors.muted, 
+    marginBottom: 20 
+  },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 18,
+    borderRadius: LingoTheme.radius.md,
     backgroundColor: LingoTheme.colors.surfaceAlt,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
     marginBottom: 10,
   },
-  modalOptionDestructive: { backgroundColor: LingoTheme.colors.softDanger, borderColor: '#F7A7A7' },
+  modalOptionDestructive: { 
+    backgroundColor: LingoTheme.colors.softDanger, 
+    borderColor: LingoTheme.colors.softDanger 
+  },
   modalOptionCancel: {
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
     marginTop: 8,
   },
-  modalOptionText: { fontSize: 16, fontWeight: '700', color: LingoTheme.colors.ink, marginLeft: 12 },
-  modalCancelText: { fontSize: 16, fontWeight: '700', color: LingoTheme.colors.muted, textAlign: 'center', width: '100%' },
+  modalOptionText: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: LingoTheme.colors.ink, 
+    marginLeft: 12 
+  },
+  modalCancelText: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: LingoTheme.colors.muted, 
+    textAlign: 'center', 
+    width: '100%' 
+  },
   saveCta: {
     marginTop: 4,
   },

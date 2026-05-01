@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -11,7 +11,6 @@ import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader,
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SkeletonScreen } from '@/components/ui/skeleton';
 import { RateTeacherModal } from '@/components/rate-teacher-modal';
 
 interface ClassSession {
@@ -161,7 +160,7 @@ export default function ClassesScreen() {
         }
         throw new Error(data?.error || `Failed to load classes (${response.status})`);
       }
-      
+
       const allClasses = data.classes || [];
       setAllClasses(allClasses);
       const serverNowIso = typeof data.server_now === 'string' ? data.server_now : '';
@@ -179,25 +178,22 @@ export default function ClassesScreen() {
     }
   };
 
-  // Get user's actual timezone based on system offset (works even when browser spoofs Intl API)
   const getUserTimezone = () => {
     const offsetMinutes = new Date().getTimezoneOffset();
     const offsetHours = -offsetMinutes / 60;
-    // Map common offsets to timezone names
     const tzMap: Record<number, string> = {
-      5: 'Asia/Karachi',      // PKT
-      5.5: 'Asia/Kolkata',    // IST
+      5: 'Asia/Karachi',
+      5.5: 'Asia/Kolkata',
       0: 'UTC',
-      1: 'Europe/London',     // BST
-      '-5': 'America/New_York', // EST
-      '-8': 'America/Los_Angeles', // PST
+      1: 'Europe/London',
+      '-5': 'America/New_York',
+      '-8': 'America/Los_Angeles',
     };
     return tzMap[offsetHours] || Intl.DateTimeFormat().resolvedOptions().timeZone;
   };
 
   const formatDate = (dateStr: string) => {
     const utcDate = new Date(dateStr);
-    // Use browser's local timezone
     return utcDate.toLocaleDateString('en-US', { 
       weekday: 'short', 
       month: 'short', 
@@ -207,7 +203,6 @@ export default function ClassesScreen() {
 
   const formatTime = (dateStr: string) => {
     const utcDate = new Date(dateStr);
-    // Use browser's local timezone - toLocaleTimeString automatically converts
     return utcDate.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
@@ -216,23 +211,21 @@ export default function ClassesScreen() {
   };
 
   const isClassJoinable = (classItem: ClassSession) => {
-    // Check live_status first - if teacher marked it live, always joinable
     const liveStatus = String(classItem.live_status || '').toLowerCase();
     if (liveStatus === 'live') return true;
-    
+
     const status = String(classItem.status || '').toLowerCase();
     if (status === 'completed' || status === 'cancelled' || liveStatus === 'ended') {
       return false;
     }
-    
-    // Allow joining within time window: 10 min before start to end of class + 30 min
+
     const now = Date.now();
     const classStart = new Date(classItem.scheduled_date).getTime();
     const duration = classItem.duration_minutes || 60;
     const classEnd = classStart + duration * 60 * 1000;
-    const earliestJoin = classStart - 10 * 60 * 1000; // 10 min before
-    const latestJoin = classEnd + 30 * 60 * 1000; // 30 min after end
-    
+    const earliestJoin = classStart - 10 * 60 * 1000;
+    const latestJoin = classEnd + 30 * 60 * 1000;
+
     return now >= earliestJoin && now <= latestJoin;
   };
 
@@ -246,13 +239,11 @@ export default function ClassesScreen() {
   };
 
   const handleRatingSuccess = () => {
-    // Reload classes to update any state if needed
     loadClasses('background');
   };
 
   const renderClassCard = (classItem: ClassSession, isPast: boolean = false) => {
     const joinable = !isPast && isClassJoinable(classItem);
-    // Calculate minutes left until class starts
     const now = new Date();
     const classDateTime = new Date(classItem.scheduled_date);
     const diffMinutes = Math.floor((classDateTime.getTime() - now.getTime()) / (1000 * 60));
@@ -315,19 +306,19 @@ export default function ClassesScreen() {
 
         <View style={styles.detailsRow}>
            <View style={styles.detailItem}>
-              <Ionicons name="calendar-outline" size={16} color={isPast ? "#9CA3AF" : "#4ECDC4"} />
+              <Ionicons name="calendar-outline" size={16} color={isPast ? LingoTheme.colors.textTertiary : LingoTheme.colors.teal} />
               <ThemedText style={[styles.detailText, isPast && styles.textPast]}>
                 {formatDate(classItem.scheduled_date)}
               </ThemedText>
            </View>
            <View style={styles.detailItem}>
-              <Ionicons name="time-outline" size={16} color={isPast ? "#9CA3AF" : "#4ECDC4"} />
+              <Ionicons name="time-outline" size={16} color={isPast ? LingoTheme.colors.textTertiary : LingoTheme.colors.teal} />
               <ThemedText style={[styles.detailText, isPast && styles.textPast]}>
                 {formatTime(classItem.scheduled_date)}
               </ThemedText>
            </View>
            <View style={styles.detailItem}>
-              <Ionicons name="hourglass-outline" size={16} color={isPast ? "#9CA3AF" : "#4ECDC4"} />
+              <Ionicons name="hourglass-outline" size={16} color={isPast ? LingoTheme.colors.textTertiary : LingoTheme.colors.teal} />
               <ThemedText style={[styles.detailText, isPast && styles.textPast]}>
                 {classItem.duration_minutes} min
               </ThemedText>
@@ -343,7 +334,7 @@ export default function ClassesScreen() {
               onPress={() => Alert.alert('Student account required', 'Only teachers and students can join live classes.')}
             >
               <LinearGradient
-                colors={['#E5E7EB', '##E5E7EB']}
+                colors={['#E5E7EB', '#E5E7EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.joinButtonGradient}
@@ -353,19 +344,19 @@ export default function ClassesScreen() {
                 </ThemedText>
               </LinearGradient>
             </TouchableOpacity>
-            <ThemedText style={{ color: '#F59E0B', marginTop: 6, textAlign: 'center', fontSize: 13 }}>
+            <ThemedText style={{ color: LingoTheme.colors.warning, marginTop: 6, textAlign: 'center', fontSize: 13 }}>
               Live class access is available for teacher and student accounts only.
             </ThemedText>
           </>
         )}
-        
+
         {isPast && isCompleted && (
           <TouchableOpacity 
             style={styles.rateButton}
             activeOpacity={0.8}
             onPress={() => handleRateTeacher(classItem)}
           >
-            <Ionicons name="star-outline" size={18} color="#4ECDC4" />
+            <Ionicons name="star-outline" size={18} color={LingoTheme.colors.teal} />
             <ThemedText style={styles.rateButtonText}>Rate This Class</ThemedText>
           </TouchableOpacity>
         )}
@@ -374,7 +365,11 @@ export default function ClassesScreen() {
   };
 
   if (loading) {
-    return <SkeletonScreen />;
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
+      </View>
+    );
   }
 
   const displayClasses = activeTab === 'upcoming' ? upcomingClasses : pastClasses;
@@ -400,11 +395,13 @@ export default function ClassesScreen() {
         </LingoScreenHeader>
       </View>
 
+      {/* Tab Switcher - Lingo Style */}
       <View style={styles.tabContainerWrap}>
         <LingoCard style={styles.tabContainer}>
           <TouchableOpacity 
             style={[styles.tabButton, activeTab === 'upcoming' && styles.tabActive]}
             onPress={() => setActiveTab('upcoming')}
+            activeOpacity={0.8}
           >
             <ThemedText style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
               Upcoming
@@ -413,6 +410,7 @@ export default function ClassesScreen() {
           <TouchableOpacity 
             style={[styles.tabButton, activeTab === 'past' && styles.tabActive]}
             onPress={() => setActiveTab('past')}
+            activeOpacity={0.8}
           >
             <ThemedText style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
               History
@@ -482,7 +480,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   /* Header */
   header: {
     paddingHorizontal: 20,
@@ -502,6 +500,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
+  /* Tab Switcher - Lingo Style */
   tabContainerWrap: {
     paddingHorizontal: 20,
     marginBottom: 8,
@@ -515,7 +514,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: LingoTheme.radius.md,
     backgroundColor: LingoTheme.colors.surfaceAlt,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
@@ -530,7 +529,7 @@ const styles = StyleSheet.create({
     color: LingoTheme.colors.muted,
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: LingoTheme.colors.textInverse,
   },
 
   scrollView: {
@@ -542,6 +541,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
 
+  /* Class Card - Lingo Style */
   classCard: {
     padding: 20,
   },
@@ -562,18 +562,18 @@ const styles = StyleSheet.create({
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: LingoTheme.radius.pill,
     backgroundColor: LingoTheme.colors.teal,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarPast: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: LingoTheme.colors.textTertiary,
   },
   avatarText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFF',
+    color: LingoTheme.colors.textInverse,
   },
   teacherName: {
     fontSize: 16,
@@ -585,30 +585,30 @@ const styles = StyleSheet.create({
     color: LingoTheme.colors.muted,
   },
   textPast: {
-    color: '#9CA3AF',
+    color: LingoTheme.colors.textTertiary,
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: LingoTheme.radius.pill,
   },
   statusConfirmed: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: LingoTheme.colors.softPrimary,
   },
   statusCompleted: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.borderLight,
   },
   statusPending: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: LingoTheme.colors.softGold,
   },
   statusText: {
     fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
-  textConfirmed: { color: '#059669' },
-  textCompleted: { color: '#6B7280' },
-  textPending: { color: '#C2410C' },
+  textConfirmed: { color: LingoTheme.colors.primary },
+  textCompleted: { color: LingoTheme.colors.textSecondary },
+  textPending: { color: LingoTheme.colors.gold },
 
   divider: {
     height: 1,
@@ -628,11 +628,12 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: LingoTheme.colors.text,
   },
 
+  /* Join Button - Lingo Style */
   joinButton: {
-    borderRadius: 16,
+    borderRadius: LingoTheme.radius.md,
     overflow: 'hidden',
   },
   joinButtonDisabled: {
@@ -648,18 +649,19 @@ const styles = StyleSheet.create({
   joinButtonText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#FFF',
+    color: LingoTheme.colors.textInverse,
   },
   joinButtonTextDisabled: {
-    color: '#9CA3AF',
+    color: LingoTheme.colors.textTertiary,
   },
 
+  /* Rate Button - Lingo Style */
   rateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: LingoTheme.radius.md,
     borderWidth: 2,
     borderColor: LingoTheme.colors.teal,
     backgroundColor: LingoTheme.colors.softTeal,
@@ -676,7 +678,5 @@ const styles = StyleSheet.create({
   },
   bookBtn: {
     marginTop: 24,
-  },
-  bookBtnText: {
   },
 });

@@ -1,11 +1,10 @@
 import { Tabs } from 'expo-router';
-import { Platform, View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
-import { ThemedText } from '@/components/themed-text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LingoTheme } from '@/constants/theme';
 
@@ -46,7 +45,7 @@ export default function ParentLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: LingoTheme.colors.primary,
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarInactiveTintColor: LingoTheme.colors.textTertiary,
         tabBarShowLabel: false,
         tabBarIconStyle: {
           marginBottom: 0,
@@ -56,17 +55,17 @@ export default function ParentLayout() {
           alignItems: 'center',
           marginHorizontal: 4,
           marginVertical: 4,
-          borderRadius: 18,
+          borderRadius: LingoTheme.radius.lg,
         },
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: LingoTheme.colors.surface,
           borderTopWidth: 0,
           height: tabBarBaseHeight + Math.max(bottomInset, 16),
           paddingTop: 10,
           paddingBottom: Math.max(bottomInset, 16),
           marginHorizontal: 12,
           marginBottom: Platform.OS === 'web' ? 0 : 10,
-          borderRadius: 28,
+          borderRadius: LingoTheme.radius.xl,
           position: 'absolute',
           left: 0,
           right: 0,
@@ -135,9 +134,9 @@ export default function ParentLayout() {
               />
               {unreadCount > 0 && (
                 <View style={layoutStyles.badge}>
-                  <ThemedText style={layoutStyles.badgeText}>
+                  <Text style={layoutStyles.badgeText}>
                     {unreadCount > 99 ? '99+' : unreadCount}
-                  </ThemedText>
+                  </Text>
                 </View>
               )}
             </View>
@@ -171,13 +170,15 @@ const layoutStyles = StyleSheet.create({
     position: 'absolute',
     right: -8,
     top: -4,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: LingoTheme.colors.danger,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.surface,
   },
   badgeText: {
     color: '#FFFFFF',

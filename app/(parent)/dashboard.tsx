@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Modal, RefreshControl, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Platform, Modal, RefreshControl, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -10,7 +10,6 @@ import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '@/constants/theme';
-import { ParentDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
@@ -160,7 +159,7 @@ export default function ParentDashboard() {
         return;
       }
       const profileData = await profileRes.json();
-      
+
       if (profileData.profile) {
         setParentName(profileData.profile.full_name);
         setStats(profileData.stats);
@@ -202,13 +201,11 @@ export default function ParentDashboard() {
         return;
       }
       const classesData = await classesRes.json();
-      // Split classes into upcoming and past (closed)
       const allClasses = classesData.classes || [];
       const serverNowIso = typeof classesData.server_now === 'string' ? classesData.server_now : '';
       const parsedServerNowMs = serverNowIso ? new Date(serverNowIso).getTime() : NaN;
-      // Use server time when available; avoids incorrect device clock.
       const nowMs = Number.isFinite(parsedServerNowMs) ? parsedServerNowMs : Date.now();
-      const graceMs = 30 * 60 * 1000; // keep a missed class visible for 30 minutes after start
+      const graceMs = 30 * 60 * 1000;
       const upcoming = allClasses.filter((c: ClassSession) => {
         const classDate = new Date(c.scheduled_date);
         const liveStatus = String(c.live_status || '').toLowerCase();
@@ -239,22 +236,16 @@ export default function ParentDashboard() {
     }
   };
 
-  if (loading) {
-    return <ParentDashboardSkeleton />;
-  }
-
-  // Get user's actual timezone based on system offset (works even when browser spoofs Intl API)
   const getUserTimezone = () => {
     const offsetMinutes = new Date().getTimezoneOffset();
     const offsetHours = -offsetMinutes / 60;
-    // Map common offsets to timezone names
     const tzMap: Record<number, string> = {
-      5: 'Asia/Karachi',      // PKT
-      5.5: 'Asia/Kolkata',    // IST
+      5: 'Asia/Karachi',
+      5.5: 'Asia/Kolkata',
       0: 'UTC',
-      1: 'Europe/London',     // BST
-      '-5': 'America/New_York', // EST
-      '-8': 'America/Los_Angeles', // PST
+      1: 'Europe/London',
+      '-5': 'America/New_York',
+      '-8': 'America/Los_Angeles',
     };
     return tzMap[offsetHours] || Intl.DateTimeFormat().resolvedOptions().timeZone;
   };
@@ -280,13 +271,20 @@ export default function ParentDashboard() {
     });
   };
 
-  // Helper for greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -298,6 +296,7 @@ export default function ParentDashboard() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => loadDashboardData('refresh')}
+            tintColor={LingoTheme.colors.primary}
           />
         }
       >
@@ -320,6 +319,7 @@ export default function ParentDashboard() {
                   setHasUnreadNotifications(false);
                   router.push('/(parent)/notifications');
                 }}
+                activeOpacity={0.8}
               >
                 <Ionicons name="notifications-outline" size={20} color={LingoTheme.colors.ink} />
                 {hasUnreadNotifications && <View style={styles.notificationDot} />}
@@ -327,6 +327,7 @@ export default function ParentDashboard() {
               <TouchableOpacity 
                 style={styles.profileButton}
                 onPress={() => router.push('/(parent)/profile')}
+                activeOpacity={0.8}
               >
                 {user?.avatar_url ? (
                   <Image 
@@ -353,12 +354,12 @@ export default function ParentDashboard() {
           <View style={styles.sectionHeaderRow}>
              <ThemedText style={styles.sectionTitle}>My Child</ThemedText>
              {children.length > 0 && (
-               <TouchableOpacity onPress={() => setShowChildrenModal(true)}>
+               <TouchableOpacity onPress={() => setShowChildrenModal(true)} activeOpacity={0.8}>
                   <ThemedText style={styles.seeAllText}>More Children</ThemedText>
                </TouchableOpacity>
              )}
           </View>
-          
+
           {children.length > 1 ? (
             <ScrollView
               horizontal
@@ -374,7 +375,7 @@ export default function ParentDashboard() {
                   style={[styles.childCardWrapper, { width: childCardWidth }]}
                 >
                   <LinearGradient
-                    colors={['#4ECDC4', '#2BCBBA']}
+                    colors={[LingoTheme.colors.teal, '#2BCBBA']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[styles.childCard, styles.childCardCarousel]}
@@ -389,7 +390,7 @@ export default function ParentDashboard() {
                         <ThemedText style={styles.childName}>{child.name}</ThemedText>
                         <ThemedText style={styles.childAge}>{child.age} years old</ThemedText>
                       </View>
-                      <Ionicons name="chevron-forward" size={24} color="#FFF" style={{ opacity: 0.8 }} />
+                      <Ionicons name="chevron-forward" size={24} color={LingoTheme.colors.textInverse} style={{ opacity: 0.8 }} />
                     </View>
 
                     <View style={styles.statsRow}>
@@ -418,7 +419,7 @@ export default function ParentDashboard() {
               onPress={() => router.push({ pathname: '/child-profile/[id]', params: { id: selectedChild.id, name: selectedChild.name } })}
             >
               <LinearGradient
-                colors={['#4ECDC4', '#2BCBBA']}
+                colors={[LingoTheme.colors.teal, '#2BCBBA']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.childCard}
@@ -433,7 +434,7 @@ export default function ParentDashboard() {
                       <ThemedText style={styles.childName}>{selectedChild.name}</ThemedText>
                       <ThemedText style={styles.childAge}>{selectedChild.age} years old</ThemedText>
                    </View>
-                   <Ionicons name="chevron-forward" size={24} color="#FFF" style={{ opacity: 0.8 }} />
+                   <Ionicons name="chevron-forward" size={24} color={LingoTheme.colors.textInverse} style={{ opacity: 0.8 }} />
                 </View>
 
                 <View style={styles.statsRow}>
@@ -481,9 +482,9 @@ export default function ParentDashboard() {
                       onPress={() => {
                         setShowChildrenModal(false);
                         setSelectedChild(child);
-                        // navigate to the child's profile
                         router.push({ pathname: '/child-profile/[id]', params: { id: child.id } });
                       }}
+                      activeOpacity={0.8}
                     >
                       <View style={styles.childRowAvatar}>
                         <ThemedText style={styles.childAvatarTextSmall}>{child.name.charAt(0)}</ThemedText>
@@ -493,10 +494,10 @@ export default function ParentDashboard() {
                   ))}
                 </ScrollView>
                 <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.modalButton} onPress={() => { setShowChildrenModal(false); setShowAddChildModal(true); }}>
+                  <TouchableOpacity style={styles.modalButton} onPress={() => { setShowChildrenModal(false); setShowAddChildModal(true); }} activeOpacity={0.8}>
                     <ThemedText style={styles.modalButtonText}>Add Child</ThemedText>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.modalButton, styles.modalClose]} onPress={() => setShowChildrenModal(false)}>
+                  <TouchableOpacity style={[styles.modalButton, styles.modalClose]} onPress={() => setShowChildrenModal(false)} activeOpacity={0.8}>
                     <ThemedText style={[styles.modalButtonText, styles.modalCloseText]}>Close</ThemedText>
                   </TouchableOpacity>
                 </View>
@@ -511,27 +512,27 @@ export default function ParentDashboard() {
             <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
           </View>
           <View style={styles.quickActionsRow}>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/browse-courses')}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#E6FFFA' }]}>  
-                <Ionicons name="book-outline" size={22} color="#4ECDC4" />
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/browse-courses')} activeOpacity={0.8}>
+              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softTeal }]}>  
+                <Ionicons name="book-outline" size={22} color={LingoTheme.colors.teal} />
               </View>
               <ThemedText style={styles.quickActionLabel}>Courses</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/messages')}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#EEF2FF' }]}>  
-                <Ionicons name="chatbubbles-outline" size={22} color="#6366F1" />
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/messages')} activeOpacity={0.8}>
+              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softPurple }]}>  
+                <Ionicons name="chatbubbles-outline" size={22} color={LingoTheme.colors.secondary} />
               </View>
               <ThemedText style={styles.quickActionLabel}>Messages</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => setShowAddChildModal(true)}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>  
-                <Ionicons name="person-add-outline" size={22} color="#F59E0B" />
+            <TouchableOpacity style={styles.quickAction} onPress={() => setShowAddChildModal(true)} activeOpacity={0.8}>
+              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softGold }]}>  
+                <Ionicons name="person-add-outline" size={22} color={LingoTheme.colors.gold} />
               </View>
               <ThemedText style={styles.quickActionLabel}>Add Child</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/profile')}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#FCE7F3' }]}>  
-                <Ionicons name="settings-outline" size={22} color="#EC4899" />
+            <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/profile')} activeOpacity={0.8}>
+              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softDanger }]}>  
+                <Ionicons name="settings-outline" size={22} color={LingoTheme.colors.danger} />
               </View>
               <ThemedText style={styles.quickActionLabel}>Settings</ThemedText>
             </TouchableOpacity>
@@ -542,7 +543,7 @@ export default function ParentDashboard() {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
              <ThemedText style={styles.sectionTitle}>Upcoming Classes</ThemedText>
-             <TouchableOpacity onPress={() => router.push('/(parent)/browse-courses')}>
+             <TouchableOpacity onPress={() => router.push('/(parent)/browse-courses')} activeOpacity={0.8}>
                <ThemedText style={styles.seeAllText}>Browse</ThemedText>
              </TouchableOpacity>
           </View>
@@ -552,7 +553,6 @@ export default function ParentDashboard() {
             </LingoCard>
           ) : (
             upcomingClasses.slice(0, 2).map((classItem) => {
-              // Join button logic: only enabled 15 min before to 60 min after start, and status confirmed
               const classDateTime = new Date(classItem.scheduled_date);
               const now = new Date();
               const diffMinutes = (classDateTime.getTime() - now.getTime()) / (1000 * 60);
@@ -577,7 +577,7 @@ export default function ParentDashboard() {
                         w/ {classItem.courses?.teachers?.profiles?.full_name || 'Ustadh'}
                       </ThemedText>
                       <View style={styles.timeRow}>
-                         <Ionicons name="time-outline" size={14} color="#6B7280" />
+                         <Ionicons name="time-outline" size={14} color={LingoTheme.colors.textSecondary} />
                          <ThemedText style={styles.timeText}>{formatTime(classItem.scheduled_date)}</ThemedText>
                       </View>
                    </View>
@@ -615,7 +615,6 @@ export default function ParentDashboard() {
           ) : (
             pastClasses.slice(0, 2).map((classItem) => {
               const classDateTime = new Date(classItem.scheduled_date);
-              // Show status as 'Closed' if ended, otherwise show real status
               const now = new Date();
               const ended = classDateTime < now;
               const statusLabel = ended ? 'Closed' : (classItem.status.charAt(0).toUpperCase() + classItem.status.slice(1));
@@ -637,7 +636,7 @@ export default function ParentDashboard() {
                         w/ {classItem.courses?.teachers?.profiles?.full_name || 'Ustadh'}
                       </ThemedText>
                       <View style={styles.timeRow}>
-                         <Ionicons name="time-outline" size={14} color="#6B7280" />
+                         <Ionicons name="time-outline" size={14} color={LingoTheme.colors.textSecondary} />
                          <ThemedText style={styles.timeText}>{formatTime(classItem.scheduled_date)}</ThemedText>
                       </View>
                    </View>
@@ -664,9 +663,9 @@ export default function ParentDashboard() {
              </LingoCard>
            ) : (
              messages.map((msg) => (
-               <TouchableOpacity key={msg.id} style={styles.messageRow} onPress={() => router.push('/(parent)/messages')}>
+               <TouchableOpacity key={msg.id} style={styles.messageRow} onPress={() => router.push('/(parent)/messages')} activeOpacity={0.8}>
                   <View style={styles.messageAvatar}>
-                     <Ionicons name="person" size={20} color="#9CA3AF" />
+                     <Ionicons name="person" size={20} color={LingoTheme.colors.textTertiary} />
                   </View>
                   <View style={styles.messageBody}>
                      <View style={styles.messageTop}>
@@ -685,7 +684,7 @@ export default function ParentDashboard() {
            <View style={styles.sectionHeaderRow}>
              <ThemedText style={styles.sectionTitle}>Recent Payments</ThemedText>
            </View>
-           
+
            {payments.length === 0 ? (
              <LingoCard style={styles.emptyStateContainerCompact}>
                <LingoEmptyState icon="wallet-outline" title="No recent transactions" subtitle="Recent payments will show up here." tone="primary" />
@@ -694,7 +693,7 @@ export default function ParentDashboard() {
              payments.map((pay) => (
                <View key={pay.id} style={styles.paymentRow}>
                   <View style={styles.paymentIcon}>
-                     <Ionicons name="receipt-outline" size={20} color="#4ECDC4" />
+                     <Ionicons name="receipt-outline" size={20} color={LingoTheme.colors.teal} />
                   </View>
                   <View style={styles.paymentBody}>
                      <ThemedText style={styles.payDesc}>{pay.description}</ThemedText>
@@ -702,7 +701,7 @@ export default function ParentDashboard() {
                   </View>
                   <View style={styles.paymentEnd}>
                      <ThemedText style={styles.payAmount}>${pay.amount.toFixed(2)}</ThemedText>
-                     <ThemedText style={[styles.payStatus, { color: pay.status === 'Paid' ? '#10B981' : '#F59E0B' }]}>
+                     <ThemedText style={[styles.payStatus, { color: pay.status === 'Paid' ? LingoTheme.colors.success : LingoTheme.colors.warning }]}>
                         {pay.status}
                      </ThemedText>
                   </View>
@@ -710,7 +709,7 @@ export default function ParentDashboard() {
              ))
            )}
         </View>
-        
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -726,7 +725,7 @@ export default function ParentDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB', // Light gray background for the whole screen
+    backgroundColor: LingoTheme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -738,7 +737,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   /* Header */
   headerWrap: {
     paddingHorizontal: 16,
@@ -757,8 +756,8 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    borderRadius: LingoTheme.radius.pill,
+    backgroundColor: LingoTheme.colors.surface,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
     justifyContent: 'center',
@@ -770,28 +769,24 @@ const styles = StyleSheet.create({
     right: 10,
     width: 8,
     height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
+    borderRadius: LingoTheme.radius.pill,
+    backgroundColor: LingoTheme.colors.danger,
     borderWidth: 1.5,
-    borderColor: '#FFF',
+    borderColor: LingoTheme.colors.surface,
   },
   profileButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: LingoTheme.radius.pill,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...LingoTheme.shadow.card,
     overflow: 'hidden',
   },
   profileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: LingoTheme.radius.pill,
   },
   profileFallback: {
     flex: 1,
@@ -801,7 +796,7 @@ const styles = StyleSheet.create({
   profileFallbackText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: LingoTheme.colors.textInverse,
   },
 
   /* Sections */
@@ -818,23 +813,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: LingoTheme.colors.text,
   },
   seeAllText: {
     fontSize: 14,
-    color: '#4ECDC4',
+    color: LingoTheme.colors.teal,
     fontWeight: '600',
   },
 
-  /* Child Card */
+  /* Child Card - Lingo Style */
   childCard: {
-    borderRadius: 24,
+    borderRadius: LingoTheme.radius.lg,
     padding: 20,
-    shadowColor: '#4ECDC4',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...LingoTheme.shadow.elevated,
   },
   childCardTop: {
     flexDirection: 'row',
@@ -847,7 +838,7 @@ const styles = StyleSheet.create({
   childAvatar: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: LingoTheme.radius.pill,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -857,7 +848,7 @@ const styles = StyleSheet.create({
   childAvatarText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFF',
+    color: LingoTheme.colors.textInverse,
   },
   childInfo: {
     flex: 1,
@@ -865,7 +856,7 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: LingoTheme.colors.textInverse,
     marginBottom: 6,
   },
   childAge: {
@@ -877,7 +868,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
+    borderRadius: LingoTheme.radius.md,
     padding: 16,
   },
   statItem: {
@@ -887,7 +878,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: LingoTheme.colors.textInverse,
     marginBottom: 2,
   },
   statLabel: {
@@ -901,27 +892,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
 
-  /* Add Child Card */
+  /* Add Child Card - Lingo Style */
   addChildCard: {
-    borderRadius: 20,
+    borderRadius: LingoTheme.radius.lg,
     padding: 32,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.surface,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
   },
 
-  /* Upcoming Classes */
+  /* Upcoming Classes - Lingo Style */
   classCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+    backgroundColor: LingoTheme.colors.surface,
+    borderRadius: LingoTheme.radius.md,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...LingoTheme.shadow.card,
     alignItems: 'center',
   },
   classCardLeft: {
@@ -930,19 +917,19 @@ const styles = StyleSheet.create({
   dateBox: {
     width: 50,
     height: 54,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    borderRadius: LingoTheme.radius.sm,
+    backgroundColor: LingoTheme.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dateDay: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: LingoTheme.colors.text,
   },
   dateMonth: {
     fontSize: 11,
-    color: '#6B7280',
+    color: LingoTheme.colors.textSecondary,
     textTransform: 'uppercase',
     fontWeight: '600',
   },
@@ -952,12 +939,12 @@ const styles = StyleSheet.create({
   classTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: LingoTheme.colors.text,
     marginBottom: 2,
   },
   teacherName: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.textSecondary,
     marginBottom: 6,
   },
   timeRow: {
@@ -967,24 +954,24 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: LingoTheme.colors.textSecondary,
     fontWeight: '500',
   },
   classCardRight: {
     marginLeft: 12,
   },
 
-  /* Empty States */
+  /* Empty States - Lingo Style */
   emptyStateContainer: {
     padding: 32,
-    borderRadius: 16,
+    borderRadius: LingoTheme.radius.md,
   },
   emptyStateContainerCompact: {
     padding: 20,
-    borderRadius: 12,
+    borderRadius: LingoTheme.radius.md,
   },
 
-  /* Quick Actions */
+  /* Quick Actions - Lingo Style */
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -996,96 +983,88 @@ const styles = StyleSheet.create({
   quickActionIcon: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: LingoTheme.radius.md,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    ...LingoTheme.shadow.card,
   },
   quickActionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: LingoTheme.colors.text,
   },
 
-  /* Status Badges */
+  /* Status Badges - Lingo Style */
   statusBadgeLive: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DCFCE7',
+    backgroundColor: LingoTheme.colors.softPrimary,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 10,
+    borderRadius: LingoTheme.radius.sm,
     gap: 5,
   },
   liveDot: {
     width: 7,
     height: 7,
-    borderRadius: 4,
-    backgroundColor: '#22C55E',
+    borderRadius: LingoTheme.radius.pill,
+    backgroundColor: LingoTheme.colors.success,
   },
   statusBadgeLiveText: {
-    color: '#15803D',
+    color: LingoTheme.colors.primary,
     fontSize: 12,
     fontWeight: '700',
   },
   statusBadgeSoon: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: LingoTheme.colors.softGold,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 10,
+    borderRadius: LingoTheme.radius.sm,
   },
   statusBadgeSoonText: {
-    color: '#B45309',
+    color: LingoTheme.colors.gold,
     fontSize: 12,
     fontWeight: '700',
   },
   statusBadgeScheduled: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: LingoTheme.colors.softPurple,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 10,
+    borderRadius: LingoTheme.radius.sm,
   },
   statusBadgeScheduledText: {
-    color: '#4338CA',
+    color: LingoTheme.colors.secondary,
     fontSize: 12,
     fontWeight: '700',
   },
   statusBadgeClosed: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: LingoTheme.colors.softGold,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 10,
+    borderRadius: LingoTheme.radius.sm,
   },
   statusBadgeClosedText: {
-    color: '#B45309',
+    color: LingoTheme.colors.gold,
     fontSize: 12,
     fontWeight: '700',
   },
 
-  /* Messages List */
+  /* Messages List - Lingo Style */
   messageRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+    backgroundColor: LingoTheme.colors.surface,
+    borderRadius: LingoTheme.radius.md,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    ...LingoTheme.shadow.card,
   },
   messageAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
+    borderRadius: LingoTheme.radius.pill,
+    backgroundColor: LingoTheme.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -1101,36 +1080,32 @@ const styles = StyleSheet.create({
   msgName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
+    color: LingoTheme.colors.text,
   },
   msgTime: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: LingoTheme.colors.textTertiary,
   },
   msgPreview: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.textSecondary,
   },
 
-  /* Payment List */
+  /* Payment List - Lingo Style */
   paymentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+    backgroundColor: LingoTheme.colors.surface,
+    borderRadius: LingoTheme.radius.md,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    ...LingoTheme.shadow.card,
   },
   paymentIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: '#E6FFFA',
+    borderRadius: LingoTheme.radius.sm,
+    backgroundColor: LingoTheme.colors.softTeal,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -1141,12 +1116,12 @@ const styles = StyleSheet.create({
   payDesc: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: LingoTheme.colors.text,
     marginBottom: 2,
   },
   payDate: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: LingoTheme.colors.textTertiary,
   },
   paymentEnd: {
     alignItems: 'flex-end',
@@ -1154,14 +1129,14 @@ const styles = StyleSheet.create({
   payAmount: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: LingoTheme.colors.text,
     marginBottom: 2,
   },
   payStatus: {
     fontSize: 11,
     fontWeight: '600',
   },
-  
+
   bottomSpacer: {
     height: 40,
   },
@@ -1174,35 +1149,38 @@ const styles = StyleSheet.create({
   childCardCarousel: {
     width: '100%',
   },
+
+  /* Modal - Lingo Style */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: LingoTheme.colors.scrim,
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: LingoTheme.colors.surface,
     padding: 20,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: LingoTheme.radius.lg,
+    borderTopRightRadius: LingoTheme.radius.lg,
     maxHeight: '70%',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
+    color: LingoTheme.colors.text,
   },
   childRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: LingoTheme.colors.borderLight,
   },
   childRowAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    borderRadius: LingoTheme.radius.pill,
+    backgroundColor: LingoTheme.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1210,11 +1188,11 @@ const styles = StyleSheet.create({
   childAvatarTextSmall: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: LingoTheme.colors.text,
   },
   childRowName: {
     fontSize: 16,
-    color: '#111827',
+    color: LingoTheme.colors.text,
     fontWeight: '600',
   },
   modalActions: {
@@ -1225,20 +1203,20 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#4ECDC4',
+    borderRadius: LingoTheme.radius.md,
+    backgroundColor: LingoTheme.colors.teal,
     alignItems: 'center',
     marginRight: 8,
   },
   modalButtonText: {
-    color: '#FFF',
+    color: LingoTheme.colors.textInverse,
     fontWeight: '700',
   },
   modalClose: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: LingoTheme.colors.borderLight,
     marginRight: 0,
   },
   modalCloseText: {
-    color: '#111827',
+    color: LingoTheme.colors.text,
   },
 });

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
-import { BrowseCoursesSkeleton } from '@/components/ui/dashboard-skeletons';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
@@ -84,10 +83,10 @@ export default function BrowseCoursesScreen() {
 
   const getLevelColor = (lvl: string) => {
     switch (lvl) {
-      case 'beginner': return '#10B981';
-      case 'intermediate': return '#F59E0B';
-      case 'advanced': return '#EF4444';
-      default: return '#6B7280';
+      case 'beginner': return LingoTheme.colors.success;
+      case 'intermediate': return LingoTheme.colors.warning;
+      case 'advanced': return LingoTheme.colors.danger;
+      default: return LingoTheme.colors.muted;
     }
   };
 
@@ -102,11 +101,15 @@ export default function BrowseCoursesScreen() {
   };
 
   if (loading) {
-    return <BrowseCoursesSkeleton />;
+    return (
+      <View style={[styles.container, { paddingTop: topPadding, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
+      </View>
+    );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: topPadding }]}>
       <View style={styles.headerPad}>
         <LingoScreenHeader
           badge="Parent hub"
@@ -115,60 +118,76 @@ export default function BrowseCoursesScreen() {
           subtitle="Compare subjects, levels, and lesson counts in a calmer, easier-to-scan course browser."
         />
 
+        {/* Mode Switch - Lingo Style */}
         <View style={styles.modeSwitch}>
-          <TouchableOpacity style={styles.modePill} onPress={() => router.push('/(parent)/browse-teachers')}>
+          <TouchableOpacity 
+            style={styles.modePill} 
+            onPress={() => router.push('/(parent)/browse-teachers')}
+            activeOpacity={0.8}
+          >
             <ThemedText style={styles.modePillText}>Teachers</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.modePill, styles.modePillActive]}>
+          <TouchableOpacity style={[styles.modePill, styles.modePillActive]} activeOpacity={0.8}>
             <ThemedText style={[styles.modePillText, styles.modePillTextActive]}>Courses</ThemedText>
           </TouchableOpacity>
         </View>
 
         <LingoCard style={styles.filterCard}>
+          {/* Free Toggle - Lingo Button Style */}
           <TouchableOpacity
             style={[styles.freeToggle, showFreeOnly && styles.freeToggleActive]}
             onPress={() => setShowFreeOnly(!showFreeOnly)}
+            activeOpacity={0.8}
           >
-            <Ionicons name="pricetag" size={14} color={showFreeOnly ? '#FFF' : LingoTheme.colors.ink} />
-            <ThemedText style={[styles.freeToggleText, showFreeOnly && { color: '#FFF' }]}> 
+            <Ionicons 
+              name="pricetag" 
+              size={14} 
+              color={showFreeOnly ? LingoTheme.colors.textInverse : LingoTheme.colors.ink} 
+            />
+            <ThemedText style={[styles.freeToggleText, showFreeOnly && { color: LingoTheme.colors.textInverse }]}> 
               Free Only
             </ThemedText>
           </TouchableOpacity>
 
+          {/* Search Bar - Lingo Style */}
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color={LingoTheme.colors.muted} />
+            <Ionicons name="search" size={20} color={LingoTheme.colors.textTertiary} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search courses or teachers..."
-              placeholderTextColor={LingoTheme.colors.muted}
+              placeholderTextColor={LingoTheme.colors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery ? (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={LingoTheme.colors.muted} />
+                <Ionicons name="close-circle" size={20} color={LingoTheme.colors.textTertiary} />
               </TouchableOpacity>
             ) : null}
           </View>
 
+          {/* Subject Pills - Lingo Style */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
             {SUBJECTS.map(s => (
               <TouchableOpacity
                 key={s}
                 style={[styles.pill, selectedSubject === s && styles.pillActive]}
                 onPress={() => setSelectedSubject(s)}
+                activeOpacity={0.8}
               >
                 <ThemedText style={[styles.pillText, selectedSubject === s && styles.pillTextActive]}>{s}</ThemedText>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
+          {/* Level Pills - Lingo Style */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelPills}>
             {LEVELS.map(l => (
               <TouchableOpacity
                 key={l}
                 style={[styles.levelPill, selectedLevel === l && styles.levelPillActive]}
                 onPress={() => setSelectedLevel(l)}
+                activeOpacity={0.8}
               >
                 <ThemedText style={[styles.levelPillText, selectedLevel === l && styles.levelPillTextActive]}>
                   {l === 'All' ? 'All Levels' : l.charAt(0).toUpperCase() + l.slice(1)}
@@ -185,12 +204,21 @@ export default function BrowseCoursesScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => fetchCourses('refresh')} tintColor="#4ECDC4" />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={() => fetchCourses('refresh')} 
+            tintColor={LingoTheme.colors.primary} 
+          />
         }
       >
         {filteredCourses.length === 0 ? (
           <LingoCard>
-            <LingoEmptyState icon="library-outline" title="No courses found" subtitle="Try adjusting your filters or search to widen the results." tone="gold" />
+            <LingoEmptyState 
+              icon="library-outline" 
+              title="No courses found" 
+              subtitle="Try adjusting your filters or search to widen the results." 
+              tone="gold" 
+            />
           </LingoCard>
         ) : (
           filteredCourses.map(course => (
@@ -198,7 +226,7 @@ export default function BrowseCoursesScreen() {
               key={course.id}
               style={styles.courseCard}
               onPress={() => router.push(`/course-detail/${course.id}` as any)}
-              activeOpacity={0.7}
+              activeOpacity={0.85}
             >
               {/* Course Header */}
               <View style={styles.courseTop}>
@@ -212,14 +240,20 @@ export default function BrowseCoursesScreen() {
                 <View style={{ flex: 1 }}>
                   <ThemedText style={styles.courseTitle} numberOfLines={2}>{course.title}</ThemedText>
                   <View style={styles.teacherRow}>
-                    <Ionicons name="person-circle" size={16} color="#6B7280" />
+                    <Ionicons name="person-circle" size={16} color={LingoTheme.colors.textSecondary} />
                     <ThemedText style={styles.teacherName}>
                       {course.profiles?.full_name || 'Teacher'}
                     </ThemedText>
                   </View>
                 </View>
-                <View style={styles.priceBadge}>
-                  <ThemedText style={styles.priceText}>
+                <View style={[
+                  styles.priceBadge, 
+                  { backgroundColor: course.is_free ? LingoTheme.colors.softPrimary : LingoTheme.colors.softGold }
+                ]}>
+                  <ThemedText style={[
+                    styles.priceText, 
+                    { color: course.is_free ? LingoTheme.colors.primary : LingoTheme.colors.gold }
+                  ]}>
                     {course.is_free ? 'Free' : `$${course.price}`}
                   </ThemedText>
                 </View>
@@ -237,11 +271,13 @@ export default function BrowseCoursesScreen() {
                     {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
                   </ThemedText>
                 </View>
-                <View style={styles.subjectBadge}>
-                  <ThemedText style={styles.subjectText}>{course.subject}</ThemedText>
+                <View style={[styles.subjectBadge, { backgroundColor: LingoTheme.colors.softTeal }]}>
+                  <ThemedText style={[styles.subjectText, { color: LingoTheme.colors.teal }]}>
+                    {course.subject}
+                  </ThemedText>
                 </View>
                 <View style={styles.lessonsMeta}>
-                  <Ionicons name="book-outline" size={14} color="#6B7280" />
+                  <Ionicons name="book-outline" size={14} color={LingoTheme.colors.textTertiary} />
                   <ThemedText style={styles.lessonsText}>{course.total_lessons} lessons</ThemedText>
                 </View>
               </View>
@@ -263,20 +299,23 @@ const styles = StyleSheet.create({
   headerPad: {
     paddingHorizontal: 16,
   },
+
+  /* Mode Switch - Lingo Style */
   modeSwitch: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    backgroundColor: LingoTheme.colors.surface,
+    borderRadius: LingoTheme.radius.md,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
     padding: 4,
     marginBottom: 14,
+    ...LingoTheme.shadow.card,
   },
   modePill: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
+    borderRadius: LingoTheme.radius.sm,
     paddingVertical: 10,
   },
   modePillActive: {
@@ -288,21 +327,25 @@ const styles = StyleSheet.create({
     color: LingoTheme.colors.muted,
   },
   modePillTextActive: {
-    color: '#FFFFFF',
+    color: LingoTheme.colors.textInverse,
   },
+
+  /* Filter Card */
   filterCard: {
     marginBottom: 14,
   },
+
+  /* Free Toggle - Lingo Button Style */
   freeToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.surface,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: LingoTheme.radius.pill,
     gap: 6,
   },
   freeToggleActive: {
@@ -315,14 +358,14 @@ const styles = StyleSheet.create({
     color: LingoTheme.colors.ink,
   },
 
-  /* Search */
+  /* Search - Lingo Style */
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: LingoTheme.colors.surface,
     paddingHorizontal: 16,
     height: 48,
-    borderRadius: 14,
+    borderRadius: LingoTheme.radius.md,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
     marginTop: 14,
@@ -335,7 +378,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  /* Subject Pills */
+  /* Subject Pills - Lingo Style */
   pillsContainer: {
     paddingTop: 14,
     gap: 8,
@@ -343,13 +386,14 @@ const styles = StyleSheet.create({
   pill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    borderRadius: LingoTheme.radius.pill,
+    backgroundColor: LingoTheme.colors.surface,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
   },
   pillActive: {
     backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primary,
   },
   pillText: {
     fontSize: 13,
@@ -357,10 +401,10 @@ const styles = StyleSheet.create({
     color: LingoTheme.colors.ink,
   },
   pillTextActive: {
-    color: '#FFF',
+    color: LingoTheme.colors.textInverse,
   },
 
-  /* Level Pills */
+  /* Level Pills - Lingo Style */
   levelPills: {
     paddingTop: 12,
     gap: 8,
@@ -368,14 +412,14 @@ const styles = StyleSheet.create({
   levelPill: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    borderRadius: LingoTheme.radius.md,
+    backgroundColor: LingoTheme.colors.surface,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
   },
   levelPillActive: {
     backgroundColor: LingoTheme.colors.softTeal,
-    borderColor: '#90E2D8',
+    borderColor: LingoTheme.colors.teal,
   },
   levelPillText: {
     fontSize: 12,
@@ -394,17 +438,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 
-  /* Course Card */
+  /* Course Card - Lingo Style */
   courseCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
+    backgroundColor: LingoTheme.colors.surface,
+    borderRadius: LingoTheme.radius.lg,
     padding: 18,
     marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    ...LingoTheme.shadow.card,
   },
   courseTop: {
     flexDirection: 'row',
@@ -415,14 +455,14 @@ const styles = StyleSheet.create({
   courseIconWrap: {
     width: 48,
     height: 48,
-    borderRadius: 16,
+    borderRadius: LingoTheme.radius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
   courseTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: LingoTheme.colors.text,
     marginBottom: 4,
   },
   teacherRow: {
@@ -432,23 +472,21 @@ const styles = StyleSheet.create({
   },
   teacherName: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.textSecondary,
     fontWeight: '500',
   },
   priceBadge: {
-    backgroundColor: '#F0FDF4',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: LingoTheme.radius.sm,
   },
   priceText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#059669',
   },
   courseDesc: {
     fontSize: 13,
-    color: '#6B7280',
+    color: LingoTheme.colors.textSecondary,
     lineHeight: 19,
     marginBottom: 14,
   },
@@ -461,22 +499,20 @@ const styles = StyleSheet.create({
   levelBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: LingoTheme.radius.sm,
   },
   levelText: {
     fontSize: 11,
     fontWeight: '700',
   },
   subjectBadge: {
-    backgroundColor: '#EFF6FF',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: LingoTheme.radius.sm,
   },
   subjectText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#2563EB',
   },
   lessonsMeta: {
     flexDirection: 'row',
@@ -486,8 +522,6 @@ const styles = StyleSheet.create({
   },
   lessonsText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: LingoTheme.colors.textTertiary,
   },
-
-  /* States */
 });
