@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+  Platform,
+} from 'react-native';
 import { StudentClassesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
-import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import {
+  LingoEmptyState,
+  LingoScreenHeader,
+} from '@/components/ui/lingo-mobile';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
@@ -50,13 +60,13 @@ export default function StudentClassesScreen() {
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
 
   useEffect(() => {
-    loadClasses();
+    loadClasses('initial');
   }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {
       if (user?.id && !loading) loadClasses('background');
-    }, [user?.id])
+    }, [user?.id, loading])
   );
 
   const loadClasses = async (mode = 'initial') => {
@@ -68,12 +78,14 @@ export default function StudentClassesScreen() {
       const data = await response.json();
       if (response.ok) {
         setClasses(data.classes || []);
-        setAttendance(data.attendance || {
-          totalClasses: 0,
-          attendedClasses: 0,
-          missedClasses: 0,
-          attendancePercentage: 0,
-        });
+        setAttendance(
+          data.attendance || {
+            totalClasses: 0,
+            attendedClasses: 0,
+            missedClasses: 0,
+            attendancePercentage: 0,
+          }
+        );
       }
     } catch (error) {
       console.error('Failed to load student classes', error);
@@ -87,7 +99,11 @@ export default function StudentClassesScreen() {
     const now = Date.now();
     const upcomingClasses = classes.filter((c) => {
       const ms = new Date(c.scheduled_date).getTime();
-      return Number.isFinite(ms) && ms >= now && String(c.status || '').toLowerCase() !== 'completed';
+      return (
+        Number.isFinite(ms) &&
+        ms >= now &&
+        String(c.status || '').toLowerCase() !== 'completed'
+      );
     });
 
     const doneClasses = classes.filter((c) => {
@@ -103,20 +119,18 @@ export default function StudentClassesScreen() {
   const renderClassCard = (item: ClassSession, isPast: boolean) => {
     const classDate = new Date(item.scheduled_date);
     const isLive = String(item.live_status || '').toLowerCase() === 'live';
-    
+
     return (
       <View key={item.id} style={styles.classCard}>
         <View style={styles.classCardLeft}>
           <View style={[styles.dateBox, isLive && styles.dateBoxLive]}>
-            <ThemedText style={[styles.dateDay, isLive && { color: '#FFF' }]}>
+            <ThemedText style={[styles.dateDay, isLive && { color: '#FFFFFF' }]}>
               {classDate.getDate()}
             </ThemedText>
-            <ThemedText style={[styles.dateMonth, isLive && { color: 'rgba(255,255,255,0.8)' }]}>
+            <ThemedText style={[styles.dateMonth, isLive && { color: 'rgba(255,255,255,0.9)' }]}>
               {classDate.toLocaleDateString('en-US', { month: 'short' })}
             </ThemedText>
-            {isLive && (
-              <View style={styles.liveDot} />
-            )}
+            {isLive && <View style={styles.liveDot} />}
           </View>
         </View>
 
@@ -135,14 +149,19 @@ export default function StudentClassesScreen() {
             {item.courses?.teachers?.profiles?.full_name || 'Teacher'}
           </ThemedText>
           <View style={styles.metaRow}>
-            <Ionicons name="time-outline" size={13} color="#6B7280" />
+            <Ionicons name="time" size={14} color="#AFAFAF" />
             <ThemedText style={styles.metaText}>
-              {classDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {classDate.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
             </ThemedText>
             {item.duration_minutes && (
               <>
                 <ThemedText style={styles.metaDot}>·</ThemedText>
-                <ThemedText style={styles.metaText}>{item.duration_minutes} min</ThemedText>
+                <ThemedText style={styles.metaText}>
+                  {item.duration_minutes} min
+                </ThemedText>
               </>
             )}
           </View>
@@ -152,10 +171,15 @@ export default function StudentClassesScreen() {
           {!isPast ? (
             <TouchableOpacity
               style={[styles.joinBtn, isLive && styles.joinBtnLive]}
-              onPress={() => router.push({ pathname: '/class-room/[id]' as any, params: { id: item.id } })}
-              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: '/class-room/[id]' as any,
+                  params: { id: item.id },
+                })
+              }
+              activeOpacity={0.85}
             >
-              <Ionicons name="videocam" size={16} color="#FFF" />
+              <Ionicons name="videocam" size={18} color="#FFFFFF" />
               <ThemedText style={styles.joinBtnText}>
                 {isLive ? 'Join' : 'Enter'}
               </ThemedText>
@@ -167,9 +191,9 @@ export default function StudentClassesScreen() {
                 setSelectedClass(item);
                 setRatingOpen(true);
               }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <Ionicons name="star-outline" size={16} color="#D97706" />
+              <Ionicons name="star" size={16} color="#3B82F6" />
               <ThemedText style={styles.reviewBtnText}>Rate</ThemedText>
             </TouchableOpacity>
           )}
@@ -186,10 +210,20 @@ export default function StudentClassesScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: topPadding,
+            paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 140 : 120), // Massive padding for bottom tab bar
+          },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => loadClasses('refresh')} tintColor={LingoTheme.colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadClasses('refresh')}
+            tintColor="#58cc02"
+          />
         }
       >
         <View style={styles.contentPad}>
@@ -199,72 +233,139 @@ export default function StudentClassesScreen() {
             title="Classes that stay easy to follow"
             subtitle="See live lessons, upcoming sessions, and completed classes in one bright, clear view."
           >
-            <View style={styles.headerStatsWrap}>
-              <LingoStatPill icon="📅" value={String(upcoming.length)} label="Upcoming" tone="primary" />
-              <LingoStatPill icon="✅" value={String(completed.length)} label="Completed" tone="teal" />
-              <LingoStatPill icon="🎯" value={`${attendance.attendancePercentage}%`} label="Attendance" tone="gold" />
+            {/* Custom Tactile Horizontal Stats Row */}
+            <View style={styles.horizontalStatsRow}>
+              <View style={styles.metricPill}>
+                 <Ionicons name="calendar" size={20} color="#58cc02" />
+                 <View style={styles.metricTextWrap}>
+                   <ThemedText style={styles.metricValue}>{upcoming.length}</ThemedText>
+                   <ThemedText style={styles.metricLabel}>UPCOMING</ThemedText>
+                 </View>
+              </View>
+              <View style={styles.metricPill}>
+                 <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
+                 <View style={styles.metricTextWrap}>
+                   <ThemedText style={styles.metricValue}>{completed.length}</ThemedText>
+                   <ThemedText style={styles.metricLabel}>COMPLETED</ThemedText>
+                 </View>
+              </View>
+              <View style={styles.metricPill}>
+                 <Ionicons name="stats-chart" size={20} color="#ffc800" />
+                 <View style={styles.metricTextWrap}>
+                   <ThemedText style={styles.metricValue}>{attendance.attendancePercentage}%</ThemedText>
+                   <ThemedText style={styles.metricLabel}>ATTENDANCE</ThemedText>
+                 </View>
+              </View>
             </View>
           </LingoScreenHeader>
 
-          <LingoCard style={styles.attendanceCard}>
+          {/* Tactile Attendance Card */}
+          <View style={styles.tactileCard}>
             <View style={styles.attendanceHeader}>
-              <View>
-                <ThemedText style={styles.attendanceTitle}>Attendance overview</ThemedText>
-                <ThemedText style={styles.attendanceSubtitle}>Track how many classes you joined and your attendance percentage.</ThemedText>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.attendanceTitle}>
+                  Attendance overview
+                </ThemedText>
+                <ThemedText style={styles.attendanceSubtitle}>
+                  Track how many classes you joined and your attendance percentage.
+                </ThemedText>
               </View>
               <View style={styles.attendanceBadge}>
-                <ThemedText style={styles.attendanceBadgeText}>{attendance.attendancePercentage}%</ThemedText>
+                <ThemedText style={styles.attendanceBadgeText}>
+                  {attendance.attendancePercentage}%
+                </ThemedText>
               </View>
             </View>
             <View style={styles.attendanceMetrics}>
               <View style={styles.attendanceMetricBox}>
-                <ThemedText style={styles.attendanceMetricValue}>{attendance.attendedClasses}</ThemedText>
-                <ThemedText style={styles.attendanceMetricLabel}>Taken</ThemedText>
+                <ThemedText style={styles.attendanceMetricValue}>
+                  {attendance.attendedClasses}
+                </ThemedText>
+                <ThemedText style={styles.attendanceMetricLabel}>
+                  Taken
+                </ThemedText>
               </View>
               <View style={styles.attendanceMetricBox}>
-                <ThemedText style={styles.attendanceMetricValue}>{attendance.missedClasses}</ThemedText>
-                <ThemedText style={styles.attendanceMetricLabel}>Missed</ThemedText>
+                <View style={styles.attendanceMetricBoxInner}>
+                  <ThemedText style={[styles.attendanceMetricValue, { color: '#FF4B4B' }]}>
+                    {attendance.missedClasses}
+                  </ThemedText>
+                  <ThemedText style={styles.attendanceMetricLabel}>
+                    Missed
+                  </ThemedText>
+                </View>
               </View>
               <View style={styles.attendanceMetricBox}>
-                <ThemedText style={styles.attendanceMetricValue}>{attendance.totalClasses}</ThemedText>
-                <ThemedText style={styles.attendanceMetricLabel}>Total</ThemedText>
+                <ThemedText style={styles.attendanceMetricValue}>
+                  {attendance.totalClasses}
+                </ThemedText>
+                <ThemedText style={styles.attendanceMetricLabel}>
+                  Total
+                </ThemedText>
               </View>
             </View>
-          </LingoCard>
+          </View>
 
+          {/* Upcoming Section */}
           <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>Upcoming classes</ThemedText>
-            <ThemedText style={styles.sectionCount}>{upcoming.length}</ThemedText>
+            <ThemedText style={styles.sectionTitle}>
+              Upcoming classes
+            </ThemedText>
+            <ThemedText style={styles.sectionCount}>
+              {upcoming.length}
+            </ThemedText>
           </View>
           {upcoming.length === 0 ? (
-            <LingoCard>
-              <LingoEmptyState icon="calendar-outline" title="No upcoming classes" subtitle="Your next scheduled lesson will appear here when it is ready." tone="primary" />
-            </LingoCard>
+            <View style={styles.tactileCard}>
+              <LingoEmptyState
+                icon="calendar"
+                title="No upcoming classes"
+                subtitle="Your next scheduled lesson will appear here when it is ready."
+                tone="primary"
+              />
+            </View>
           ) : (
             upcoming.map((c) => renderClassCard(c, false))
           )}
 
+          {/* Completed Section */}
           <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-            <ThemedText style={styles.sectionTitle}>Completed classes</ThemedText>
-            <ThemedText style={styles.sectionCount}>{completed.length}</ThemedText>
+            <ThemedText style={styles.sectionTitle}>
+              Completed classes
+            </ThemedText>
+            <ThemedText style={styles.sectionCount}>
+              {completed.length}
+            </ThemedText>
           </View>
           {completed.length === 0 ? (
-            <LingoCard>
-              <LingoEmptyState icon="checkmark-circle-outline" title="No completed classes yet" subtitle="Finished sessions will move here automatically so you can review them later." tone="teal" />
-            </LingoCard>
+            <View style={styles.tactileCard}>
+              <LingoEmptyState
+                icon="checkmark-circle"
+                title="No completed classes yet"
+                subtitle="Finished sessions will move here automatically so you can review them later."
+                tone="teal"
+              />
+            </View>
           ) : (
             completed.map((c) => renderClassCard(c, true))
           )}
         </View>
-        <View style={{ height: 40 }} />
       </ScrollView>
 
       <RateTeacherModal
         visible={ratingOpen}
-        onClose={() => { setRatingOpen(false); setSelectedClass(null); }}
-        onSuccess={() => { setRatingOpen(false); setSelectedClass(null); }}
+        onClose={() => {
+          setRatingOpen(false);
+          setSelectedClass(null);
+        }}
+        onSuccess={() => {
+          setRatingOpen(false);
+          setSelectedClass(null);
+        }}
         teacherId={selectedClass?.courses?.teacher_id || ''}
-        teacherName={selectedClass?.courses?.teachers?.profiles?.full_name || 'Teacher'}
+        teacherName={
+          selectedClass?.courses?.teachers?.profiles?.full_name || 'Teacher'
+        }
         sessionId={selectedClass?.id}
       />
     </View>
@@ -274,148 +375,193 @@ export default function StudentClassesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
-  },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#F7F7F7', // Lingo brand background
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 0,
+    // paddingBottom is handled dynamically in the component
   },
   contentPad: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
-  headerStatsWrap: {
+
+  /* Custom Horizontal Stats Row */
+  horizontalStatsRow: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  metricPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    flexWrap: 'wrap',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4, // 3D effect
   },
-  attendanceCard: {
-    marginBottom: 20,
+  metricTextWrap: {
+    marginLeft: 6,
   },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    lineHeight: 18,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#AFAFAF',
+    textTransform: 'uppercase',
+  },
+
+  /* Tactile Base Card */
+  tactileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    padding: 24,
+    marginBottom: 24,
+  },
+
+  /* Attendance Card Specifics */
   attendanceHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 14,
+    marginBottom: 20,
   },
   attendanceTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '800',
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
   },
   attendanceSubtitle: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: LingoTheme.colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#777777',
     marginTop: 4,
+    fontWeight: '500',
   },
   attendanceBadge: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    backgroundColor: '#FFF8E5',
     borderWidth: 2,
-    borderColor: '#FCD34D',
+    borderColor: '#D4AF37',
   },
   attendanceBadgeText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#B45309',
+    color: '#D4AF37',
   },
   attendanceMetrics: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   attendanceMetricBox: {
     flex: 1,
     alignItems: 'center',
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
-    backgroundColor: LingoTheme.colors.surfaceAlt,
+    borderColor: '#E5E5E5',
+    backgroundColor: '#F7F7F7',
+    borderBottomWidth: 4, // Tactile metric boxes
     paddingVertical: 14,
+  },
+  attendanceMetricBoxInner: {
+    alignItems: 'center',
   },
   attendanceMetricValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
   },
   attendanceMetricLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: LingoTheme.colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#AFAFAF',
     marginTop: 4,
     textTransform: 'uppercase',
   },
+
+  /* Section Headers */
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
   },
   sectionCount: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '800',
-    color: LingoTheme.colors.muted,
+    color: '#AFAFAF',
   },
 
-  /* Class Card */
+  /* Class Card - Tactile 3D Row */
   classCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
     alignItems: 'center',
   },
   classCardLeft: {
-    marginRight: 14,
+    marginRight: 16,
   },
   dateBox: {
-    width: 52,
-    height: 58,
-    borderRadius: 14,
-    backgroundColor: '#F3F4F6',
+    width: 56,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: '#F7F7F7',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   dateBoxLive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FF4B4B',
+    borderColor: '#FF4B4B',
   },
   dateDay: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: '#3C3C3C',
   },
   dateMonth: {
-    fontSize: 11,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#AFAFAF',
     textTransform: 'uppercase',
-    fontWeight: '600',
+    fontWeight: '800',
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FFF',
-    marginTop: 2,
+    backgroundColor: '#FFFFFF',
+    marginTop: 4,
   },
   classCardMiddle: {
     flex: 1,
@@ -424,28 +570,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 3,
+    marginBottom: 4,
   },
   classTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#3C3C3C',
     flex: 1,
   },
   liveBadge: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FFF1F1',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FF4B4B',
   },
   liveText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#DC2626',
+    color: '#FF4B4B',
   },
   teacherName: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#777777',
+    fontWeight: '600',
     marginBottom: 6,
   },
   metaRow: {
@@ -454,47 +603,57 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#AFAFAF',
+    fontWeight: '700',
   },
   metaDot: {
-    color: '#D1D5DB',
-    fontSize: 12,
+    color: '#E5E5E5',
+    fontSize: 14,
+    fontWeight: '800',
+    marginHorizontal: 2,
   },
   classCardRight: {
-    marginLeft: 10,
+    marginLeft: 12,
   },
+
+  /* Buttons - Tactile 3D Styling */
   joinBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#14B8A6',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    backgroundColor: '#58cc02',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent', // Let background color shine through
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.15)', // Creates the 3D shadow effect
     gap: 6,
   },
   joinBtnLive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FF4B4B',
   },
   joinBtnText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
   reviewBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    backgroundColor: '#E5F6FF', // Soft Blue
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
     gap: 6,
   },
   reviewBtnText: {
-    color: '#D97706',
-    fontSize: 13,
-    fontWeight: '700',
+    color: '#3B82F6',
+    fontSize: 15,
+    fontWeight: '800',
   },
-
 });

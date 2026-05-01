@@ -6,8 +6,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts, LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { NotificationStatusCard } from '@/components/ui/notification-status-card';
 
@@ -26,7 +24,7 @@ interface TeacherProfile {
 export default function TeacherProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -38,21 +36,14 @@ export default function TeacherProfileScreen() {
   const loadProfile = async (mode: 'initial' | 'refresh' = 'initial') => {
     try {
       if (!user?.id) {
-        // Auth context handles redirect to /login
         setLoading(false);
         return;
       }
-
       if (mode === 'initial') setLoading(true);
       if (mode === 'refresh') setRefreshing(true);
-
       const response = await fetch(api.teacherProfile(user.id));
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load profile');
-      }
-
+      if (!response.ok) throw new Error(data.error || 'Failed to load profile');
       setProfile(data.profile);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -62,206 +53,176 @@ export default function TeacherProfileScreen() {
     }
   };
 
-  const onRefresh = () => {
-    loadProfile('refresh');
-  };
+  const onRefresh = () => loadProfile('refresh');
 
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to logout?')) {
-        await signOut();
-      }
+      if (window.confirm('Are you sure you want to logout?')) await signOut();
     } else {
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to logout?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Logout', 
-            style: 'destructive',
-            onPress: async () => await signOut()
-          }
-        ]
-      );
+      Alert.alert('Logout', 'Are you sure you want to logout?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: async () => await signOut() },
+      ]);
     }
   };
 
-  if (loading) {
-    return <SkeletonScreen />;
-  }
+  if (loading) return <SkeletonScreen />;
+
+  const isVerified = profile?.verification_status === 'approved';
 
   return (
     <View style={styles.container}>
-      
-      {/* Header with Background */}
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <View style={styles.headerContent}>
-           <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
-           <TouchableOpacity onPress={() => router.push('/(teacher)/edit-profile')}>
-              <Ionicons name="create-outline" size={24} color="#1F2937" />
-           </TouchableOpacity>
+      {/* ── Top Bar ── */}
+      <View style={[styles.topBar, { paddingTop: topPadding + 8 }]}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="person-circle-outline" size={24} color="#F59E0B" />
+        </View>
+        <View style={styles.topBarCenter}>
+          <ThemedText style={styles.topBarTitle}>Profile</ThemedText>
+          <ThemedText style={styles.topBarSub}>
+            {isVerified ? '✅ Verified Teacher' : '⏳ Pending Verification'}
+          </ThemedText>
+        </View>
+        <TouchableOpacity style={styles.iconCircle} onPress={() => router.push('/(teacher)/edit-profile')}>
+          <Ionicons name="create-outline" size={22} color="#F59E0B" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Stat Pills ── */}
+      <View style={styles.pillsRow}>
+        <View style={styles.metricPill}>
+          <ThemedText style={styles.pillEmoji}>💰</ThemedText>
+          <ThemedText style={styles.pillValue}>${profile?.hourly_rate || 0}</ThemedText>
+          <ThemedText style={styles.pillLabel}>HOURLY</ThemedText>
+        </View>
+        <View style={styles.metricPill}>
+          <ThemedText style={styles.pillEmoji}>⭐</ThemedText>
+          <ThemedText style={styles.pillValue}>{profile?.rating?.toFixed(1) || 'New'}</ThemedText>
+          <ThemedText style={styles.pillLabel}>RATING</ThemedText>
+        </View>
+        <View style={styles.metricPill}>
+          <ThemedText style={styles.pillEmoji}>{isVerified ? '✅' : '⏳'}</ThemedText>
+          <ThemedText style={styles.pillValue}>{isVerified ? 'Active' : 'Pending'}</ThemedText>
+          <ThemedText style={styles.pillLabel}>STATUS</ThemedText>
         </View>
       </View>
-      
-      <ScrollView 
-        style={styles.scrollView} 
+
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
       >
-        
-        {/* Profile Card Section */}
-        <View style={styles.profileCard}>
+        {/* ── Profile Hero Card ── */}
+        <View style={styles.heroCard}>
           <View style={styles.avatarWrapper}>
             {profile?.avatar_url ? (
               <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
             ) : (
-              <LinearGradient
-                colors={['#FF6B6B', '#EE5A24']}
-                style={styles.avatarPlaceholder}
-              >
+              <View style={styles.avatarPlaceholder}>
                 <ThemedText style={styles.avatarText}>
                   {profile?.full_name?.charAt(0) || 'T'}
                 </ThemedText>
-              </LinearGradient>
+              </View>
             )}
-            
-            {profile?.verification_status === 'approved' && (
+            {isVerified && (
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark" size={12} color="#FFF" />
               </View>
             )}
           </View>
-
           <ThemedText style={styles.userName}>{profile?.full_name || 'Teacher'}</ThemedText>
           <ThemedText style={styles.userEmail}>{profile?.email}</ThemedText>
-          
-          <View style={styles.tagsRow}>
-             <View style={styles.tag}>
-                <ThemedText style={styles.tagText}>{profile?.gender || 'N/A'}</ThemedText>
-             </View>
-             {profile?.subjects?.slice(0, 2).map((sub, i) => (
-                <View key={i} style={styles.tag}>
-                   <ThemedText style={styles.tagText}>{sub}</ThemedText>
-                </View>
-             ))}
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <ThemedText style={styles.statValue}>${profile?.hourly_rate || 0}</ThemedText>
-              <ThemedText style={styles.statLabel}>Hourly Rate</ThemedText>
+          {(profile?.gender || (profile?.subjects && profile.subjects.length > 0)) && (
+            <View style={styles.tagsRow}>
+              {profile?.gender ? (
+                <View style={styles.tag}><ThemedText style={styles.tagText}>{profile.gender}</ThemedText></View>
+              ) : null}
+              {profile?.subjects?.slice(0, 2).map((sub: string, i: number) => (
+                <View key={i} style={styles.tag}><ThemedText style={styles.tagText}>{sub}</ThemedText></View>
+              ))}
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={16} color="#F59E0B" />
-                <ThemedText style={styles.statValue}>{profile?.rating?.toFixed(1) || 'New'}</ThemedText>
-              </View>
-              <ThemedText style={styles.statLabel}>Rating</ThemedText>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <ThemedText style={styles.statValue}>Active</ThemedText>
-              <ThemedText style={styles.statLabel}>Status</ThemedText>
-            </View>
-          </View>
+          )}
         </View>
 
-        <NotificationStatusCard title="Teacher notifications" subtitle="Get instant alerts for bookings, live classes, student updates, and messages." />
+        <NotificationStatusCard
+          title="Teacher notifications"
+          subtitle="Get instant alerts for bookings, live classes, student updates, and messages."
+        />
 
-        {/* Menu Options */}
-        <View style={styles.menuContainer}>
+        {/* ── Settings Menu ── */}
+        <View style={styles.menuCard}>
           <ThemedText style={styles.menuHeader}>Settings</ThemedText>
-          
-          <TouchableOpacity 
-            style={styles.menuItem}
-            onPress={() => router.push('/(teacher)/my-profile')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: '#E0F2F1' }]}>
-              <Ionicons name="briefcase-outline" size={20} color="#00695C" />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/(teacher)/my-profile')}>
+            <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="briefcase-outline" size={20} color="#10B981" />
             </View>
             <ThemedText style={styles.menuText}>View My Portfolio</ThemedText>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.menuItem}
-            onPress={() => router.push('/(teacher)/edit-profile')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: '#F0FDFA' }]}>
-              <Ionicons name="person-outline" size={20} color="#0D9488" />
+
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/(teacher)/edit-profile')}>
+            <View style={[styles.iconBox, { backgroundColor: '#FFF7D6' }]}>
+              <Ionicons name="person-outline" size={20} color="#F59E0B" />
             </View>
             <ThemedText style={styles.menuText}>Edit Profile</ThemedText>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.menuItem}
-            onPress={() => router.push('/(teacher)/availability')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: '#FFF7ED' }]}>
-              <Ionicons name="calendar-outline" size={20} color="#EA580C" />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/(teacher)/availability')}>
+            <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
             </View>
             <ThemedText style={styles.menuText}>Manage Availability</ThemedText>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/(teacher)/performance-analytics')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="bar-chart-outline" size={20} color="#2563EB" />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/(teacher)/performance-analytics')}>
+            <View style={[styles.iconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="bar-chart-outline" size={20} color="#22C55E" />
             </View>
             <ThemedText style={styles.menuText}>Performance Analytics</ThemedText>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(teacher)/payout-settings' as any)}>
-            <View style={[styles.iconBox, { backgroundColor: '#FDF2F8' }]}>
-              <Ionicons name="wallet-outline" size={20} color="#DB2777" />
+          <TouchableOpacity style={[styles.menuRow, { borderBottomWidth: 0 }]} onPress={() => router.push('/(teacher)/payout-settings' as any)}>
+            <View style={[styles.iconBox, { backgroundColor: '#FEF2F2' }]}>
+              <Ionicons name="wallet-outline" size={20} color="#EF4444" />
             </View>
             <ThemedText style={styles.menuText}>Payout Settings</ThemedText>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.menuContainer}>
-          <ThemedText style={styles.menuHeader}>Support</ThemedText>
+        {/* ── Support & Account Menu ── */}
+        <View style={styles.menuCard}>
+          <ThemedText style={styles.menuHeader}>Support & Account</ThemedText>
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/(teacher)/notifications')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: '#F3F4F6' }]}>
-              <Ionicons name="notifications-outline" size={20} color="#4B5563" />
+          <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/(teacher)/notifications')}>
+            <View style={[styles.iconBox, { backgroundColor: '#F5F3FF' }]}>
+              <Ionicons name="notifications-outline" size={20} color="#8B5CF6" />
             </View>
             <ThemedText style={styles.menuText}>Notifications</ThemedText>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={[styles.iconBox, { backgroundColor: '#F3F4F6' }]}>
-              <Ionicons name="help-circle-outline" size={20} color="#4B5563" />
+          <TouchableOpacity style={styles.menuRow}>
+            <View style={[styles.iconBox, { backgroundColor: '#F0F9FF' }]}>
+              <Ionicons name="help-circle-outline" size={20} color="#0EA5E9" />
             </View>
             <ThemedText style={styles.menuText}>Help & Support</ThemedText>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomWidth: 0 }]}
-            onPress={handleLogout}
-          >
+
+          <TouchableOpacity style={[styles.menuRow, { borderBottomWidth: 0 }]} onPress={handleLogout}>
             <View style={[styles.iconBox, { backgroundColor: '#FEF2F2' }]}>
               <Ionicons name="log-out-outline" size={20} color="#EF4444" />
             </View>
             <ThemedText style={[styles.menuText, { color: '#EF4444' }]}>Logout</ThemedText>
+            <Ionicons name="chevron-forward" size={18} color="#C7C7CC" />
           </TouchableOpacity>
         </View>
-
-        <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
   );
@@ -270,75 +231,123 @@ export default function TeacherProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: '#F7F7F7',
   },
-  centerContent: {
+
+  /* ── Top Bar ── */
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: '#F7F7F7',
+    gap: 12,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF7D6',
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    borderBottomWidth: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
-  /* Header */
-  header: {
-    backgroundColor: LingoTheme.colors.background,
-    paddingBottom: 20,
-    paddingHorizontal: 24,
-    // No shadow here, letting content overlap or just flow
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  topBarCenter: {
+    flex: 1,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: Fonts.rounded,
-    fontWeight: '700',
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.3,
+  },
+  topBarSub: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+
+  /* ── Pills Row ── */
+  pillsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 16,
+  },
+  metricPill: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    paddingVertical: 10,
+    alignItems: 'center',
+    gap: 2,
+  },
+  pillEmoji: {
+    fontSize: 18,
+  },
+  pillValue: {
+    fontSize: 14,
+    fontWeight: '800',
     color: '#111827',
   },
-
-  scrollView: {
-    flex: 1,
+  pillLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    letterSpacing: 0.5,
   },
-  scrollContent: {
-    padding: 24,
-  },
 
-  /* Profile Card */
-  profileCard: {
+  /* ── Scroll ── */
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, gap: 16 },
+
+  /* ── Hero Card ── */
+  heroCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 24,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
-    ...LingoTheme.shadow.card,
-    marginBottom: 24,
   },
   avatarWrapper: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: '#F59E0B',
   },
   avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFF7D6',
   },
   avatarText: {
-    fontSize: 40,
-    fontWeight: '700',
+    fontSize: 38,
+    fontWeight: '800',
     color: '#FFF',
   },
   verifiedBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
+    bottom: 2,
+    right: 2,
     backgroundColor: '#10B981',
     width: 24,
     height: 24,
@@ -349,115 +358,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   userName: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#111827',
     marginBottom: 4,
   },
   userEmail: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   tagsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 24,
+    justifyContent: 'center',
   },
   tag: {
     backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 20,
   },
   tagText: {
     fontSize: 12,
     color: '#4B5563',
-    fontWeight: '500',
-  },
-  
-  /* Stats Row within Profile Card */
-  statsRow: {
-    flexDirection: 'row',
-    width: '100%',
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
     fontWeight: '600',
   },
-  statDivider: {
-    width: 1,
-    height: '80%',
-    backgroundColor: '#E5E7EB',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
 
-  /* Menus */
-  menuContainer: {
+  /* ── Menu Card ── */
+  menuCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   menuHeader: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: '#9CA3AF',
     textTransform: 'uppercase',
-    marginTop: 12,
-    marginBottom: 8,
-    marginLeft: 4,
+    letterSpacing: 0.8,
+    marginTop: 14,
+    marginBottom: 6,
+    marginLeft: 2,
   },
-  menuItem: {
+  menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    gap: 12,
   },
   iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
   },
   menuText: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1F2937',
-  },
-  
-  bottomPadding: {
-    height: 40,
   },
 });

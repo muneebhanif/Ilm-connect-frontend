@@ -6,81 +6,97 @@ import { LingoTheme } from '@/constants/theme';
 
 export default function StudentLayout() {
   const insets = useSafeAreaInsets();
+  
+  // Adjust bottom padding based on safe area (iOS home indicator)
   const bottomInset = Platform.OS === 'web' ? 0 : insets.bottom;
-  const tabBarBaseHeight = Platform.OS === 'web' ? 60 : 56;
+  const tabBarBaseHeight = Platform.OS === 'web' ? 65 : 62;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: LingoTheme.colors.primary,
-        tabBarInactiveTintColor: '#94A3B8',
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 0,
-          height: tabBarBaseHeight + Math.max(bottomInset, 16),
-          paddingTop: 10,
-          paddingBottom: Math.max(bottomInset, 16),
-          marginHorizontal: 12,
-          marginBottom: Platform.OS === 'web' ? 0 : 10,
-          borderRadius: 28,
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          ...LingoTheme.shadow.card,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
+        tabBarInactiveTintColor: '#AFAFAF', // Standard Lingo inactive icon grey
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          marginTop: -2,
         },
-        tabBarActiveBackgroundColor: LingoTheme.colors.softPrimary,
         tabBarIconStyle: {
           marginBottom: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          marginHorizontal: 4,
-          marginVertical: 4,
-          borderRadius: 18,
+          // Removed margin and radius since it's no longer a pill shape
+        },
+        tabBarStyle: {
+          backgroundColor: LingoTheme.colors.surface,
+          // Lingo/Duolingo style: Full width, edge-to-edge, solid top border
+          borderTopWidth: 2,
+          borderTopColor: '#E5E5E5', 
+          borderLeftWidth: 0,
+          borderRightWidth: 0,
+          borderBottomWidth: 0,
+          height: tabBarBaseHeight + bottomInset,
+          paddingTop: 10,
+          paddingBottom: bottomInset > 0 ? bottomInset : 10,
+          // Explicitly removing shadows for the flat, tactile look
+          elevation: 0, 
+          shadowOpacity: 0,
         },
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: '',
+          title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={28} // Slightly larger for that playful feel
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="classes"
         options={{
-          title: '',
+          title: 'Classes',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+            <Ionicons
+              name={focused ? 'calendar' : 'calendar-outline'}
+              size={28}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="recordings"
         options={{
-          title: '',
+          title: 'Recordings',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={24} color={color} />
+            <Ionicons
+              name={focused ? 'play-circle' : 'play-circle-outline'}
+              size={28}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: '',
+          title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={28}
+              color={color}
+            />
           ),
         }}
       />

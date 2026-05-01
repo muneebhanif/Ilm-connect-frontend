@@ -57,17 +57,33 @@ export async function registerForPushNotificationsAsync() {
 
   const projectId = getProjectId();
   if (!projectId) {
-    return { token: null, error: 'Expo project ID is missing' };
+    return { token: null, error: 'Expo project ID not configured. Make sure eas.json and app.json are set up correctly.' };
   }
 
-  const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
-  await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, pushToken.data);
-
-  return { token: pushToken.data, error: null as string | null };
+  try {
+    const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
+    await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, pushToken.data);
+    return { token: pushToken.data, error: null as string | null };
+  } catch (err: any) {
+    console.error('getExpoPushTokenAsync failed:', err);
+    const msg = err?.message || 'Failed to get push token';
+    // Common Android issue: Google Play Services unavailable
+    if (msg.includes('Play') || msg.includes('GCM') || msg.includes('FCM')) {
+      return { token: null, error: 'Google Play Services required for push notifications on Android.' };
+    }
+    return { token: null, error: msg };
+  }
 }
 
 export async function syncDevicePushToken() {
-  const { token, error } = await registerForPushNotificationsAsync();
+  let registerResult: { token: string | null; error: string | null };
+  try {
+    registerResult = await registerForPushNotificationsAsync();
+  } catch (err: any) {
+    console.error('registerForPushNotificationsAsync threw:', err);
+    return { token: null, error: err?.message || 'Unexpected error registering for notifications' };
+  }
+  const { token, error } = registerResult;
   if (!token) {
     return { token: null, error };
   }

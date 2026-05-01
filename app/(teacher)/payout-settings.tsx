@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 
@@ -123,22 +123,37 @@ export default function TeacherPayoutSettingsScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadStatus('refresh')} tintColor={LingoTheme.colors.primary} />}
         >
-          <LingoScreenHeader
-            badge="Teacher earnings"
-            icon="wallet"
-            title="Payouts made simple"
-            subtitle="Connect Stripe once, finish any missing steps, and keep your payout setup easy to understand."
-            onBack={() => router.back()}
-          >
-            <View style={styles.statsRow}>
-              <LingoStatPill icon="💸" value={status.payoutsEnabled ? 'Ready' : 'Setup'} label="Status" tone="primary" />
-              <LingoStatPill icon="📄" value={String(actionNeededCount)} label="Actions" tone="gold" />
-              <LingoStatPill icon="🌍" value={(status.country || '--').slice(0, 2).toUpperCase()} label="Country" tone="teal" />
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+            </TouchableOpacity>
+            <View style={styles.topBarCenter}>
+              <ThemedText style={styles.topBarTitle}>Payout Settings</ThemedText>
+              <ThemedText style={styles.topBarSub}>Stripe earnings setup</ThemedText>
             </View>
-          </LingoScreenHeader>
+            <View style={{ width: 44 }} />
+          </View>
+          <View style={styles.statsRow}>
+            <View style={styles.metricPill}>
+              <Ionicons name={status.payoutsEnabled ? 'checkmark-circle' : 'alert-circle'} size={20} color={status.payoutsEnabled ? '#10B981' : '#F59E0B'} />
+              <ThemedText style={styles.pillValue}>{status.payoutsEnabled ? 'Ready' : 'Setup'}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Status</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <Ionicons name="document-text-outline" size={20} color="#F59E0B" />
+              <ThemedText style={styles.pillValue}>{actionNeededCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Actions</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <Ionicons name="globe-outline" size={20} color="#F59E0B" />
+              <ThemedText style={styles.pillValue}>{(status.country || '--').slice(0, 2).toUpperCase()}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Country</ThemedText>
+            </View>
+          </View>
 
           <View style={styles.card}>
             <LingoCard>
@@ -257,12 +272,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: LingoTheme.colors.background },
   loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: LingoTheme.colors.background },
   scrollContent: { paddingHorizontal: 16, gap: 16 },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4, gap: 2,
+  },
+  pillValue: { fontSize: 15, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 10, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   card: { marginBottom: 0 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 12 },
   cardTitle: { fontSize: 20, fontWeight: '800', color: LingoTheme.colors.ink },

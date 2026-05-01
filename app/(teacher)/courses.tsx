@@ -11,7 +11,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import { LingoTheme } from '@/constants/theme';
 
 interface Course {
@@ -80,6 +81,7 @@ const mapCourseErrorMessage = (message?: string) => {
 };
 
 export default function TeacherCoursesScreen() {
+  const { topPadding } = useSafePadding();
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -712,23 +714,38 @@ export default function TeacherCoursesScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => loadCourses('refresh')} tintColor="#FF6B6B" />
         }
       >
-        <View style={styles.headerWrap}>
-          <LingoScreenHeader
-            title="My Courses"
-            subtitle={`Keep your lessons polished, complete, and ready to publish.`}
-            badge="Teacher studio"
-            icon="library-outline"
-          >
-            <View style={styles.headerMetaRow}>
-              <LingoStatPill label="Published" value={String(publishedCount)} icon="rocket-outline" tone="gold" />
-              <LingoStatPill label="Drafts" value={String(draftCount)} icon="create-outline" tone="teal" />
-              <LingoStatPill label="Need setup" value={String(needsSetupCount)} icon="build-outline" tone="primary" />
+        <View style={[styles.headerWrap, { paddingTop: topPadding }]}>
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="library-outline" size={22} color="#F59E0B" />
             </View>
-            <TouchableOpacity style={styles.addCourseButton} onPress={openCreateModal}>
-              <Ionicons name="add" size={18} color="#FFFFFF" />
-              <ThemedText style={styles.addCourseButtonText}>New course</ThemedText>
+            <View style={styles.topBarCenter}>
+              <ThemedText style={styles.topBarTitle}>My Courses</ThemedText>
+              <ThemedText style={styles.topBarSub}>Islamic learning studio</ThemedText>
+            </View>
+            <TouchableOpacity style={styles.addBtn} onPress={openCreateModal} activeOpacity={0.8}>
+              <Ionicons name="add" size={22} color="#F59E0B" />
             </TouchableOpacity>
-          </LingoScreenHeader>
+          </View>
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>🚀</ThemedText>
+              <ThemedText style={styles.pillValue}>{publishedCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Published</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>✏️</ThemedText>
+              <ThemedText style={styles.pillValue}>{draftCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Drafts</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>🔧</ThemedText>
+              <ThemedText style={styles.pillValue}>{needsSetupCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Need setup</ThemedText>
+            </View>
+          </View>
         </View>
 
         {/* Notification Banner */}
@@ -1186,20 +1203,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
 
   /* Header */
-  headerWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
+  headerWrap: { paddingHorizontal: 16, paddingBottom: 8 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  iconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFF7D6',
+    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
-  headerMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  addBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFF7D6',
+    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   addCourseButton: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -1527,7 +1560,7 @@ const styles = StyleSheet.create({
   /* FAB */
   fab: {
     position: 'absolute',
-    bottom: 90,
+    bottom: Platform.OS === 'ios' ? 110 : 90,
     right: 20,
     width: 56,
     height: 56,

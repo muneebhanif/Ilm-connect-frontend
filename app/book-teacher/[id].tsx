@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { BookTeacherSkeleton } from '@/components/ui/dashboard-skeletons';
 import { DateTime } from 'luxon';
@@ -418,19 +418,35 @@ export default function BookTeacherScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Top Bar */}
       <View style={[styles.header, { paddingTop: topPadding }]}>
-        <LingoScreenHeader
-          title="Book class"
-          subtitle="Choose a child, subject, schedule, and package to confirm the lesson."
-          badge="Parent booking"
-          icon="calendar-outline"
-          onBack={() => router.back()}
-        >
-          <View style={styles.headerStats}>
-            <LingoStatPill icon="👧" value={String(selectedChildren.length)} label="Children" tone="primary" />
-            <LingoStatPill icon="💳" value={`$${totalAmount.toFixed(0)}`} label="Current total" tone="teal" />
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+          </TouchableOpacity>
+          <View style={styles.topBarCenter}>
+            <ThemedText style={styles.topBarTitle}>Book a Class</ThemedText>
+            <ThemedText style={styles.topBarSub}>{teacher?.profiles.full_name ?? 'Select options below'}</ThemedText>
           </View>
-        </LingoScreenHeader>
+          <View style={styles.topBarSpacer} />
+        </View>
+        <View style={styles.statsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>👧</ThemedText>
+            <ThemedText style={styles.pillValue}>{selectedChildren.length}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Children</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>💳</ThemedText>
+            <ThemedText style={styles.pillValue}>${totalAmount.toFixed(0)}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Total</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>📚</ThemedText>
+            <ThemedText style={styles.pillValue}>{selectedSubject || '—'}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Subject</ThemedText>
+          </View>
+        </View>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: bottomPadding + 120 }} showsVerticalScrollIndicator={false}>
@@ -619,7 +635,30 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20, paddingBottom: 12,
   },
-  headerStats: { flexDirection: 'row', justifyContent: 'center', gap: 12, flexWrap: 'wrap' },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12,
+  },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  topBarSpacer: { width: 44 },
+  statsRow: {
+    flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8,
+  },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 15, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 10, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   
   content: { paddingHorizontal: 20 },
 

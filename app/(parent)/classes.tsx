@@ -6,12 +6,12 @@ import { useAuth } from '@/lib/auth-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
-import { LinearGradient } from 'expo-linear-gradient';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RateTeacherModal } from '@/components/rate-teacher-modal';
+import { SkeletonScreen } from '@/components/ui/skeleton';
 
 interface ClassSession {
   id: string;
@@ -35,7 +35,7 @@ interface ClassSession {
 export default function ClassesScreen() {
   const router = useRouter();
   const { user, signOut, refreshSession } = useAuth();
-  const { topPadding, bottomPadding } = useSafePadding();
+  const { topPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [allClasses, setAllClasses] = useState<ClassSession[]>([]);
@@ -53,24 +53,19 @@ export default function ClassesScreen() {
     teacherName: string;
   } | null>(null);
 
-  // Keep time-based UI (Upcoming/History) dynamic even on web where focus events
-  // can be unreliable depending on navigation/container.
   useEffect(() => {
     const tickId = setInterval(() => {
-      // Trigger re-render; actual "now" is computed from server_now + monotonic elapsed.
       setRenderTick((t) => (t + 1) % 1_000_000);
     }, 30000);
     return () => clearInterval(tickId);
   }, []);
 
   useEffect(() => {
-    // Initial load (mount)
     loadClasses('initial');
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      // Reload on focus and keep it fresh while the user stays on this screen
       if (authFailedRef.current) return;
       loadClasses('background');
       const intervalId = setInterval(() => {
@@ -150,9 +145,7 @@ export default function ClassesScreen() {
             try {
               await refreshSession();
               return loadClasses(mode, false);
-            } catch {
-              // fall through
-            }
+            } catch { }
           }
           authFailedRef.current = true;
           await signOut();
@@ -161,8 +154,8 @@ export default function ClassesScreen() {
         throw new Error(data?.error || `Failed to load classes (${response.status})`);
       }
 
-      const allClasses = data.classes || [];
-      setAllClasses(allClasses);
+      const fetchedClasses = data.classes || [];
+      setAllClasses(fetchedClasses);
       const serverNowIso = typeof data.server_now === 'string' ? data.server_now : '';
       const parsed = serverNowIso ? new Date(serverNowIso).getTime() : NaN;
       if (Number.isFinite(parsed)) {
@@ -176,20 +169,6 @@ export default function ClassesScreen() {
       if (mode === 'initial') setLoading(false);
       if (mode === 'refresh') setRefreshing(false);
     }
-  };
-
-  const getUserTimezone = () => {
-    const offsetMinutes = new Date().getTimezoneOffset();
-    const offsetHours = -offsetMinutes / 60;
-    const tzMap: Record<number, string> = {
-      5: 'Asia/Karachi',
-      5.5: 'Asia/Kolkata',
-      0: 'UTC',
-      1: 'Europe/London',
-      '-5': 'America/New_York',
-      '-8': 'America/Los_Angeles',
-    };
-    return tzMap[offsetHours] || Intl.DateTimeFormat().resolvedOptions().timeZone;
   };
 
   const formatDate = (dateStr: string) => {
@@ -244,31 +223,15 @@ export default function ClassesScreen() {
 
   const renderClassCard = (classItem: ClassSession, isPast: boolean = false) => {
     const joinable = !isPast && isClassJoinable(classItem);
-    const now = new Date();
-    const classDateTime = new Date(classItem.scheduled_date);
-    const diffMinutes = Math.floor((classDateTime.getTime() - now.getTime()) / (1000 * 60));
-    let joinWarning = '';
     const status = String(classItem.status || '').toLowerCase();
     const isScheduled = status === 'upcoming' || status === 'confirmed';
     const isCompleted = status === 'completed';
     const isCancelled = status === 'cancelled';
 
-    if (!isPast && !joinable && isScheduled) {
-      if (diffMinutes > 0) {
-        joinWarning = `Scheduled. You can join once the teacher starts.`;
-      } else if (diffMinutes < -60) {
-        joinWarning = `Class has ended.`;
-      } else {
-        joinWarning = `Waiting for teacher to start.`;
-      }
-    } else if (!isPast && !isScheduled) {
-      joinWarning = `Class is not scheduled yet.`;
-    }
-
-    const statusLabel = isScheduled ? 'scheduled' : (isCompleted ? 'completed' : (isCancelled ? 'cancelled' : status));
+    const statusLabel = isScheduled ? 'Scheduled' : (isCompleted ? 'Completed' : (isCancelled ? 'Cancelled' : status));
 
     return (
-      <LingoCard key={classItem.id} style={[styles.classCard, isPast && styles.classCardPast]}>
+      <View key={classItem.id} style={[styles.tactileCard, isPast && styles.classCardPast]}>
         <View style={styles.cardHeader}>
           <View style={styles.teacherInfo}>
              <View style={[styles.avatar, isPast && styles.avatarPast]}>
@@ -306,19 +269,19 @@ export default function ClassesScreen() {
 
         <View style={styles.detailsRow}>
            <View style={styles.detailItem}>
-              <Ionicons name="calendar-outline" size={16} color={isPast ? LingoTheme.colors.textTertiary : LingoTheme.colors.teal} />
+              <Ionicons name="calendar" size={18} color={isPast ? '#AFAFAF' : '#58cc02'} />
               <ThemedText style={[styles.detailText, isPast && styles.textPast]}>
                 {formatDate(classItem.scheduled_date)}
               </ThemedText>
            </View>
            <View style={styles.detailItem}>
-              <Ionicons name="time-outline" size={16} color={isPast ? LingoTheme.colors.textTertiary : LingoTheme.colors.teal} />
+              <Ionicons name="time" size={18} color={isPast ? '#AFAFAF' : '#58cc02'} />
               <ThemedText style={[styles.detailText, isPast && styles.textPast]}>
                 {formatTime(classItem.scheduled_date)}
               </ThemedText>
            </View>
            <View style={styles.detailItem}>
-              <Ionicons name="hourglass-outline" size={16} color={isPast ? LingoTheme.colors.textTertiary : LingoTheme.colors.teal} />
+              <Ionicons name="hourglass" size={18} color={isPast ? '#AFAFAF' : '#58cc02'} />
               <ThemedText style={[styles.detailText, isPast && styles.textPast]}>
                 {classItem.duration_minutes} min
               </ThemedText>
@@ -333,19 +296,12 @@ export default function ClassesScreen() {
               activeOpacity={0.8}
               onPress={() => Alert.alert('Student account required', 'Only teachers and students can join live classes.')}
             >
-              <LinearGradient
-                colors={['#E5E7EB', '#E5E7EB']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.joinButtonGradient}
-              >
-                <ThemedText style={[styles.joinButtonText, styles.joinButtonTextDisabled]}>
-                  Join via Student Account
-                </ThemedText>
-              </LinearGradient>
+              <ThemedText style={[styles.joinButtonText, styles.joinButtonTextDisabled]}>
+                Join via Student Account
+              </ThemedText>
             </TouchableOpacity>
-            <ThemedText style={{ color: LingoTheme.colors.warning, marginTop: 6, textAlign: 'center', fontSize: 13 }}>
-              Live class access is available for teacher and student accounts only.
+            <ThemedText style={{ color: '#FFC800', marginTop: 10, textAlign: 'center', fontSize: 13, fontWeight: '700' }}>
+              Live class access requires a student account.
             </ThemedText>
           </>
         )}
@@ -356,20 +312,16 @@ export default function ClassesScreen() {
             activeOpacity={0.8}
             onPress={() => handleRateTeacher(classItem)}
           >
-            <Ionicons name="star-outline" size={18} color={LingoTheme.colors.teal} />
+            <Ionicons name="star" size={20} color="#3B82F6" />
             <ThemedText style={styles.rateButtonText}>Rate This Class</ThemedText>
           </TouchableOpacity>
         )}
-      </LingoCard>
+      </View>
     );
   };
 
   if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
-      </View>
-    );
+    return <SkeletonScreen />;
   }
 
   const displayClasses = activeTab === 'upcoming' ? upcomingClasses : pastClasses;
@@ -377,31 +329,53 @@ export default function ClassesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}> 
-        <LingoScreenHeader
-          title="My classes"
-          subtitle="Keep track of booked lessons, class history, and rating follow-ups from one place."
-          badge="Parent dashboard"
-          icon="school-outline"
-        >
-          <View style={styles.headerStatsRow}>
-            <LingoStatPill icon="📅" value={String(upcomingClasses.length)} label="Upcoming" tone="primary" />
-            <LingoStatPill icon="✅" value={String(completedCount)} label="Completed" tone="teal" />
+      {/* ── Top Bar ── */}
+      <View style={[styles.header, { paddingTop: topPadding + 10 }]}>
+        <View style={styles.topBar}>
+          <View style={styles.topBarLeft}>
+            <View style={styles.topBarIconBg}>
+              <Ionicons name="calendar" size={28} color="#58cc02" />
+            </View>
+            <View>
+              <ThemedText style={styles.topBarTitle}>My Classes</ThemedText>
+              <ThemedText style={styles.topBarSub}>Track lessons &amp; history</ThemedText>
+            </View>
           </View>
-          <View style={styles.headerBadgeRow}>
-            <LingoBadge label={`${allClasses.length} total classes`} icon="albums-outline" tone="gold" />
-            <LingoBadge label={activeTab === 'upcoming' ? 'Upcoming focus' : 'History focus'} icon="sparkles" tone="purple" />
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.horizontalStatsRow}>
+          <View style={styles.metricPill}>
+            <Ionicons name="calendar" size={22} color="#58cc02" />
+            <View style={styles.metricTextWrap}>
+              <ThemedText style={styles.metricValue}>{upcomingClasses.length}</ThemedText>
+              <ThemedText style={styles.metricLabel}>UPCOMING</ThemedText>
+            </View>
           </View>
-        </LingoScreenHeader>
+          <View style={styles.metricPill}>
+            <Ionicons name="checkmark-circle" size={22} color="#3B82F6" />
+            <View style={styles.metricTextWrap}>
+              <ThemedText style={styles.metricValue}>{completedCount}</ThemedText>
+              <ThemedText style={styles.metricLabel}>COMPLETED</ThemedText>
+            </View>
+          </View>
+          <View style={styles.metricPill}>
+            <Ionicons name="time" size={22} color="#AFAFAF" />
+            <View style={styles.metricTextWrap}>
+              <ThemedText style={styles.metricValue}>{allClasses.length}</ThemedText>
+              <ThemedText style={styles.metricLabel}>TOTAL</ThemedText>
+            </View>
+          </View>
+        </View>
       </View>
 
-      {/* Tab Switcher - Lingo Style */}
+      {/* Tab Switcher - Tactile Lingo Style */}
       <View style={styles.tabContainerWrap}>
-        <LingoCard style={styles.tabContainer}>
+        <View style={styles.tabContainer}>
           <TouchableOpacity 
             style={[styles.tabButton, activeTab === 'upcoming' && styles.tabActive]}
             onPress={() => setActiveTab('upcoming')}
-            activeOpacity={0.8}
+            activeOpacity={1}
           >
             <ThemedText style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
               Upcoming
@@ -410,19 +384,19 @@ export default function ClassesScreen() {
           <TouchableOpacity 
             style={[styles.tabButton, activeTab === 'past' && styles.tabActive]}
             onPress={() => setActiveTab('past')}
-            activeOpacity={0.8}
+            activeOpacity={1}
           >
             <ThemedText style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
               History
             </ThemedText>
           </TouchableOpacity>
-        </LingoCard>
+        </View>
       </View>
 
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 24 }]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -432,22 +406,24 @@ export default function ClassesScreen() {
         }
       >
         {displayClasses.length === 0 ? (
-          <LingoCard style={styles.emptyCard}>
+          <View style={[styles.tactileCard, styles.emptyCard]}>
             <LingoEmptyState
-              icon={activeTab === 'upcoming' ? 'calendar-clear-outline' : 'time-outline'}
+              icon={activeTab === 'upcoming' ? 'calendar-clear' : 'time'}
               title={activeTab === 'upcoming' ? 'No upcoming classes' : 'No class history yet'}
               subtitle={activeTab === 'upcoming' ? 'Booked lessons will appear here as soon as they are confirmed.' : 'Completed classes and ratings will show up here after lessons finish.'}
               tone={activeTab === 'upcoming' ? 'primary' : 'teal'}
             />
             {activeTab === 'upcoming' && (
-              <LingoButton 
-                label="Book a teacher"
-                icon="search-outline"
-                onPress={() => router.push('/(parent)/browse-teachers')}
+              <TouchableOpacity 
                 style={styles.bookBtn}
-              />
+                onPress={() => router.push('/(parent)/browse-teachers')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="search" size={20} color="#FFFFFF" />
+                <ThemedText style={styles.bookBtnText}>Book a teacher</ThemedText>
+              </TouchableOpacity>
             )}
-          </LingoCard>
+          </View>
         ) : (
           displayClasses.map(item => renderClassCard(item, activeTab === 'past'))
         )}
@@ -474,80 +450,137 @@ export default function ClassesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#F7F7F7', // Lingo brand background
   },
 
   /* Header */
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  headerStatsRow: {
+  topBar: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-    marginBottom: 14,
   },
-  headerBadgeRow: {
-    flexDirection: 'row',
+  topBarIconBg: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: '#ECFCD8',
     justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#BBF7D0',
+  },
+  topBarTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  topBarSub: {
+    fontSize: 13,
+    color: '#AFAFAF',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  horizontalStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
+  },
+  metricPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    gap: 6,
+  },
+  metricTextWrap: {},
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    lineHeight: 18,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#AFAFAF',
+    textTransform: 'uppercase',
   },
 
-  /* Tab Switcher - Lingo Style */
+  /* Tab Switcher - Tactile Image Match */
   tabContainerWrap: {
     paddingHorizontal: 20,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   tabContainer: {
     flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4, // 3D tactile border
     padding: 4,
-    gap: 8,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: LingoTheme.radius.md,
-    backgroundColor: LingoTheme.colors.surfaceAlt,
-    borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    justifyContent: 'center',
+    borderRadius: 20,
+    paddingVertical: 14,
   },
   tabActive: {
-    backgroundColor: LingoTheme.colors.primary,
-    borderColor: LingoTheme.colors.primaryDark,
+    backgroundColor: '#1E293B', // Ink color
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
-    color: LingoTheme.colors.muted,
+    color: '#777777',
   },
   tabTextActive: {
-    color: LingoTheme.colors.textInverse,
+    color: '#FFFFFF',
   },
 
+  /* Scroll Content */
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 140 : 120, // Massive padding for bottom nav
     gap: 16,
   },
 
-  /* Class Card - Lingo Style */
-  classCard: {
+  /* Base Tactile Card */
+  tactileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 20,
   },
   classCardPast: {
-    opacity: 0.85,
+    backgroundColor: '#FAFAFA', // Slightly dimmer background for history
   },
+
+  /* Card Inner Elements */
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -558,67 +591,81 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1, // allows badge to naturally push right
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.teal,
+    width: 48,
+    height: 48,
+    borderRadius: 16, // Squircle look
+    backgroundColor: '#58cc02',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   avatarPast: {
-    backgroundColor: LingoTheme.colors.textTertiary,
+    backgroundColor: '#E5E5E5',
+    borderColor: 'transparent',
   },
   avatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: LingoTheme.colors.textInverse,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   teacherName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
+    marginBottom: 2,
   },
   subjectName: {
-    fontSize: 13,
-    color: LingoTheme.colors.muted,
+    fontSize: 14,
+    color: '#777777',
+    fontWeight: '600',
   },
   textPast: {
-    color: LingoTheme.colors.textTertiary,
+    color: '#AFAFAF',
   },
+
+  /* Status Badges */
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: LingoTheme.radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   statusConfirmed: {
-    backgroundColor: LingoTheme.colors.softPrimary,
+    backgroundColor: '#E5F6FF', // Soft blue
+    borderWidth: 2,
+    borderColor: '#3B82F6',
   },
   statusCompleted: {
-    backgroundColor: LingoTheme.colors.borderLight,
+    backgroundColor: '#F7F7F7',
   },
   statusPending: {
-    backgroundColor: LingoTheme.colors.softGold,
+    backgroundColor: '#FFF8E5',
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
-  textConfirmed: { color: LingoTheme.colors.primary },
-  textCompleted: { color: LingoTheme.colors.textSecondary },
-  textPending: { color: LingoTheme.colors.gold },
+  textConfirmed: { color: '#3B82F6' },
+  textCompleted: { color: '#AFAFAF' },
+  textPending: { color: '#D4AF37' },
 
   divider: {
-    height: 1,
-    backgroundColor: LingoTheme.colors.border,
+    height: 2,
+    backgroundColor: '#E5E5E5',
     marginBottom: 16,
+    borderRadius: 1,
   },
   detailsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
+    backgroundColor: '#F7F7F7',
+    padding: 12,
+    borderRadius: 16,
   },
   detailItem: {
     flexDirection: 'row',
@@ -626,57 +673,76 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   detailText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: LingoTheme.colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3C3C3C',
   },
 
-  /* Join Button - Lingo Style */
+  /* Join Button - Flat grey tactile look for disabled state */
   joinButton: {
-    borderRadius: LingoTheme.radius.md,
-    overflow: 'hidden',
-  },
-  joinButtonDisabled: {
-    opacity: 0.8,
-  },
-  joinButtonGradient: {
-    flexDirection: 'row',
+    backgroundColor: '#F7F7F7',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+  },
+  joinButtonDisabled: {
+    backgroundColor: '#F3F4F6', // Lighter grey
   },
   joinButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
-    color: LingoTheme.colors.textInverse,
+    color: '#AFAFAF',
   },
   joinButtonTextDisabled: {
-    color: LingoTheme.colors.textTertiary,
+    color: '#AFAFAF',
   },
 
-  /* Rate Button - Lingo Style */
+  /* Rate Button - Tactile Soft Blue */
   rateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: LingoTheme.radius.md,
+    paddingVertical: 14,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.teal,
-    backgroundColor: LingoTheme.colors.softTeal,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    backgroundColor: '#E5F6FF',
     gap: 8,
   },
   rateButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
-    color: LingoTheme.colors.teal,
+    color: '#3B82F6',
   },
 
+  /* Empty State Specifics */
   emptyCard: {
     marginTop: 8,
+    alignItems: 'center',
+    padding: 32,
   },
   bookBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#58cc02',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.15)',
+    alignItems: 'center',
+    gap: 8,
     marginTop: 24,
+  },
+  bookBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 16,
   },
 });

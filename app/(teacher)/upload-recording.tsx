@@ -15,7 +15,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { useAuth } from '@/lib/auth-context';
 import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
@@ -273,27 +273,40 @@ export default function UploadRecordingScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 28 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData('refresh')} tintColor={LingoTheme.colors.primary} />}
       >
         <View style={styles.header}>
-          <LingoScreenHeader
-            title="Upload prerecorded class"
-            subtitle="Fulfill a booking with a recording or grant access directly to selected students."
-            badge="Teacher tools"
-            icon="videocam-outline"
-            onBack={() => router.back()}
-          >
-            <View style={styles.headerStats}>
-              <LingoStatPill icon="🎬" value={String(sessions.length)} label="Sessions" tone="primary" />
-              <LingoStatPill icon="👥" value={String(students.length)} label="Students" tone="teal" />
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+            </TouchableOpacity>
+            <View style={styles.topBarCenter}>
+              <ThemedText style={styles.topBarTitle}>Upload Recording</ThemedText>
+              <ThemedText style={styles.topBarSub}>Fulfill bookings with a video</ThemedText>
             </View>
-            <View style={styles.headerBadges}>
-              <LingoBadge label={selectedSession ? 'Booking linked' : 'Standalone upload'} icon="albums-outline" tone={selectedSession ? 'purple' : 'gold'} />
-              <LingoBadge label={selectedVideo ? 'Video selected' : 'No file yet'} icon="cloud-upload-outline" tone={selectedVideo ? 'primary' : 'teal'} />
+            <View style={{ width: 44 }} />
+          </View>
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.metricPill}>
+              <Ionicons name="film-outline" size={20} color="#F59E0B" />
+              <ThemedText style={styles.pillValue}>{sessions.length}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Sessions</ThemedText>
             </View>
-          </LingoScreenHeader>
+            <View style={styles.metricPill}>
+              <Ionicons name="people-outline" size={20} color="#F59E0B" />
+              <ThemedText style={styles.pillValue}>{students.length}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Students</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <Ionicons name={selectedVideo ? 'cloud-done-outline' : 'cloud-upload-outline'} size={20} color={selectedVideo ? '#10B981' : '#AFAFAF'} />
+              <ThemedText style={styles.pillValue}>{selectedVideo ? 'Ready' : 'No file'}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Video</ThemedText>
+            </View>
+          </View>
         </View>
 
         <View style={styles.content}>
@@ -511,22 +524,25 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: 20,
   },
-  header: {
-    paddingHorizontal: 20,
+  header: { paddingHorizontal: 20 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
-  headerStats: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 14,
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4, gap: 2,
   },
-  headerBadges: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
+  pillValue: { fontSize: 15, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 10, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   content: {
     paddingHorizontal: 20,
   },

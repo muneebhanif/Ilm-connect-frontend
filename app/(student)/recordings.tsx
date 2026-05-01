@@ -92,7 +92,7 @@ export default function StudentRecordingsScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => loadRecordings('refresh')} tintColor={LingoTheme.colors.primary} />
@@ -214,15 +214,7 @@ const styles = StyleSheet.create({
 
   /* Card */
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    padding: 18,
     marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
   },
   cardTop: {
     flexDirection: 'row',
@@ -233,7 +225,7 @@ const styles = StyleSheet.create({
   cardIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -290,9 +282,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366F1',
-    borderRadius: 12,
-    paddingVertical: 12,
+    backgroundColor: LingoTheme.colors.primary,
+    borderRadius: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 4,
+    borderBottomColor: 'rgba(0,0,0,0.15)',
     gap: 8,
   },
   watchBtnLocked: {

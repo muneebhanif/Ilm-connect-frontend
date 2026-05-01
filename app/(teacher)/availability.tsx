@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Animated,
+  Platform,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback } from 'react';
@@ -15,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/lib/config';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LingoButton, LingoCard, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoButton, LingoCard } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 
@@ -221,20 +222,35 @@ export default function AvailabilityScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.headerWrap, { paddingTop: topPadding }]}> 
-        <LingoScreenHeader
-          title="Availability"
-          subtitle="Build a weekly schedule that students can book with confidence."
-          badge={hasUnsaved ? 'Unsaved changes' : 'Ready for bookings'}
-          icon="calendar-clear-outline"
-          onBack={() => router.canGoBack() ? router.back() : router.replace('/(teacher)/' as any)}
-        >
-          <View style={styles.headerStats}>
-            <LingoStatPill icon="🗓️" value={String(configuredDays)} label="Days set" tone="primary" />
-            <LingoStatPill icon="⏰" value={String(totalWeeklySlots)} label="Open slots" tone="teal" />
-            <LingoStatPill icon="✨" value={String(selectedSlots.length)} label="Today focus" tone="purple" />
+      <View style={[styles.headerWrap, { paddingTop: topPadding }]}>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace('/(teacher)/' as any)} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+          </TouchableOpacity>
+          <View style={styles.topBarCenter}>
+            <ThemedText style={styles.topBarTitle}>Availability</ThemedText>
+            <ThemedText style={styles.topBarSub}>{hasUnsaved ? '🟡 Unsaved changes' : 'Ready for bookings'}</ThemedText>
           </View>
-        </LingoScreenHeader>
+          <View style={{ width: 44 }} />
+        </View>
+        <View style={styles.statsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>🗓️</ThemedText>
+            <ThemedText style={styles.pillValue}>{configuredDays}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Days set</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>⏰</ThemedText>
+            <ThemedText style={styles.pillValue}>{totalWeeklySlots}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Open slots</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>✨</ThemedText>
+            <ThemedText style={styles.pillValue}>{selectedSlots.length}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Today</ThemedText>
+          </View>
+        </View>
       </View>
 
       {/* Day Selector */}
@@ -435,7 +451,7 @@ export default function AvailabilityScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: Math.max(bottomPadding, 16) }]}> 
+      <View style={[styles.footer, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}> 
         {!!feedback && (
           <View style={[
             styles.feedbackBanner,
@@ -479,12 +495,25 @@ const styles = StyleSheet.create({
   },
   loadingText: { fontSize: 14, color: LingoTheme.colors.muted, fontWeight: '700' },
   headerWrap: { paddingHorizontal: 20, paddingBottom: 12 },
-  headerStats: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 12,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   daySelectorWrap: {
     paddingHorizontal: 20,
     marginBottom: 12,

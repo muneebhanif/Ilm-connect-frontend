@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 import { useSafePadding } from '@/hooks/use-safe-padding';
@@ -119,21 +119,36 @@ export default function TeacherProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topPadding }]}> 
-        <LingoScreenHeader
-          title="Teacher profile"
-          subtitle="Review teaching highlights, portfolio, availability, and parent feedback before booking."
-          badge="Public profile"
-          icon="school-outline"
-          onBack={() => router.back()}
-        >
-          <View style={styles.headerStats}>
-            <LingoStatPill icon="⭐" value={teacher.rating ? teacher.rating.toFixed(1) : 'New'} label="Rating" tone="gold" />
-            <LingoStatPill icon="💵" value={`$${teacher.hourly_rate}`} label="Hourly" tone="teal" />
-            <LingoStatPill icon="🗣️" value={teacher.languages?.[0] || 'English'} label="Language" tone="purple" />
+      {/* Top Bar */}
+      <View style={[styles.header, { paddingTop: topPadding + 10 }]}>
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+          </TouchableOpacity>
+          <View style={styles.topBarCenter}>
+            <ThemedText style={styles.topBarTitle}>Teacher Profile</ThemedText>
+            <ThemedText style={styles.topBarSub}>Review &amp; book a lesson</ThemedText>
           </View>
-        </LingoScreenHeader>
+          <View style={styles.topBarSpacer} />
+        </View>
+        {/* Stats Row */}
+        <View style={styles.headerStatsRow}>
+          <View style={styles.statPill}>
+            <Ionicons name="star" size={20} color="#FFC800" />
+            <ThemedText style={styles.statPillValue}>{teacher.rating ? teacher.rating.toFixed(1) : 'New'}</ThemedText>
+            <ThemedText style={styles.statPillLabel}>RATING</ThemedText>
+          </View>
+          <View style={styles.statPill}>
+            <Ionicons name="cash" size={20} color="#58cc02" />
+            <ThemedText style={styles.statPillValue}>${teacher.hourly_rate}/hr</ThemedText>
+            <ThemedText style={styles.statPillLabel}>HOURLY</ThemedText>
+          </View>
+          <View style={styles.statPill}>
+            <Ionicons name="language" size={20} color="#14B8A6" />
+            <ThemedText style={styles.statPillValue} numberOfLines={1}>{teacher.languages?.[0] || 'English'}</ThemedText>
+            <ThemedText style={styles.statPillLabel}>LANGUAGE</ThemedText>
+          </View>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: bottomPadding + 112 }} showsVerticalScrollIndicator={false}>
@@ -473,14 +488,71 @@ const styles = StyleSheet.create({
   
   /* Header */
   header: {
-    paddingBottom: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  headerStats: {
+  topBar: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     justifyContent: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  topBarCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  topBarTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  topBarSub: {
+    fontSize: 12,
+    color: '#AFAFAF',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  topBarSpacer: {
+    width: 44,
+  },
+  headerStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  statPill: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+  },
+  statPillValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginTop: 4,
+  },
+  statPillLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#AFAFAF',
+    textTransform: 'uppercase',
+    marginTop: 2,
   },
 
   /* Profile Card (Gradient) */
@@ -927,7 +999,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 24,
   },
-  backButton: { marginTop: 20 },
 
   bottomPadding: {
     height: 24,

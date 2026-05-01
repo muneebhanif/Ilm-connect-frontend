@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { TeacherMyProfileSkeleton } from '@/components/ui/dashboard-skeletons';
@@ -140,26 +140,43 @@ export default function MyProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}> 
-        <LingoScreenHeader
-          title="My profile"
-          subtitle="Show parents your teaching strengths, expertise, and the trust signals that help bookings grow."
-          badge="Teacher profile"
-          icon="person-circle-outline"
-        >
-          <View style={styles.headerStats}>
-            <LingoStatPill icon="⭐" value={profile?.rating?.toFixed(1) || '0.0'} label="Rating" tone="gold" />
-            <LingoStatPill icon="👥" value={String(stats?.totalStudents || 0)} label="Students" tone="teal" />
-            <LingoStatPill icon="📚" value={String(stats?.completedClasses || 0)} label="Classes" tone="primary" />
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="person-circle-outline" size={22} color="#F59E0B" />
           </View>
-          <LingoButton label="Edit profile" variant="secondary" icon="create-outline" onPress={() => router.push('/(teacher)/edit-profile')} style={styles.editButton} />
-        </LingoScreenHeader>
+          <View style={styles.topBarCenter}>
+            <ThemedText style={styles.topBarTitle}>My Profile</ThemedText>
+            <ThemedText style={styles.topBarSub}>{getVerificationLabel()}</ThemedText>
+          </View>
+          <TouchableOpacity style={styles.iconCircle} onPress={() => router.push('/(teacher)/edit-profile')} activeOpacity={0.8}>
+            <Ionicons name="create-outline" size={20} color="#F59E0B" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.statsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>⭐</ThemedText>
+            <ThemedText style={styles.pillValue}>{profile?.rating?.toFixed(1) || '0.0'}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Rating</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>👥</ThemedText>
+            <ThemedText style={styles.pillValue}>{stats?.totalStudents || 0}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Students</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>📚</ThemedText>
+            <ThemedText style={styles.pillValue}>{stats?.completedClasses || 0}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Classes</ThemedText>
+          </View>
+        </View>
       </View>
 
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomPadding + 24 }}
+        contentContainerStyle={{ paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />
         }
@@ -435,16 +452,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  headerStats: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  iconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFF7D6',
+    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
-  editButton: {
-    alignSelf: 'center',
-    minWidth: 170,
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
   },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   scrollView: {
     flex: 1,
   },

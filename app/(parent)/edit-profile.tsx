@@ -8,9 +8,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LingoBadge, LingoButton, LingoCard, LingoScreenHeader } from '@/components/ui/lingo-mobile';
-import { LingoTheme } from '@/constants/theme';
+import { LingoBadge, LingoButton } from '@/components/ui/lingo-mobile';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { SimpleProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 
 interface ProfileData {
   full_name: string;
@@ -222,7 +222,6 @@ export default function EditProfileScreen() {
           if (contentType && contentType.includes('application/json')) {
             uploadData = await uploadResponse.json();
           } else {
-            const text = await uploadResponse.text();
             uploadData = { error: uploadResponse.status === 413 ? 'Image too large.' : `Server error: ${uploadResponse.status}` };
           }
 
@@ -295,14 +294,7 @@ export default function EditProfileScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <LingoCard style={styles.loadingCard}>
-          <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
-          <ThemedText style={styles.loadingText}>Loading your parent profile...</ThemedText>
-        </LingoCard>
-      </View>
-    );
+    return <SimpleProfileSkeleton />;
   }
 
   return (
@@ -315,8 +307,8 @@ export default function EditProfileScreen() {
         ]}>
           <Ionicons 
             name={notification.type === 'success' ? 'checkmark-circle' : 'alert-circle'} 
-            size={20} 
-            color={LingoTheme.colors.textInverse} 
+            size={24} 
+            color="#FFFFFF" 
           />
           <ThemedText style={styles.notificationText}>{notification.message}</ThemedText>
         </View>
@@ -327,22 +319,26 @@ export default function EditProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding + 24 }}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }}
+      >
         <View style={styles.content}>
-          <LingoScreenHeader
-            title="Edit profile"
-            subtitle="Keep your parent profile polished so teachers and support can recognize your account quickly."
-            badge="Parent account"
-            icon="person-circle-outline"
-            onBack={() => router.back()}
-          >
-            <View style={styles.headerBadges}>
-              <LingoBadge label={profile.email || 'Email on file'} icon="mail-outline" tone="teal" />
-              <LingoBadge label="Secure details" icon="shield-checkmark-outline" tone="purple" />
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+            </TouchableOpacity>
+            <View style={styles.topBarCenter}>
+              <ThemedText style={styles.topBarTitle}>Edit Profile</ThemedText>
+              <ThemedText style={styles.topBarSub}>Update your account details</ThemedText>
             </View>
-          </LingoScreenHeader>
+            <View style={styles.topBarSpacer} />
+          </View>
 
-          <LingoCard style={styles.avatarSection}>
+          {/* Avatar Section - Tactile Card */}
+          <View style={[styles.tactileCard, styles.avatarSection]}>
             <TouchableOpacity onPress={showImageOptions} style={styles.avatarContainer} activeOpacity={0.8}>
               {imageUri ? (
                 <Image source={{ uri: imageUri }} style={styles.avatarImage} />
@@ -354,14 +350,15 @@ export default function EditProfileScreen() {
                 </View>
               )}
               <View style={styles.editBadge}>
-                <Ionicons name="camera" size={18} color={LingoTheme.colors.primary} />
+                <Ionicons name="camera" size={20} color="#3B82F6" />
               </View>
             </TouchableOpacity>
             <ThemedText style={styles.changePhotoText}>Tap to change photo</ThemedText>
-            <ThemedText style={styles.photoHelpText}>Choose a clear picture so teachers can identify your family account.</ThemedText>
-          </LingoCard>
+            <ThemedText style={styles.photoHelpText}>Choose a clear picture so teachers can easily identify your family account.</ThemedText>
+          </View>
 
-          <LingoCard style={styles.formSection}>
+          {/* Form Section - Tactile Card */}
+          <View style={styles.tactileCard}>
             <View style={styles.inputGroup}>
               <ThemedText style={styles.label}>Full Name</ThemedText>
               <TextInput
@@ -369,21 +366,21 @@ export default function EditProfileScreen() {
                 value={profile.full_name}
                 onChangeText={(text) => setProfile({ ...profile, full_name: text })}
                 placeholder="Enter your full name"
-                placeholderTextColor={LingoTheme.colors.textTertiary}
+                placeholderTextColor="#AFAFAF"
               />
             </View>
 
             <View style={styles.inputGroup}>
               <View style={styles.lockedLabelRow}>
-                <ThemedText style={styles.label}>Email</ThemedText>
-                <LingoBadge label="Locked" icon="lock-closed-outline" tone="gold" />
+                <ThemedText style={styles.label}>Email Address</ThemedText>
+                <LingoBadge label="Locked" icon="lock-closed" tone="gold" />
               </View>
               <TextInput
                 style={[styles.input, styles.inputDisabled]}
                 value={profile.email}
                 editable={false}
                 placeholder="Email address"
-                placeholderTextColor={LingoTheme.colors.textTertiary}
+                placeholderTextColor="#AFAFAF"
               />
               <ThemedText style={styles.helperText}>Email cannot be changed from the app.</ThemedText>
             </View>
@@ -395,17 +392,24 @@ export default function EditProfileScreen() {
                 value={profile.phone}
                 onChangeText={(text) => setProfile({ ...profile, phone: text })}
                 placeholder="Enter your phone number"
-                placeholderTextColor={LingoTheme.colors.textTertiary}
+                placeholderTextColor="#AFAFAF"
                 keyboardType="phone-pad"
               />
             </View>
-          </LingoCard>
+          </View>
 
-          <LingoButton label="Save changes" onPress={handleSave} loading={saving} icon="save-outline" style={styles.saveCta} />
+          <LingoButton 
+            label="Save changes" 
+            onPress={handleSave} 
+            loading={saving} 
+            icon="save" 
+            style={styles.saveCta} 
+          />
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Tactile Image Options Modal */}
       <Modal
         visible={showImageModal}
         transparent={true}
@@ -419,14 +423,14 @@ export default function EditProfileScreen() {
         >
           <View style={styles.modalContent}>
             <ThemedText style={styles.modalTitle}>Profile Picture</ThemedText>
-            <ThemedText style={styles.modalSubtitle}>Choose an option</ThemedText>
+            <ThemedText style={styles.modalSubtitle}>Choose an option below</ThemedText>
 
             <TouchableOpacity 
               style={styles.modalOption} 
               onPress={() => { setShowImageModal(false); takePhoto(); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="camera" size={24} color={LingoTheme.colors.teal} />
+              <Ionicons name="camera" size={24} color="#58cc02" />
               <ThemedText style={styles.modalOptionText}>Take Photo</ThemedText>
             </TouchableOpacity>
 
@@ -435,7 +439,7 @@ export default function EditProfileScreen() {
               onPress={() => { setShowImageModal(false); pickImage(); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="image" size={24} color={LingoTheme.colors.teal} />
+              <Ionicons name="image" size={24} color="#3B82F6" />
               <ThemedText style={styles.modalOptionText}>Choose from Library</ThemedText>
             </TouchableOpacity>
 
@@ -444,8 +448,8 @@ export default function EditProfileScreen() {
               onPress={() => { setShowImageModal(false); setImageUri(null); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="trash" size={24} color={LingoTheme.colors.danger} />
-              <ThemedText style={[styles.modalOptionText, { color: LingoTheme.colors.danger }]}>Remove Photo</ThemedText>
+              <Ionicons name="trash" size={24} color="#FF4B4B" />
+              <ThemedText style={[styles.modalOptionText, { color: '#FF4B4B' }]}>Remove Photo</ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -465,7 +469,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: LingoTheme.colors.background 
+    backgroundColor: '#F7F7F7', // Lingo brand background
   },
   centerContent: { 
     justifyContent: 'center', 
@@ -475,83 +479,106 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 320,
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
+    padding: 32,
   },
   loadingText: { 
-    fontSize: 14, 
-    color: LingoTheme.colors.muted, 
-    fontWeight: '700' 
+    fontSize: 16, 
+    color: '#AFAFAF', 
+    fontWeight: '800' 
   },
   scrollView: { 
     flex: 1 
   },
   content: {
     paddingHorizontal: 20,
-    gap: 18,
+    gap: 20,
   },
-  headerBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center',
+  
+  /* Lingo Tactile Card */
+  tactileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4, // 3D effect
+    padding: 24,
   },
+
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  topBarSpacer: { width: 44 },
+
+  /* Avatar Section */
   avatarSection: {
     alignItems: 'center',
+    paddingVertical: 32,
   },
   avatarContainer: { 
     position: 'relative', 
-    marginBottom: 12 
+    marginBottom: 16 
   },
   avatarImage: { 
     width: 120, 
     height: 120, 
-    borderRadius: LingoTheme.radius.pill, 
-    borderWidth: 3, 
-    borderColor: LingoTheme.colors.border 
+    borderRadius: 40, // Squircle look
+    borderWidth: 2, 
+    borderColor: '#E5E5E5' 
   },
   avatarPlaceholder: {
     width: 120,
     height: 120,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.softPrimary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: LingoTheme.colors.border,
-  },
-  avatarInitial: { 
-    fontSize: 48, 
-    fontWeight: '800', 
-    color: LingoTheme.colors.primaryDark 
-  },
-  editBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.surface,
+    borderRadius: 40,
+    backgroundColor: '#E5F6FF', // Soft blue
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#3B82F6',
+  },
+  avatarInitial: { 
+    fontSize: 52, 
+    fontWeight: '800', 
+    color: '#3B82F6' 
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: -8,
+    right: -8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4, // 3D button effect
   },
   changePhotoText: { 
-    fontSize: 15, 
-    color: LingoTheme.colors.ink, 
+    fontSize: 18, 
+    color: '#3C3C3C', 
     fontWeight: '800' 
   },
   photoHelpText: { 
-    fontSize: 13, 
-    color: LingoTheme.colors.muted, 
+    fontSize: 14, 
+    color: '#777777', 
     textAlign: 'center', 
-    lineHeight: 18, 
-    marginTop: 6 
+    lineHeight: 20, 
+    marginTop: 8,
+    fontWeight: '500',
   },
-  formSection: { 
-    gap: 20 
-  },
+
+  /* Form Inputs */
   inputGroup: { 
     marginBottom: 20 
   },
@@ -563,30 +590,34 @@ const styles = StyleSheet.create({
     marginBottom: 8 
   },
   label: { 
-    fontSize: 14, 
+    fontSize: 15, 
     fontWeight: '800', 
-    color: LingoTheme.colors.ink, 
+    color: '#3C3C3C', 
     marginBottom: 8 
   },
   input: {
-    backgroundColor: LingoTheme.colors.surface,
+    backgroundColor: '#F7F7F7',
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
-    borderRadius: LingoTheme.radius.md,
+    borderColor: '#E5E5E5',
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
+    fontWeight: '600',
   },
   inputDisabled: { 
-    backgroundColor: LingoTheme.colors.surfaceAlt, 
-    color: LingoTheme.colors.textTertiary 
+    backgroundColor: '#E5E5E5', 
+    color: '#777777' 
   },
   helperText: { 
-    fontSize: 12, 
-    color: LingoTheme.colors.muted, 
-    marginTop: 6 
+    fontSize: 13, 
+    color: '#AFAFAF', 
+    marginTop: 6,
+    fontWeight: '600',
   },
+
+  /* Banners */
   notificationBanner: {
     position: 'absolute',
     left: 0,
@@ -595,87 +626,93 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     gap: 8,
     marginHorizontal: 20,
-    borderRadius: LingoTheme.radius.md,
+    borderRadius: 16,
+    borderBottomWidth: 4,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   notificationSuccess: { 
-    backgroundColor: LingoTheme.colors.success 
+    backgroundColor: '#58cc02' 
   },
   notificationError: { 
-    backgroundColor: LingoTheme.colors.danger 
+    backgroundColor: '#FF4B4B' 
   },
   notificationText: { 
-    color: LingoTheme.colors.textInverse, 
-    fontSize: 14, 
-    fontWeight: '600' 
+    color: '#FFFFFF', 
+    fontSize: 15, 
+    fontWeight: '800' 
   },
+
+  /* Modal Styles */
   modalOverlay: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.scrim,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
   },
   modalContent: {
-    backgroundColor: LingoTheme.colors.surface,
-    borderRadius: LingoTheme.radius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 24,
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 340,
     alignItems: 'center',
   },
   modalTitle: { 
-    fontSize: 20, 
+    fontSize: 22, 
     fontWeight: '800', 
-    color: LingoTheme.colors.ink, 
+    color: '#3C3C3C', 
     marginBottom: 4 
   },
   modalSubtitle: { 
-    fontSize: 14, 
-    color: LingoTheme.colors.muted, 
-    marginBottom: 20 
+    fontSize: 15, 
+    color: '#777777', 
+    marginBottom: 24,
+    fontWeight: '600',
   },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: LingoTheme.radius.md,
-    backgroundColor: LingoTheme.colors.surfaceAlt,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
-    marginBottom: 10,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4, // 3D option buttons
+    marginBottom: 12,
   },
   modalOptionDestructive: { 
-    backgroundColor: LingoTheme.colors.softDanger, 
-    borderColor: LingoTheme.colors.softDanger 
+    backgroundColor: '#FFF1F1', 
+    borderColor: '#FF4B4B' 
   },
   modalOptionCancel: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    backgroundColor: '#F7F7F7',
     marginTop: 8,
   },
   modalOptionText: { 
     fontSize: 16, 
-    fontWeight: '700', 
-    color: LingoTheme.colors.ink, 
+    fontWeight: '800', 
+    color: '#3C3C3C', 
     marginLeft: 12 
   },
   modalCancelText: { 
     fontSize: 16, 
-    fontWeight: '700', 
-    color: LingoTheme.colors.muted, 
+    fontWeight: '800', 
+    color: '#AFAFAF', 
     textAlign: 'center', 
     width: '100%' 
   },
   saveCta: {
-    marginTop: 4,
+    marginTop: 8,
   },
 });

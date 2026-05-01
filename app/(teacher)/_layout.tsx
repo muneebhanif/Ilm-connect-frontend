@@ -13,7 +13,7 @@ export default function TeacherLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === 'web' ? 0 : insets.bottom;
-  const tabBarBaseHeight = Platform.OS === 'web' ? 60 : 56;
+  const tabBarBaseHeight = Platform.OS === 'web' ? 65 : 62;
 
   const fetchUnreadCount = async () => {
     try {
@@ -47,42 +47,34 @@ export default function TeacherLayout() {
         tabBarActiveTintColor: LingoTheme.colors.primary,
         tabBarInactiveTintColor: '#94A3B8',
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          marginTop: -2,
+        },
         tabBarIconStyle: {
           marginBottom: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          marginHorizontal: 4,
-          marginVertical: 4,
-          borderRadius: 18,
         },
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          borderTopWidth: 0,
-          height: tabBarBaseHeight + Math.max(bottomInset, 16),
+          borderTopWidth: 2,
+          borderTopColor: '#E5E5E5',
+          height: tabBarBaseHeight + bottomInset,
           paddingTop: 10,
-          paddingBottom: Math.max(bottomInset, 16),
-          marginHorizontal: 12,
-          marginBottom: Platform.OS === 'web' ? 0 : 10,
-          borderRadius: 28,
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          ...LingoTheme.shadow.card,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
+          paddingBottom: bottomInset > 0 ? bottomInset : 10,
+          elevation: 0,
+          shadowOpacity: 0,
         },
-        tabBarActiveBackgroundColor: LingoTheme.colors.softPrimary,
       }}>
       <Tabs.Screen
         name="teacher-dashboard"
         options={{
-          title: '',
+          title: 'Home',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
@@ -95,7 +87,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="courses"
         options={{
-          title: '',
+          title: 'Courses',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'library' : 'library-outline'}
@@ -108,7 +100,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="students"
         options={{
-          title: '',
+          title: 'Students',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'people' : 'people-outline'}
@@ -121,7 +113,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="schedule"
         options={{
-          title: '',
+          title: 'Schedule',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'calendar' : 'calendar-outline'}
@@ -134,7 +126,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: '',
+          title: 'Messages',
           tabBarIcon: ({ color, focused }) => (
             <View>
               <Ionicons
@@ -156,7 +148,7 @@ export default function TeacherLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: '',
+          title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}

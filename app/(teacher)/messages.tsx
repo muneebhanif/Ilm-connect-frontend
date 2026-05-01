@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, RefreshControl, Image } from 'react-native';
+import { StyleSheet, View, FlatList, TouchableOpacity, RefreshControl, Image, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { authFetch } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessagesSkeleton } from '@/components/ui/dashboard-skeletons';
-import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 
@@ -179,22 +179,41 @@ export default function TeacherMessagesScreen() {
           style={styles.listView}
           contentContainerStyle={[
             styles.list,
-            { paddingTop: topPadding, paddingBottom: bottomPadding + 24 },
+            { paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) },
             conversations.length === 0 && styles.emptyList,
           ]}
           ListHeaderComponent={
-            <LingoScreenHeader
-              badge="Teacher inbox"
-              icon="chatbubbles"
-              title="Messages that feel easy to manage"
-              subtitle="See which parents need a reply, jump into chats, and keep your teaching communication clear."
-            >
-              <View style={styles.headerStatsRow}>
-                <LingoStatPill icon="💬" value={String(conversations.length)} label="Chats" tone="teal" />
-                <LingoStatPill icon="📨" value={String(unreadConversations)} label="Unread chats" tone="purple" />
-                <LingoStatPill icon="✨" value={String(totalUnreadMessages)} label="New msgs" tone="primary" />
+            <View style={{ paddingTop: topPadding, paddingHorizontal: 16, paddingBottom: 8 }}>
+              {/* Top Bar */}
+              <View style={styles.topBar}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="chatbubbles" size={22} color="#F59E0B" />
+                </View>
+                <View style={styles.topBarCenter}>
+                  <ThemedText style={styles.topBarTitle}>Messages</ThemedText>
+                  <ThemedText style={styles.topBarSub}>Parent conversations</ThemedText>
+                </View>
+                <View style={{ width: 44 }} />
               </View>
-            </LingoScreenHeader>
+              {/* Stats Row */}
+              <View style={styles.statsRow}>
+                <View style={styles.metricPill}>
+                  <ThemedText style={styles.pillIcon}>💬</ThemedText>
+                  <ThemedText style={styles.pillValue}>{conversations.length}</ThemedText>
+                  <ThemedText style={styles.pillLabel}>Chats</ThemedText>
+                </View>
+                <View style={styles.metricPill}>
+                  <ThemedText style={styles.pillIcon}>📨</ThemedText>
+                  <ThemedText style={styles.pillValue}>{unreadConversations}</ThemedText>
+                  <ThemedText style={styles.pillLabel}>Unread</ThemedText>
+                </View>
+                <View style={styles.metricPill}>
+                  <ThemedText style={styles.pillIcon}>✨</ThemedText>
+                  <ThemedText style={styles.pillValue}>{totalUnreadMessages}</ThemedText>
+                  <ThemedText style={styles.pillLabel}>New msgs</ThemedText>
+                </View>
+              </View>
+            </View>
           }
           ListEmptyComponent={<EmptyState />}
           showsVerticalScrollIndicator={false}
@@ -216,12 +235,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: LingoTheme.colors.background,
   },
-  headerStatsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  iconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFF7D6',
+    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   list: {
     paddingHorizontal: 16,
     paddingBottom: 8,

@@ -9,12 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
-import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
+import { ParentDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
 
-// Interfaces remain untouched
 interface Child {
   id: string;
   name: string;
@@ -66,8 +65,9 @@ interface Payment {
 export default function ParentDashboard() {
   const router = useRouter();
   const { user, signOut, refreshSession } = useAuth();
-  const { topPadding, bottomPadding } = useSafePadding();
+  const { topPadding } = useSafePadding();
   const { width: screenWidth } = useWindowDimensions();
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true);
@@ -79,16 +79,26 @@ export default function ParentDashboard() {
   const [stats, setStats] = useState({ children: 0, activeClasses: 0, teachers: 0 });
   const [parentName, setParentName] = useState('Parent');
   const [parentId, setParentId] = useState<string | null>(null);
+  
   const [showAddChildModal, setShowAddChildModal] = useState(false);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [showChildrenModal, setShowChildrenModal] = useState(false);
+  
   const [isReady, setIsReady] = useState(false);
   const authFailedRef = useRef(false);
   const didInitialLoadRef = useRef(false);
-  const headerInitial = (parentName || user?.full_name || 'P').trim().charAt(0).toUpperCase();
+  
   const childCardWidth = Math.max(screenWidth - 48, 280);
 
-  // Data fetching logic remains identical
+  // Format Name safely
+  const formatName = (name: string) => {
+    if (!name) return 'Parent';
+    const trimmed = name.trim();
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  };
+  const displayName = formatName(parentName || user?.full_name || 'Parent');
+  const headerInitial = displayName.charAt(0);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 100);
     return () => clearTimeout(timer);
@@ -150,9 +160,7 @@ export default function ParentDashboard() {
           try {
             await refreshSession();
             return loadDashboardData(mode, false);
-          } catch {
-            // fall through
-          }
+          } catch { }
         }
         authFailedRef.current = true;
         await signOut();
@@ -171,9 +179,7 @@ export default function ParentDashboard() {
           try {
             await refreshSession();
             return loadDashboardData(mode, false);
-          } catch {
-            // fall through
-          }
+          } catch { }
         }
         authFailedRef.current = true;
         await signOut();
@@ -192,9 +198,7 @@ export default function ParentDashboard() {
           try {
             await refreshSession();
             return loadDashboardData(mode, false);
-          } catch {
-            // fall through
-          }
+          } catch { }
         }
         authFailedRef.current = true;
         await signOut();
@@ -206,6 +210,7 @@ export default function ParentDashboard() {
       const parsedServerNowMs = serverNowIso ? new Date(serverNowIso).getTime() : NaN;
       const nowMs = Number.isFinite(parsedServerNowMs) ? parsedServerNowMs : Date.now();
       const graceMs = 30 * 60 * 1000;
+      
       const upcoming = allClasses.filter((c: ClassSession) => {
         const classDate = new Date(c.scheduled_date);
         const liveStatus = String(c.live_status || '').toLowerCase();
@@ -224,7 +229,6 @@ export default function ParentDashboard() {
       });
       setUpcomingClasses(upcoming);
       setPastClasses(past);
-
       setMessages([]);
       setPayments([]);
 
@@ -250,17 +254,6 @@ export default function ParentDashboard() {
     return tzMap[offsetHours] || Intl.DateTimeFormat().resolvedOptions().timeZone;
   };
 
-  const formatDate = (dateStr: string) => {
-    const utcDate = new Date(dateStr);
-    const tz = getUserTimezone();
-    return utcDate.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric',
-      timeZone: tz
-    });
-  };
-
   const formatTime = (dateStr: string) => {
     const utcDate = new Date(dateStr);
     const tz = getUserTimezone();
@@ -279,11 +272,7 @@ export default function ParentDashboard() {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
-      </View>
-    );
+    return <ParentDashboardSkeleton />;
   }
 
   return (
@@ -291,7 +280,7 @@ export default function ParentDashboard() {
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 28 }]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -300,30 +289,10 @@ export default function ParentDashboard() {
           />
         }
       >
-        <View style={[styles.headerWrap, { paddingTop: topPadding }]}> 
-          <LingoScreenHeader
-            title={parentName}
-            subtitle={`${getGreeting()} — keep classes, children, and messages on track.`}
-            badge="Parent hub"
-            icon="people-outline"
-          >
-            <View style={styles.headerStatsRow}>
-              <LingoStatPill label="Children" value={String(stats.children)} icon="happy-outline" tone="teal" />
-              <LingoStatPill label="Active" value={String(stats.activeClasses)} icon="calendar-outline" tone="gold" />
-              <LingoStatPill label="Teachers" value={String(stats.teachers)} icon="school-outline" tone="primary" />
-            </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => {
-                  setHasUnreadNotifications(false);
-                  router.push('/(parent)/notifications');
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="notifications-outline" size={20} color={LingoTheme.colors.ink} />
-                {hasUnreadNotifications && <View style={styles.notificationDot} />}
-              </TouchableOpacity>
+        <View style={[styles.headerWrap, { paddingTop: topPadding + 10 }]}> 
+          {/* 1. Top Bar */}
+          <View style={styles.topBar}>
+            <View style={styles.userInfo}>
               <TouchableOpacity 
                 style={styles.profileButton}
                 onPress={() => router.push('/(parent)/profile')}
@@ -336,17 +305,145 @@ export default function ParentDashboard() {
                   />
                 ) : (
                   <LinearGradient
-                    colors={[LingoTheme.colors.primary, LingoTheme.colors.primaryDark]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                    colors={['#ce82ff', '#a855f7']}
                     style={styles.profileFallback}
                   >
                     <ThemedText style={styles.profileFallbackText}>{headerInitial}</ThemedText>
                   </LinearGradient>
                 )}
               </TouchableOpacity>
+              <View style={styles.welcomeText}>
+                <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
+                <ThemedText style={styles.nameText}>{displayName}!</ThemedText>
+                <ThemedText style={styles.motivationalText}>Let's keep your little learners growing every day 🌱</ThemedText>
+              </View>
             </View>
-          </LingoScreenHeader>
+
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => {
+                setHasUnreadNotifications(false);
+                router.push('/(parent)/notifications');
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications" size={24} color="#AFAFAF" />
+              {hasUnreadNotifications && <View style={styles.notificationDot} />}
+            </TouchableOpacity>
+          </View>
+
+          {/* 2. Parent Hub Card */}
+          <LinearGradient
+            colors={['#ECFCD8', '#FFFFFF', '#F2E8FF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.parentHubCard}
+          >
+            <View style={styles.hubBadge}>
+              <Ionicons name="leaf" size={14} color="#58cc02" />
+              <ThemedText style={styles.hubBadgeText}>PARENT HUB</ThemedText>
+            </View>
+            <View style={styles.hubIconBg}>
+              <Ionicons name="people" size={40} color="#58cc02" />
+            </View>
+            <ThemedText style={styles.hubTitle}>{displayName}</ThemedText>
+            <ThemedText style={styles.hubSubtitle}>Stay updated with your children's learning and class activity.</ThemedText>
+          </LinearGradient>
+
+          {/* 3. Stats Row */}
+          <View style={styles.horizontalStatsRow}>
+            <TouchableOpacity style={styles.metricPill} activeOpacity={0.8}>
+               <Ionicons name="people" size={24} color="#58cc02" />
+               <ThemedText style={styles.metricValue}>{stats.children}</ThemedText>
+               <ThemedText style={styles.metricLabel}>CHILDREN</ThemedText>
+               <View style={styles.metricArrow}>
+                 <Ionicons name="arrow-forward" size={14} color="#58cc02" />
+               </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.metricPill} activeOpacity={0.8}>
+               <Ionicons name="calendar" size={24} color="#ffc800" />
+               <ThemedText style={styles.metricValue}>{stats.activeClasses}</ThemedText>
+               <ThemedText style={styles.metricLabel}>ACTIVE</ThemedText>
+               <View style={[styles.metricArrow, { backgroundColor: '#FFF7D6' }]}>
+                 <Ionicons name="arrow-forward" size={14} color="#ffc800" />
+               </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.metricPill} activeOpacity={0.8}>
+               <Ionicons name="school" size={24} color="#ce82ff" />
+               <ThemedText style={styles.metricValue}>{stats.teachers}</ThemedText>
+               <ThemedText style={styles.metricLabel}>TEACHERS</ThemedText>
+               <View style={[styles.metricArrow, { backgroundColor: '#F2E8FF' }]}>
+                 <Ionicons name="arrow-forward" size={14} color="#ce82ff" />
+               </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* 4. Small circular arrow button below */}
+          <View style={styles.arrowContainer}>
+             <TouchableOpacity style={styles.arrowButton} activeOpacity={0.8}>
+                <Ionicons name="chevron-down" size={20} color="#AFAFAF" />
+             </TouchableOpacity>
+          </View>
+
+          {/* 5. Today's Overview tactile card */}
+          <View style={styles.overviewCard}>
+             <View style={styles.overviewTitleRow}>
+               <Ionicons name="star" size={20} color="#ffc800" />
+               <ThemedText style={styles.overviewTitle}>Today's Overview</ThemedText>
+             </View>
+             <View style={styles.overviewItem}>
+               <View style={styles.overviewItemLeft}>
+                 <View style={[styles.overviewItemIcon, { backgroundColor: '#ECFCD8' }]}>
+                   <Ionicons name="checkmark-circle" size={20} color="#58cc02" />
+                 </View>
+                 <ThemedText style={styles.overviewItemText}>Classes attended</ThemedText>
+                 <TouchableOpacity activeOpacity={0.6}>
+                   <Ionicons name="information-circle-outline" size={16} color="#AFAFAF" />
+                 </TouchableOpacity>
+               </View>
+               <ThemedText style={styles.overviewItemValue}>{stats.activeClasses || 0}</ThemedText>
+             </View>
+             <View style={styles.overviewItemDivider} />
+             <View style={styles.overviewItem}>
+               <View style={styles.overviewItemLeft}>
+                 <View style={[styles.overviewItemIcon, { backgroundColor: '#FFF7D6' }]}>
+                   <Ionicons name="time" size={20} color="#ffc800" />
+                 </View>
+                 <ThemedText style={styles.overviewItemText}>Time spent learning</ThemedText>
+                 <TouchableOpacity activeOpacity={0.6}>
+                   <Ionicons name="information-circle-outline" size={16} color="#AFAFAF" />
+                 </TouchableOpacity>
+               </View>
+               <ThemedText style={styles.overviewItemValue}>0m</ThemedText>
+             </View>
+             <View style={styles.overviewItemDivider} />
+             <View style={styles.overviewItem}>
+               <View style={styles.overviewItemLeft}>
+                 <View style={[styles.overviewItemIcon, { backgroundColor: '#ECFCD8' }]}>
+                   <Ionicons name="chatbubble-ellipses" size={20} color="#58cc02" />
+                 </View>
+                 <ThemedText style={styles.overviewItemText}>Messages</ThemedText>
+                 <TouchableOpacity activeOpacity={0.6}>
+                   <Ionicons name="information-circle-outline" size={16} color="#AFAFAF" />
+                 </TouchableOpacity>
+               </View>
+               <ThemedText style={styles.overviewItemValue}>{messages.length}</ThemedText>
+             </View>
+          </View>
+
+          {/* 6. Keep it up banner */}
+          <View style={styles.keepItUpBanner}>
+             <View style={styles.lanternBg}>
+               <Ionicons name="flame" size={32} color="#ffc800" />
+             </View>
+             <View style={styles.bannerTextContainer}>
+               <View style={styles.bannerTitleRow}>
+                 <Ionicons name="bulb" size={18} color="#ffc800" />
+                 <ThemedText style={styles.bannerTitle}>Keep it up!</ThemedText>
+               </View>
+               <ThemedText style={styles.bannerSubtitle}>Encourage daily learning to build consistency and confidence.</ThemedText>
+             </View>
+          </View>
         </View>
 
         {/* Child Progress Section */}
@@ -355,7 +452,7 @@ export default function ParentDashboard() {
              <ThemedText style={styles.sectionTitle}>My Child</ThemedText>
              {children.length > 0 && (
                <TouchableOpacity onPress={() => setShowChildrenModal(true)} activeOpacity={0.8}>
-                  <ThemedText style={styles.seeAllText}>More Children</ThemedText>
+                 <ThemedText style={styles.seeAllText}>Manage</ThemedText>
                </TouchableOpacity>
              )}
           </View>
@@ -461,9 +558,10 @@ export default function ParentDashboard() {
               onPress={() => setShowAddChildModal(true)}
               activeOpacity={0.8}
             >
-              <LingoEmptyState icon="person-add-outline" title="Add Child Profile" subtitle="Track progress and manage classes from one place." tone="teal" />
+              <LingoEmptyState icon="person-add" title="Add Child Profile" subtitle="Track progress and manage classes from one place." tone="teal" />
             </TouchableOpacity>
           )}
+
           {/* Children selector modal */}
           <Modal
             visible={showChildrenModal}
@@ -513,26 +611,26 @@ export default function ParentDashboard() {
           </View>
           <View style={styles.quickActionsRow}>
             <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/browse-courses')} activeOpacity={0.8}>
-              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softTeal }]}>  
-                <Ionicons name="book-outline" size={22} color={LingoTheme.colors.teal} />
+              <View style={[styles.quickActionIcon, { backgroundColor: '#E5F6FF', borderColor: '#3B82F6' }]}>  
+                <Ionicons name="book" size={28} color="#3B82F6" />
               </View>
               <ThemedText style={styles.quickActionLabel}>Courses</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/messages')} activeOpacity={0.8}>
-              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softPurple }]}>  
-                <Ionicons name="chatbubbles-outline" size={22} color={LingoTheme.colors.secondary} />
+              <View style={[styles.quickActionIcon, { backgroundColor: '#F3E8FF', borderColor: '#A855F7' }]}>  
+                <Ionicons name="chatbubbles" size={28} color="#A855F7" />
               </View>
               <ThemedText style={styles.quickActionLabel}>Messages</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction} onPress={() => setShowAddChildModal(true)} activeOpacity={0.8}>
-              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softGold }]}>  
-                <Ionicons name="person-add-outline" size={22} color={LingoTheme.colors.gold} />
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FFF8E5', borderColor: '#D4AF37' }]}>  
+                <Ionicons name="person-add" size={28} color="#D4AF37" />
               </View>
               <ThemedText style={styles.quickActionLabel}>Add Child</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(parent)/profile')} activeOpacity={0.8}>
-              <View style={[styles.quickActionIcon, { backgroundColor: LingoTheme.colors.softDanger }]}>  
-                <Ionicons name="settings-outline" size={22} color={LingoTheme.colors.danger} />
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FFE5E5', borderColor: '#EF4444' }]}>  
+                <Ionicons name="settings" size={28} color="#EF4444" />
               </View>
               <ThemedText style={styles.quickActionLabel}>Settings</ThemedText>
             </TouchableOpacity>
@@ -548,9 +646,9 @@ export default function ParentDashboard() {
              </TouchableOpacity>
           </View>
           {upcomingClasses.length === 0 ? (
-            <LingoCard style={styles.emptyStateContainer}>
-              <LingoEmptyState icon="calendar-outline" title="No upcoming classes" subtitle="Book a class to get started." tone="gold" />
-            </LingoCard>
+            <View style={styles.tactileCard}>
+              <LingoEmptyState icon="calendar" title="No upcoming classes" subtitle="Book a class to get started." tone="gold" />
+            </View>
           ) : (
             upcomingClasses.slice(0, 2).map((classItem) => {
               const classDateTime = new Date(classItem.scheduled_date);
@@ -560,7 +658,7 @@ export default function ParentDashboard() {
               const isScheduled = status === 'upcoming' || status === 'confirmed';
               const joinable = isScheduled && diffMinutes <= 15 && diffMinutes >= -60;
               return (
-                <View key={classItem.id} style={styles.classCard}>
+                <View key={classItem.id} style={styles.tactileCardRow}>
                    <View style={styles.classCardLeft}>
                       <View style={styles.dateBox}>
                          <ThemedText style={styles.dateDay}>{classDateTime.getDate()}</ThemedText>
@@ -577,7 +675,7 @@ export default function ParentDashboard() {
                         w/ {classItem.courses?.teachers?.profiles?.full_name || 'Ustadh'}
                       </ThemedText>
                       <View style={styles.timeRow}>
-                         <Ionicons name="time-outline" size={14} color={LingoTheme.colors.textSecondary} />
+                         <Ionicons name="time" size={16} color="#AFAFAF" />
                          <ThemedText style={styles.timeText}>{formatTime(classItem.scheduled_date)}</ThemedText>
                       </View>
                    </View>
@@ -609,9 +707,9 @@ export default function ParentDashboard() {
              <ThemedText style={styles.sectionTitle}>History</ThemedText>
           </View>
           {pastClasses.length === 0 ? (
-            <LingoCard style={styles.emptyStateContainer}>
-              <LingoEmptyState icon="time-outline" title="No class history" subtitle="Completed or closed classes will appear here." tone="primary" />
-            </LingoCard>
+            <View style={styles.tactileCard}>
+              <LingoEmptyState icon="time" title="No class history" subtitle="Completed or closed classes will appear here." tone="primary" />
+            </View>
           ) : (
             pastClasses.slice(0, 2).map((classItem) => {
               const classDateTime = new Date(classItem.scheduled_date);
@@ -619,7 +717,7 @@ export default function ParentDashboard() {
               const ended = classDateTime < now;
               const statusLabel = ended ? 'Closed' : (classItem.status.charAt(0).toUpperCase() + classItem.status.slice(1));
               return (
-                <View key={classItem.id} style={styles.classCard}>
+                <View key={classItem.id} style={styles.tactileCardRow}>
                    <View style={styles.classCardLeft}>
                       <View style={styles.dateBox}>
                          <ThemedText style={styles.dateDay}>{classDateTime.getDate()}</ThemedText>
@@ -636,7 +734,7 @@ export default function ParentDashboard() {
                         w/ {classItem.courses?.teachers?.profiles?.full_name || 'Ustadh'}
                       </ThemedText>
                       <View style={styles.timeRow}>
-                         <Ionicons name="time-outline" size={14} color={LingoTheme.colors.textSecondary} />
+                         <Ionicons name="time" size={16} color="#AFAFAF" />
                          <ThemedText style={styles.timeText}>{formatTime(classItem.scheduled_date)}</ThemedText>
                       </View>
                    </View>
@@ -658,14 +756,14 @@ export default function ParentDashboard() {
            </View>
 
            {messages.length === 0 ? (
-             <LingoCard style={styles.emptyStateContainerCompact}>
-               <LingoEmptyState icon="chatbubble-ellipses-outline" title="No new messages" subtitle="Fresh updates from teachers will appear here." tone="teal" />
-             </LingoCard>
+             <View style={styles.tactileCard}>
+               <LingoEmptyState icon="chatbubble-ellipses" title="No new messages" subtitle="Fresh updates from teachers will appear here." tone="teal" />
+             </View>
            ) : (
              messages.map((msg) => (
-               <TouchableOpacity key={msg.id} style={styles.messageRow} onPress={() => router.push('/(parent)/messages')} activeOpacity={0.8}>
+               <TouchableOpacity key={msg.id} style={styles.tactileCardRow} onPress={() => router.push('/(parent)/messages')} activeOpacity={0.8}>
                   <View style={styles.messageAvatar}>
-                     <Ionicons name="person" size={20} color={LingoTheme.colors.textTertiary} />
+                     <Ionicons name="person" size={24} color="#AFAFAF" />
                   </View>
                   <View style={styles.messageBody}>
                      <View style={styles.messageTop}>
@@ -686,14 +784,14 @@ export default function ParentDashboard() {
            </View>
 
            {payments.length === 0 ? (
-             <LingoCard style={styles.emptyStateContainerCompact}>
-               <LingoEmptyState icon="wallet-outline" title="No recent transactions" subtitle="Recent payments will show up here." tone="primary" />
-             </LingoCard>
+             <View style={styles.tactileCard}>
+               <LingoEmptyState icon="wallet" title="No recent transactions" subtitle="Recent payments will show up here." tone="primary" />
+             </View>
            ) : (
              payments.map((pay) => (
-               <View key={pay.id} style={styles.paymentRow}>
+               <View key={pay.id} style={styles.tactileCardRow}>
                   <View style={styles.paymentIcon}>
-                     <Ionicons name="receipt-outline" size={20} color={LingoTheme.colors.teal} />
+                     <Ionicons name="receipt" size={24} color="#58cc02" />
                   </View>
                   <View style={styles.paymentBody}>
                      <ThemedText style={styles.payDesc}>{pay.description}</ThemedText>
@@ -701,7 +799,7 @@ export default function ParentDashboard() {
                   </View>
                   <View style={styles.paymentEnd}>
                      <ThemedText style={styles.payAmount}>${pay.amount.toFixed(2)}</ThemedText>
-                     <ThemedText style={[styles.payStatus, { color: pay.status === 'Paid' ? LingoTheme.colors.success : LingoTheme.colors.warning }]}>
+                     <ThemedText style={[styles.payStatus, { color: pay.status === 'Paid' ? '#58cc02' : '#ffc800' }]}>
                         {pay.status}
                      </ThemedText>
                   </View>
@@ -709,8 +807,6 @@ export default function ParentDashboard() {
              ))
            )}
         </View>
-
-        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       <AddChildModal
@@ -725,68 +821,290 @@ export default function ParentDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: '#F7F7F7', // Lingo brand background
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 140 : 120, // MASSIVE padding to clear floating nav bars entirely
   },
 
-  /* Header */
+  /* Header Restyle */
   headerWrap: {
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  headerStatsRow: {
+  topBar: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  headerActions: {
+  userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.surface,
+  welcomeText: {
+    justifyContent: 'center',
+  },
+  greetingText: {
+    fontSize: 14,
+    color: '#AFAFAF',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  nameText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  motivationalText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#AFAFAF',
+    marginTop: 4,
+  },
+  
+  parentHubCard: {
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  hubBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFCD8',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: 16,
+  },
+  hubBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#58cc02',
+    letterSpacing: 0.5,
+  },
+  hubTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  hubSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 260,
+  },
+  hubIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#ECFCD8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  horizontalStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+  },
+  metricPill: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginTop: 8,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#AFAFAF',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  metricArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ECFCD8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+
+  arrowContainer: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  arrowButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+  },
+
+  overviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    marginBottom: 16,
+  },
+  overviewTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  overviewTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  overviewItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  overviewItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  overviewItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overviewItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3C3C3C',
+  },
+  overviewItemValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#58cc02',
+  },
+  overviewItemDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+
+  keepItUpBanner: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    marginBottom: 16,
+    gap: 16,
+  },
+  bannerTextContainer: {
+    flex: 1,
+  },
+  bannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  bannerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  bannerSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  lanternBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#FFF7D6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#F4D778',
+  },
+
+  /* Bug-free, tactile floating notification button */
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
   notificationDot: {
     position: 'absolute',
     top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.danger,
-    borderWidth: 1.5,
-    borderColor: LingoTheme.colors.surface,
+    right: 12,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF4B4B',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   profileButton: {
     width: 48,
     height: 48,
-    borderRadius: LingoTheme.radius.pill,
+    borderRadius: 24,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
-    ...LingoTheme.shadow.card,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     overflow: 'hidden',
+    backgroundColor: '#FFF',
   },
   profileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: LingoTheme.radius.pill,
   },
   profileFallback: {
     flex: 1,
@@ -795,14 +1113,14 @@ const styles = StyleSheet.create({
   },
   profileFallbackText: {
     fontSize: 20,
-    fontWeight: '700',
-    color: LingoTheme.colors.textInverse,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
   /* Sections */
   sectionContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    marginTop: 24,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -811,34 +1129,36 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: LingoTheme.colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
   },
   seeAllText: {
-    fontSize: 14,
-    color: LingoTheme.colors.teal,
-    fontWeight: '600',
+    fontSize: 15,
+    color: '#3B82F6',
+    fontWeight: '800',
   },
 
-  /* Child Card - Lingo Style */
+  /* Child Cards */
   childCard: {
-    borderRadius: LingoTheme.radius.lg,
+    borderRadius: 24,
     padding: 20,
-    ...LingoTheme.shadow.elevated,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderBottomWidth: 4, // Keeps 3D effect even with gradient
   },
   childCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   childAvatarContainer: {
     marginRight: 16,
   },
   childAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: LingoTheme.radius.pill,
+    width: 60,
+    height: 60,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -846,29 +1166,29 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   childAvatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: LingoTheme.colors.textInverse,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   childInfo: {
     flex: 1,
   },
   childName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: LingoTheme.colors.textInverse,
-    marginBottom: 6,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
   childAge: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '700',
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: LingoTheme.radius.md,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 16,
     padding: 16,
   },
   statItem: {
@@ -876,75 +1196,126 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: LingoTheme.colors.textInverse,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   statDivider: {
-    width: 1,
+    width: 2,
     height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 1,
+  },
+  childCarousel: {
+    paddingHorizontal: 4,
+  },
+  childCardWrapper: {
+    marginRight: 16,
+  },
+  childCardCarousel: {
+    width: '100%',
   },
 
-  /* Add Child Card - Lingo Style */
-  addChildCard: {
-    borderRadius: LingoTheme.radius.lg,
-    padding: 32,
-    backgroundColor: LingoTheme.colors.surface,
+  /* Base Tactile Cards for everything else */
+  tactileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    padding: 24,
   },
-
-  /* Upcoming Classes - Lingo Style */
-  classCard: {
+  tactileCardRow: {
     flexDirection: 'row',
-    backgroundColor: LingoTheme.colors.surface,
-    borderRadius: LingoTheme.radius.md,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 16,
     marginBottom: 12,
-    ...LingoTheme.shadow.card,
-    alignItems: 'center',
   },
+  addChildCard: {
+    borderRadius: 24,
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+  },
+
+  /* Quick Actions - 3D Icons */
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  quickAction: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickActionIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 2,
+    borderBottomWidth: 4,
+  },
+  quickActionLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#777777',
+  },
+
+  /* Class Specific List Styles */
   classCardLeft: {
     marginRight: 16,
   },
   dateBox: {
-    width: 50,
-    height: 54,
-    borderRadius: LingoTheme.radius.sm,
-    backgroundColor: LingoTheme.colors.borderLight,
+    width: 56,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: '#F7F7F7',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   dateDay: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: LingoTheme.colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
   },
   dateMonth: {
-    fontSize: 11,
-    color: LingoTheme.colors.textSecondary,
+    fontSize: 12,
+    color: '#777777',
     textTransform: 'uppercase',
-    fontWeight: '600',
+    fontWeight: '800',
   },
   classCardMiddle: {
     flex: 1,
   },
   classTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: LingoTheme.colors.text,
-    marginBottom: 2,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginBottom: 4,
   },
   teacherName: {
-    fontSize: 13,
-    color: LingoTheme.colors.textSecondary,
+    fontSize: 14,
+    color: '#777777',
+    fontWeight: '600',
     marginBottom: 6,
   },
   timeRow: {
@@ -953,121 +1324,84 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timeText: {
-    fontSize: 12,
-    color: LingoTheme.colors.textSecondary,
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#AFAFAF',
+    fontWeight: '700',
   },
   classCardRight: {
     marginLeft: 12,
   },
 
-  /* Empty States - Lingo Style */
-  emptyStateContainer: {
-    padding: 32,
-    borderRadius: LingoTheme.radius.md,
-  },
-  emptyStateContainerCompact: {
-    padding: 20,
-    borderRadius: LingoTheme.radius.md,
-  },
-
-  /* Quick Actions - Lingo Style */
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickAction: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: LingoTheme.radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    ...LingoTheme.shadow.card,
-  },
-  quickActionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: LingoTheme.colors.text,
-  },
-
-  /* Status Badges - Lingo Style */
+  /* Status Badges */
   statusBadgeLive: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: LingoTheme.colors.softPrimary,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: LingoTheme.radius.sm,
-    gap: 5,
+    backgroundColor: '#E5F6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
   },
   liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.success,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3B82F6',
   },
   statusBadgeLiveText: {
-    color: LingoTheme.colors.primary,
+    color: '#3B82F6',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   statusBadgeSoon: {
-    backgroundColor: LingoTheme.colors.softGold,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: LingoTheme.radius.sm,
+    backgroundColor: '#FFF8E5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D4AF37',
   },
   statusBadgeSoonText: {
-    color: LingoTheme.colors.gold,
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#D4AF37',
+    fontSize: 13,
+    fontWeight: '800',
   },
   statusBadgeScheduled: {
-    backgroundColor: LingoTheme.colors.softPurple,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: LingoTheme.radius.sm,
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   statusBadgeScheduledText: {
-    color: LingoTheme.colors.secondary,
+    color: '#A855F7',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   statusBadgeClosed: {
-    backgroundColor: LingoTheme.colors.softGold,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: LingoTheme.radius.sm,
+    backgroundColor: '#F7F7F7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   statusBadgeClosedText: {
-    color: LingoTheme.colors.gold,
+    color: '#AFAFAF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
-  /* Messages List - Lingo Style */
-  messageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: LingoTheme.colors.surface,
-    borderRadius: LingoTheme.radius.md,
-    marginBottom: 10,
-    ...LingoTheme.shadow.card,
-  },
+  /* Messages Specific */
   messageAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.borderLight,
+    width: 52,
+    height: 52,
+    borderRadius: 20,
+    backgroundColor: '#F7F7F7',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 16,
   },
   messageBody: {
     flex: 1,
@@ -1075,148 +1409,134 @@ const styles = StyleSheet.create({
   messageTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   msgName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: LingoTheme.colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#3C3C3C',
   },
   msgTime: {
-    fontSize: 12,
-    color: LingoTheme.colors.textTertiary,
+    fontSize: 13,
+    color: '#AFAFAF',
+    fontWeight: '700',
   },
   msgPreview: {
-    fontSize: 13,
-    color: LingoTheme.colors.textSecondary,
+    fontSize: 14,
+    color: '#777777',
+    fontWeight: '600',
   },
 
-  /* Payment List - Lingo Style */
-  paymentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: LingoTheme.colors.surface,
-    borderRadius: LingoTheme.radius.md,
-    marginBottom: 10,
-    ...LingoTheme.shadow.card,
-  },
+  /* Payments Specific */
   paymentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: LingoTheme.radius.sm,
-    backgroundColor: LingoTheme.colors.softTeal,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#E5F6FF', // Changed to soft blue since it looks better
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 16,
   },
   paymentBody: {
     flex: 1,
   },
   payDesc: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: LingoTheme.colors.text,
-    marginBottom: 2,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginBottom: 4,
   },
   payDate: {
-    fontSize: 12,
-    color: LingoTheme.colors.textTertiary,
+    fontSize: 13,
+    color: '#AFAFAF',
+    fontWeight: '700',
   },
   paymentEnd: {
     alignItems: 'flex-end',
   },
   payAmount: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: LingoTheme.colors.text,
-    marginBottom: 2,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginBottom: 4,
   },
   payStatus: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '800',
   },
 
-  bottomSpacer: {
-    height: 40,
-  },
-  childCarousel: {
-    paddingHorizontal: 4,
-  },
-  childCardWrapper: {
-    marginRight: 12,
-  },
-  childCardCarousel: {
-    width: '100%',
-  },
-
-  /* Modal - Lingo Style */
+  /* Modals */
   modalOverlay: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.scrim,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: LingoTheme.colors.surface,
-    padding: 20,
-    borderTopLeftRadius: LingoTheme.radius.lg,
-    borderTopRightRadius: LingoTheme.radius.lg,
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     maxHeight: '70%',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
-    color: LingoTheme.colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 16,
+    color: '#3C3C3C',
   },
   childRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: LingoTheme.colors.borderLight,
+    paddingVertical: 14,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E5E5E5',
   },
   childRowAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.borderLight,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F7F7F7',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   childAvatarTextSmall: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: LingoTheme.colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
   },
   childRowName: {
-    fontSize: 16,
-    color: LingoTheme.colors.text,
-    fontWeight: '600',
+    fontSize: 18,
+    color: '#3C3C3C',
+    fontWeight: '800',
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginTop: 20,
+    gap: 12,
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: LingoTheme.radius.md,
-    backgroundColor: LingoTheme.colors.teal,
+    paddingVertical: 14,
+    borderRadius: 20,
+    backgroundColor: '#58cc02',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     alignItems: 'center',
-    marginRight: 8,
   },
   modalButtonText: {
-    color: LingoTheme.colors.textInverse,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 16,
   },
   modalClose: {
-    backgroundColor: LingoTheme.colors.borderLight,
-    marginRight: 0,
+    backgroundColor: '#FFFFFF',
   },
   modalCloseText: {
-    color: LingoTheme.colors.text,
+    color: '#AFAFAF',
   },
 });

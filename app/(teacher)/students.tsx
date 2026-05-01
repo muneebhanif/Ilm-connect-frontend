@@ -1,9 +1,9 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Modal, Alert, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Modal, Alert, RefreshControl, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { TeacherStudentsBodySkeleton } from '@/components/ui/dashboard-skeletons';
 import { useAuth } from '@/lib/auth-context';
@@ -273,19 +273,36 @@ export default function StudentsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}> 
-        <LingoScreenHeader
-          title="My students"
-          subtitle="Search learners, check progress, and contact parents without leaving your teaching flow."
-          badge="Teacher roster"
-          icon="people-outline"
-        >
-          <View style={styles.headerStats}>
-            <LingoStatPill icon="👥" value={String(students.length)} label="Students" tone="primary" />
-            <LingoStatPill icon="✅" value={String(activeCount)} label="Active" tone="teal" />
-            <LingoStatPill icon="🎯" value={`${averageAttendance}%`} label="Attendance" tone="gold" />
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="people-outline" size={22} color="#F59E0B" />
           </View>
-        </LingoScreenHeader>
+          <View style={styles.topBarCenter}>
+            <ThemedText style={styles.topBarTitle}>My Students</ThemedText>
+            <ThemedText style={styles.topBarSub}>Roster &amp; attendance</ThemedText>
+          </View>
+          <View style={{ width: 44 }} />
+        </View>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>👥</ThemedText>
+            <ThemedText style={styles.pillValue}>{students.length}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Students</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>✅</ThemedText>
+            <ThemedText style={styles.pillValue}>{activeCount}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Active</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>🎯</ThemedText>
+            <ThemedText style={styles.pillValue}>{averageAttendance}%</ThemedText>
+            <ThemedText style={styles.pillLabel}>Attendance</ThemedText>
+          </View>
+        </View>
 
         <LingoCard style={styles.filterCard}>
           <View style={styles.searchContainer}>
@@ -326,7 +343,7 @@ export default function StudentsScreen() {
       ) : (
         <ScrollView 
           style={styles.scrollView} 
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 24 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
         >
@@ -456,12 +473,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  headerStats: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  iconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFF7D6',
+    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 12 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   filterCard: {
     gap: 14,
   },

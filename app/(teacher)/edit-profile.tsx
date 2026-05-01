@@ -10,6 +10,7 @@ import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguagesMultiSelectDropdown } from '@/components/dropdowns';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { SimpleProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 
@@ -48,7 +49,7 @@ const AVAILABLE_SUBJECTS = [
 export default function EditTeacherProfileScreen() {
   const router = useRouter();
   const { user, refreshUserProfile } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<TeacherProfileData>({
@@ -571,13 +572,7 @@ export default function EditTeacherProfileScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <LingoCard style={styles.loadingCard}>
-          <ActivityIndicator size="large" color="#4ECDC4" />
-        </LingoCard>
-      </View>
-    );
+    return <SimpleProfileSkeleton />;
   }
 
   return (
@@ -624,7 +619,11 @@ export default function EditTeacherProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }}
+      >
         {/* Profile Picture */}
         <LingoCard style={styles.avatarSection}>
           <TouchableOpacity 

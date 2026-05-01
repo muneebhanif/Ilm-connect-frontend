@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { DateTime } from 'luxon'; 
@@ -362,29 +362,31 @@ export default function ScheduleScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}> 
-        <LingoScreenHeader
-          title="My schedule"
-          subtitle="Track live lessons, prepare uploads, and keep every session organized."
-          badge="Teacher view"
-          icon="calendar-outline"
-        >
-          <View style={styles.headerStatsRow}>
-            <LingoStatPill icon="📅" value={String(todayClasses.length)} label="Today" tone="primary" />
-            <LingoStatPill icon="⏭️" value={String(upcomingClasses.length)} label="Upcoming" tone="teal" />
+      <View style={[styles.header, { paddingTop: topPadding }]}>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="calendar-outline" size={22} color="#F59E0B" />
           </View>
-          <View style={styles.headerBadgeRow}>
-            <LingoBadge
-              label={(serverNowIso
-                ? DateTime.fromISO(serverNowIso, { zone: 'utc' }).setZone(teacherTz)
-                : DateTime.now().setZone(teacherTz)
-              ).toFormat('ccc, LLL dd')}
-              icon="calendar-outline"
-              tone="gold"
-            />
-            <LingoBadge label={teacherTz.replace(/_/g, ' ')} icon="time-outline" tone="purple" />
+          <View style={styles.topBarCenter}>
+            <ThemedText style={styles.topBarTitle}>My Schedule</ThemedText>
+            <ThemedText style={styles.topBarSub}>{(serverNowIso ? DateTime.fromISO(serverNowIso, { zone: 'utc' }).setZone(teacherTz) : DateTime.now().setZone(teacherTz)).toFormat('ccc, LLL dd')} · {teacherTz.replace(/_/g, ' ')}</ThemedText>
           </View>
-        </LingoScreenHeader>
+          <View style={{ width: 44 }} />
+        </View>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>📅</ThemedText>
+            <ThemedText style={styles.pillValue}>{todayClasses.length}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Today</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>⏭️</ThemedText>
+            <ThemedText style={styles.pillValue}>{upcomingClasses.length}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Upcoming</ThemedText>
+          </View>
+        </View>
 
         <LingoCard style={styles.tabsShell}>
           <View style={styles.tabsContainer}>
@@ -412,7 +414,7 @@ export default function ScheduleScreen() {
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 24 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
       >
         {displayClasses.length === 0 ? (
@@ -447,19 +449,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  headerStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 14,
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  iconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFF7D6',
+    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
-  headerBadgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 12, color: '#AFAFAF', fontWeight: '600', marginTop: 2, textAlign: 'center' },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 12 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
   },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   tabsShell: {
     padding: 8,
   },

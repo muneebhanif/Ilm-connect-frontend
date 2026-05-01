@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100,
   },
 
   /* Header */
@@ -270,11 +270,12 @@ const styles = StyleSheet.create({
   /* Detail Card */
   detailCard: {
     backgroundColor: '#FFF',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 18,
     marginBottom: 24,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
+    borderBottomWidth: 4,
     ...LingoTheme.shadow.card,
   },
   detailRow: {
@@ -317,11 +318,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '47%',
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
+    borderBottomWidth: 4,
     ...LingoTheme.shadow.card,
   },
   statIcon: {
@@ -345,11 +347,12 @@ const styles = StyleSheet.create({
   },
   attendanceCard: {
     backgroundColor: '#FFF',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 18,
     marginBottom: 24,
     borderWidth: 2,
     borderColor: LingoTheme.colors.border,
+    borderBottomWidth: 4,
     ...LingoTheme.shadow.card,
   },
   attendanceHeader: {
@@ -405,9 +408,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FEE2E2',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#FCA5A5',
-    borderRadius: 14,
+    borderBottomWidth: 4,
+    borderRadius: 20,
     paddingVertical: 14,
     gap: 8,
   },

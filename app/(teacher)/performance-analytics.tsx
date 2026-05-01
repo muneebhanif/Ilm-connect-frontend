@@ -1,4 +1,4 @@
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -6,7 +6,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
-import { LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { PerformanceAnalyticsSkeleton } from '@/components/ui/dashboard-skeletons';
@@ -207,24 +206,40 @@ export default function PerformanceAnalyticsScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding + 24 }}
+        contentContainerStyle={{ paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
       >
         <View style={styles.contentPad}>
-        <LingoScreenHeader
-          badge="Teacher insights"
-          icon="stats-chart"
-          title="Performance you can scan fast"
-          subtitle="Track class momentum, progress, and outcomes with simpler visuals and clearer teaching signals."
-          onBack={() => router.back()}
-        >
-          <View style={styles.headerStatsWrap}>
-            <LingoStatPill icon="📚" value={String(analytics.total30)} label="30d classes" tone="primary" />
-            <LingoStatPill icon="✅" value={`${analytics.completionRate}%`} label="Completion" tone="teal" />
-            <LingoStatPill icon="👥" value={String(analytics.activeStudents)} label="Students" tone="purple" />
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+          </TouchableOpacity>
+          <View style={styles.topBarCenter}>
+            <ThemedText style={styles.topBarTitle}>Analytics</ThemedText>
+            <ThemedText style={styles.topBarSub}>Your teaching performance</ThemedText>
           </View>
-        </LingoScreenHeader>
+          <View style={{ width: 44 }} />
+        </View>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>📚</ThemedText>
+            <ThemedText style={styles.pillValue}>{analytics.total30}</ThemedText>
+            <ThemedText style={styles.pillLabel}>30d classes</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>✅</ThemedText>
+            <ThemedText style={styles.pillValue}>{analytics.completionRate}%</ThemedText>
+            <ThemedText style={styles.pillLabel}>Done</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillIcon}>👥</ThemedText>
+            <ThemedText style={styles.pillValue}>{analytics.activeStudents}</ThemedText>
+            <ThemedText style={styles.pillLabel}>Students</ThemedText>
+          </View>
+        </View>
 
         <View style={styles.metricsGrid}>
           <View style={[styles.metricCard, { borderLeftColor: '#4ECDC4', borderLeftWidth: 4 }]}>
@@ -373,14 +388,27 @@ const styles = StyleSheet.create({
   contentPad: {
     paddingHorizontal: 16,
   },
-  headerStatsWrap: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 16 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
+  },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 16, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 10, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   metricsGrid: {
-    marginTop: 16,
+    marginTop: 4,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
@@ -388,14 +416,12 @@ const styles = StyleSheet.create({
   metricCard: {
     width: '48.5%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
   },
   metricValue: {
     fontSize: 22,
@@ -411,13 +437,11 @@ const styles = StyleSheet.create({
   chartCard: {
     marginTop: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
   },
   cardTitle: {
     fontSize: 15,
@@ -518,14 +542,12 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     marginTop: 14,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    padding: 18,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
   },
   summaryRow: {
     flexDirection: 'row',

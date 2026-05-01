@@ -11,8 +11,10 @@ import { LingoTheme } from '@/constants/theme';
 export default function ParentLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const insets = useSafeAreaInsets();
+  
+  // Adjust bottom padding based on safe area (iOS home indicator)
   const bottomInset = Platform.OS === 'web' ? 0 : insets.bottom;
-  const tabBarBaseHeight = Platform.OS === 'web' ? 60 : 56;
+  const tabBarBaseHeight = Platform.OS === 'web' ? 65 : 62;
 
   const fetchUnreadCount = async () => {
     try {
@@ -26,14 +28,12 @@ export default function ParentLayout() {
     }
   };
 
-  // Fetch on mount and set up polling
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Poll every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000); 
     return () => clearInterval(interval);
   }, []);
 
-  // Also fetch when any tab gains focus
   useFocusEffect(
     useCallback(() => {
       fetchUnreadCount();
@@ -45,48 +45,46 @@ export default function ParentLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: LingoTheme.colors.primary,
-        tabBarInactiveTintColor: LingoTheme.colors.textTertiary,
-        tabBarShowLabel: false,
+        tabBarInactiveTintColor: LingoTheme.colors.textTertiary || '#afafaf',
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          marginTop: -2,
+        },
         tabBarIconStyle: {
           marginBottom: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          marginHorizontal: 4,
-          marginVertical: 4,
-          borderRadius: LingoTheme.radius.lg,
+          // Removed margin and radius since we aren't using a background pill anymore
         },
         tabBarStyle: {
           backgroundColor: LingoTheme.colors.surface,
-          borderTopWidth: 0,
-          height: tabBarBaseHeight + Math.max(bottomInset, 16),
+          // Lingo/Duolingo style: Full width, no rounded corners, solid top border
+          borderTopWidth: 2,
+          borderTopColor: '#E5E5E5', 
+          borderLeftWidth: 0,
+          borderRightWidth: 0,
+          borderBottomWidth: 0,
+          height: tabBarBaseHeight + bottomInset,
           paddingTop: 10,
-          paddingBottom: Math.max(bottomInset, 16),
-          marginHorizontal: 12,
-          marginBottom: Platform.OS === 'web' ? 0 : 10,
-          borderRadius: LingoTheme.radius.xl,
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          ...LingoTheme.shadow.card,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
+          paddingBottom: bottomInset > 0 ? bottomInset : 10,
+          // Explicitly removing shadows for the flat, tactile look
+          elevation: 0, 
+          shadowOpacity: 0,
         },
-        tabBarActiveBackgroundColor: LingoTheme.colors.softPrimary,
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: '',
+          title: 'Home',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
-              size={24}
+              size={28} // Slightly larger for that playful feel
               color={color}
             />
           ),
@@ -96,11 +94,11 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="browse-teachers"
         options={{
-          title: '',
+          title: 'Search',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'search' : 'search-outline'}
-              size={24}
+              size={28}
               color={color}
             />
           ),
@@ -110,11 +108,11 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="classes"
         options={{
-          title: '',
+          title: 'Schedule',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'calendar' : 'calendar-outline'}
-              size={24}
+              size={28}
               color={color}
             />
           ),
@@ -124,12 +122,12 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: '',
+          title: 'Messages',
           tabBarIcon: ({ color, focused }) => (
             <View>
               <Ionicons
                 name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
-                size={24}
+                size={28}
                 color={color}
               />
               {unreadCount > 0 && (
@@ -147,11 +145,11 @@ export default function ParentLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: '',
+          title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'person' : 'person-outline'}
-              size={24}
+              size={28}
               color={color}
             />
           ),
@@ -168,21 +166,21 @@ export default function ParentLayout() {
 const layoutStyles = StyleSheet.create({
   badge: {
     position: 'absolute',
-    right: -8,
+    right: -6,
     top: -4,
     backgroundColor: LingoTheme.colors.danger,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    borderRadius: 12, // More rounded, pill-like
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.surface,
+    borderColor: LingoTheme.colors.surface, // Keeps the cutout effect against the icon
   },
   badgeText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800', // Pushed to 800 for Lingo brand typography weight
   },
 });

@@ -1,5 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View, FlatList, TouchableOpacity, RefreshControl, Image } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  Image,
+  Platform,
+} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +17,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { authFetch } from '@/lib/auth-fetch';
 import { MessagesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import {
+  LingoCard,
+  LingoEmptyState,
+} from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 
@@ -61,86 +72,123 @@ export default function MessagesScreen() {
   };
 
   const unreadConversations = useMemo(
-    () => conversations.filter((conversation) => conversation.unreadCount > 0).length,
+    () =>
+      conversations.filter((conversation) => conversation.unreadCount > 0).length,
     [conversations]
   );
 
   const totalUnreadMessages = useMemo(
-    () => conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0),
+    () =>
+      conversations.reduce(
+        (sum, conversation) => sum + conversation.unreadCount,
+        0
+      ),
     [conversations]
   );
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
+    const diffDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
     if (diffDays === 0) {
-      return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     } else if (diffDays === 1) {
       return 'Yesterday';
     } else if (diffDays < 7) {
       return date.toLocaleDateString(undefined, { weekday: 'short' });
     } else {
-      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+      });
     }
   };
 
   const renderConversation = ({ item }: { item: Conversation }) => {
     const isUnread = item.unreadCount > 0;
-    
+
     return (
       <TouchableOpacity
         style={styles.touchCard}
-        activeOpacity={0.7}
-        onPress={() => router.push({
-          pathname: '/chat/[id]' as any,
-        params: { id: item.otherUserId, name: item.otherUser.full_name, avatar: item.otherUser.avatar_url || '' }
-      })}
-    >
-      <LingoCard style={[styles.conversationItem, isUnread && styles.unreadItem]}>
-        <View style={styles.conversationRow}>
-          <View style={styles.avatarContainer}>
-            {item.otherUser.avatar_url ? (
-              <Image
-                source={{ uri: item.otherUser.avatar_url }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <LinearGradient colors={[LingoTheme.colors.primary, '#22C55E']} style={styles.avatar}>
-                <ThemedText style={styles.avatarText}>
-                  {item.otherUser.full_name.charAt(0).toUpperCase()}
-                </ThemedText>
-              </LinearGradient>
-            )}
-          </View>
-
-          <View style={styles.conversationContent}>
-            <View style={styles.conversationHeader}>
-              <ThemedText style={styles.userName} numberOfLines={1}>
-                {item.otherUser.full_name}
-              </ThemedText>
-              <ThemedText style={styles.timeText}>{formatTime(item.last_message_at)}</ThemedText>
-            </View>
-
-            <View style={styles.messagePreview}>
-              <ThemedText style={[styles.previewText, isUnread && styles.previewTextUnread]} numberOfLines={1}>
-                {isUnread ? 'You have a new teacher reply waiting' : 'Tap to view conversation'}
-              </ThemedText>
-
-              {item.unreadCount > 0 ? (
-                <View style={styles.unreadBadge}>
-                  <ThemedText style={styles.unreadText}>
-                    {item.unreadCount > 99 ? '99+' : item.unreadCount}
-                  </ThemedText>
-                </View>
+        activeOpacity={0.85} // tactile feedback per Lingo
+        onPress={() =>
+          router.push({
+            pathname: '/chat/[id]' as any,
+            params: {
+              id: item.otherUserId,
+              name: item.otherUser.full_name,
+              avatar: item.otherUser.avatar_url || '',
+            },
+          })
+        }
+      >
+        <LingoCard style={[styles.conversationItem, isUnread && styles.unreadItem]}>
+          <View style={styles.conversationRow}>
+            <View style={styles.avatarContainer}>
+              {item.otherUser.avatar_url ? (
+                <Image
+                  source={{ uri: item.otherUser.avatar_url }}
+                  style={styles.avatarImage}
+                />
               ) : (
-                <Ionicons name="chevron-forward" size={16} color="#E5E7EB" style={styles.chevron} />
+                <LinearGradient
+                  colors={[LingoTheme.colors.primary, LingoTheme.colors.primaryDark]}
+                  style={styles.avatar}
+                >
+                  <ThemedText style={styles.avatarText}>
+                    {item.otherUser.full_name.charAt(0).toUpperCase()}
+                  </ThemedText>
+                </LinearGradient>
               )}
             </View>
+
+            <View style={styles.conversationContent}>
+              <View style={styles.conversationHeader}>
+                <ThemedText style={styles.userName} numberOfLines={1}>
+                  {item.otherUser.full_name}
+                </ThemedText>
+                <ThemedText style={styles.timeText}>
+                  {formatTime(item.last_message_at)}
+                </ThemedText>
+              </View>
+
+              <View style={styles.messagePreview}>
+                <ThemedText
+                  style={[
+                    styles.previewText,
+                    isUnread && styles.previewTextUnread,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {isUnread
+                    ? 'You have a new teacher reply waiting'
+                    : 'Tap to view conversation'}
+                </ThemedText>
+
+                {item.unreadCount > 0 ? (
+                  <View style={styles.unreadBadge}>
+                    <ThemedText style={styles.unreadText}>
+                      {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={LingoTheme.colors.textTertiary}
+                    style={styles.chevron}
+                  />
+                )}
+              </View>
+            </View>
           </View>
-        </View>
-      </LingoCard>
+        </LingoCard>
       </TouchableOpacity>
     );
   };
@@ -167,22 +215,45 @@ export default function MessagesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.list,
-            { paddingTop: topPadding, paddingBottom: bottomPadding + 24 },
+            {
+              paddingTop: topPadding,
+              paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100),
+            },
             conversations.length === 0 && styles.emptyList,
           ]}
           ListHeaderComponent={
-            <LingoScreenHeader
-              badge="Parent hub"
-              icon="chatbubbles"
-              title="Messages that stay friendly"
-              subtitle="Keep teacher replies, follow-ups, and scheduling chats organized in one calm inbox."
-            >
-              <View style={styles.headerStatsRow}>
-                <LingoStatPill icon="💬" value={String(conversations.length)} label="Chats" tone="primary" />
-                <LingoStatPill icon="✨" value={String(unreadConversations)} label="Unread chats" tone="teal" />
-                <LingoStatPill icon="📨" value={String(totalUnreadMessages)} label="New msgs" tone="gold" />
+            <View style={[styles.topBarWrap, { paddingTop: topPadding + 10 }]}>
+              {/* Top Bar */}
+              <View style={styles.topBar}>
+                <View style={styles.topBarLeft}>
+                  <View style={styles.topBarIconBg}>
+                    <Ionicons name="chatbubbles" size={28} color="#58cc02" />
+                  </View>
+                  <View>
+                    <ThemedText style={styles.topBarTitle}>Messages</ThemedText>
+                    <ThemedText style={styles.topBarSub}>Your teacher conversations</ThemedText>
+                  </View>
+                </View>
               </View>
-            </LingoScreenHeader>
+              {/* Stats Row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statPill}>
+                  <Ionicons name="chatbubbles" size={20} color="#58cc02" />
+                  <ThemedText style={styles.statValue}>{conversations.length}</ThemedText>
+                  <ThemedText style={styles.statLabel}>CHATS</ThemedText>
+                </View>
+                <View style={styles.statPill}>
+                  <Ionicons name="mail-unread" size={20} color="#14B8A6" />
+                  <ThemedText style={styles.statValue}>{unreadConversations}</ThemedText>
+                  <ThemedText style={styles.statLabel}>UNREAD</ThemedText>
+                </View>
+                <View style={styles.statPill}>
+                  <Ionicons name="notifications" size={20} color="#FFC800" />
+                  <ThemedText style={styles.statValue}>{totalUnreadMessages}</ThemedText>
+                  <ThemedText style={styles.statLabel}>NEW MSGS</ThemedText>
+                </View>
+              </View>
+            </View>
           }
           ListEmptyComponent={<EmptyState />}
           showsVerticalScrollIndicator={false}
@@ -190,8 +261,8 @@ export default function MessagesScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#4ECDC4"
-              colors={['#4ECDC4']}
+              tintColor={LingoTheme.colors.primary}
+              colors={[LingoTheme.colors.primary]}
             />
           }
         />
@@ -203,65 +274,125 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: '#F7F7F7',
   },
-  headerStatsRow: {
+  topBarWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  topBar: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  topBarIconBg: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: '#ECFCD8',
     justifyContent: 'center',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#BBF7D0',
+  },
+  topBarTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  topBarSub: {
+    fontSize: 13,
+    color: '#AFAFAF',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  statPill: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginTop: 4,
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#AFAFAF',
+    textTransform: 'uppercase',
+    marginTop: 2,
   },
   list: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   emptyList: {
     flex: 1,
     justifyContent: 'flex-start',
   },
   touchCard: {
-    marginBottom: 12,
+    marginBottom: LingoTheme.spacing[3], // 12
   },
   conversationItem: {
-    padding: 16,
+    padding: LingoTheme.spacing[4], // 16
   },
   unreadItem: {
-    backgroundColor: '#FCFFFC',
-    borderColor: '#CFEAA9',
+    backgroundColor: LingoTheme.colors.softPrimary, // soft green tint
+    borderColor: LingoTheme.colors.primaryLight, // light primary border
   },
   conversationRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatarContainer: {
-    marginRight: 16,
+    marginRight: LingoTheme.spacing[4], // 16
     position: 'relative',
   },
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 28, // circle: half of width/height
     justifyContent: 'center',
     alignItems: 'center',
+    // Lingo tactile shadow on avatar
     shadowColor: LingoTheme.colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: LingoTheme.colors.surface,
   },
   avatarImage: {
     width: 56,
     height: 56,
     borderRadius: 28,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: LingoTheme.colors.surface,
   },
   avatarText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: LingoTheme.typography.sizes.lg, // 20
+    fontWeight: LingoTheme.typography.weights.bold, // '700'
+    color: LingoTheme.colors.textInverse,
   },
   conversationContent: {
     flex: 1,
@@ -271,18 +402,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: LingoTheme.spacing[1], // 4
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: LingoTheme.typography.sizes.base, // 16
+    fontWeight: LingoTheme.typography.weights.extrabold, // '800'
     color: LingoTheme.colors.ink,
     flex: 1,
-    marginRight: 8,
+    marginRight: LingoTheme.spacing[2], // 8
   },
   timeText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: LingoTheme.typography.sizes.xs, // 12
+    fontWeight: LingoTheme.typography.weights.bold, // '700'
     color: LingoTheme.colors.muted,
   },
   messagePreview: {
@@ -291,29 +422,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   previewText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: LingoTheme.typography.sizes.sm, // 14
+    fontWeight: LingoTheme.typography.weights.medium, // '500'
     color: LingoTheme.colors.muted,
     flex: 1,
-    marginRight: 8,
+    marginRight: LingoTheme.spacing[2],
   },
   previewTextUnread: {
-    color: LingoTheme.colors.ink,
-    fontWeight: '600',
+    color: LingoTheme.colors.text,
+    fontWeight: LingoTheme.typography.weights.semibold, // '600'
   },
   unreadBadge: {
     backgroundColor: LingoTheme.colors.primary,
-    paddingHorizontal: 8,
+    paddingHorizontal: LingoTheme.spacing[2], // 8
     minWidth: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: 11, // pill
     alignItems: 'center',
     justifyContent: 'center',
   },
   unreadText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: LingoTheme.typography.sizes.xs, // 12 (was 11, now on scale)
+    fontWeight: LingoTheme.typography.weights.extrabold,
+    color: LingoTheme.colors.textInverse,
     lineHeight: 14,
   },
   chevron: {

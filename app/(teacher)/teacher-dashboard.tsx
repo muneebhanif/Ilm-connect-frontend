@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Fonts, LingoTheme } from '@/constants/theme';
+import { LingoTheme } from '@/constants/theme';
 import { TeacherDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -319,60 +319,143 @@ export default function TeacherDashboard() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header Section */}
-        <LinearGradient colors={['#FFF7D6', '#FFFFFF', '#FEE2E2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: topPadding }]}> 
-          <View style={styles.headerTopRow}>
-            <View>
-              <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
-              <ThemedText style={styles.userNameText}>{profile.full_name}</ThemedText>
-            </View>
-            <View style={styles.headerActions}>
+        {/* ── Top Bar ── */}
+        <View style={[styles.headerWrap, { paddingTop: topPadding + 10 }]}>
+          <View style={styles.topBar}>
+            <View style={styles.userInfo}>
               <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => router.push('/(teacher)/notifications')}
-              >
-                <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-                {notificationCount > 0 && (
-                  <View style={styles.notificationBadge}>
-                    <ThemedText style={styles.notificationBadgeText}>
-                      {notificationCount > 99 ? '99+' : String(notificationCount)}
-                    </ThemedText>
-                  </View>
-                )}
-              </TouchableOpacity>
-                <TouchableOpacity 
                 style={styles.profileButton}
                 onPress={() => router.push('/(teacher)/my-profile')}
-                >
+                activeOpacity={0.8}
+              >
                 {profile.avatar_url ? (
-                  <Image
-                    source={{ uri: profile.avatar_url }}
-                    style={styles.profileImage}
-                  />
+                  <Image source={{ uri: profile.avatar_url }} style={styles.profileImage} />
                 ) : (
-                  <Image
-                    source={{
-                      uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'T')}&background=FF6B6B&color=fff`,
-                    }}
-                    style={styles.profileImage}
-                  />
+                  <LinearGradient colors={['#FFC800', '#F59E0B']} style={styles.profileFallback}>
+                    <ThemedText style={styles.profileFallbackText}>{profile.full_name.charAt(0)}</ThemedText>
+                  </LinearGradient>
                 )}
-                </TouchableOpacity>
+              </TouchableOpacity>
+              <View style={styles.welcomeText}>
+                <ThemedText style={styles.greetingText}>{getGreeting()},</ThemedText>
+                <ThemedText style={styles.nameText}>{profile.full_name.split(' ')[0]}!</ThemedText>
+                <ThemedText style={styles.motivationalText}>Ready to inspire your students today? 📚</ThemedText>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => router.push('/(teacher)/notifications')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications" size={24} color="#AFAFAF" />
+              {notificationCount > 0 && <View style={styles.notificationDot} />}
+            </TouchableOpacity>
+          </View>
+
+          {/* Teacher Hub Card */}
+          <LinearGradient
+            colors={['#FFF7D6', '#FFFFFF', '#FEE2E2']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hubCard}
+          >
+            <View style={styles.hubBadge}>
+              <Ionicons name="ribbon" size={14} color="#F59E0B" />
+              <ThemedText style={styles.hubBadgeText}>TEACHER HUB</ThemedText>
+            </View>
+            <View style={styles.hubIconBg}>
+              <Ionicons name="school" size={40} color="#F59E0B" />
+            </View>
+            <ThemedText style={styles.hubTitle}>{profile.full_name.split(' ')[0]}</ThemedText>
+            <ThemedText style={styles.hubSubtitle}>Manage classes, track progress, and grow your teaching impact.</ThemedText>
+          </LinearGradient>
+
+          {/* Horizontal Stats Row */}
+          <View style={styles.horizontalStatsRow}>
+            <TouchableOpacity style={styles.metricPill} activeOpacity={0.8} onPress={() => router.push('/(teacher)/students')}>
+              <Ionicons name="people" size={24} color="#58cc02" />
+              <ThemedText style={styles.metricValue}>{stats.totalStudents}</ThemedText>
+              <ThemedText style={styles.metricLabel}>STUDENTS</ThemedText>
+              <View style={styles.metricArrow}>
+                <Ionicons name="arrow-forward" size={14} color="#58cc02" />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.metricPill} activeOpacity={0.8} onPress={() => router.push('/(teacher)/schedule')}>
+              <Ionicons name="calendar" size={24} color="#F59E0B" />
+              <ThemedText style={styles.metricValue}>{stats.upcomingClasses}</ThemedText>
+              <ThemedText style={styles.metricLabel}>UPCOMING</ThemedText>
+              <View style={[styles.metricArrow, { backgroundColor: '#FFF7D6' }]}>
+                <Ionicons name="arrow-forward" size={14} color="#F59E0B" />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.metricPill} activeOpacity={0.8} onPress={() => router.push('/(teacher)/payout-settings')}>
+              <Ionicons name="wallet" size={24} color="#ce82ff" />
+              <ThemedText style={styles.metricValue}>${stats.totalEarnings}</ThemedText>
+              <ThemedText style={styles.metricLabel}>EARNED</ThemedText>
+              <View style={[styles.metricArrow, { backgroundColor: '#F2E8FF' }]}>
+                <Ionicons name="arrow-forward" size={14} color="#ce82ff" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Today's Overview */}
+          <View style={styles.overviewCard}>
+            <View style={styles.overviewTitleRow}>
+              <Ionicons name="star" size={20} color="#FFC800" />
+              <ThemedText style={styles.overviewTitle}>Today's Overview</ThemedText>
+            </View>
+            <View style={styles.overviewItem}>
+              <View style={styles.overviewItemLeft}>
+                <View style={[styles.overviewItemIcon, { backgroundColor: '#ECFCD8' }]}>
+                  <Ionicons name="checkmark-circle" size={20} color="#58cc02" />
+                </View>
+                <ThemedText style={styles.overviewItemText}>Classes completed</ThemedText>
+              </View>
+              <ThemedText style={styles.overviewItemValue}>{stats.completedClasses}</ThemedText>
+            </View>
+            <View style={styles.overviewItemDivider} />
+            <View style={styles.overviewItem}>
+              <View style={styles.overviewItemLeft}>
+                <View style={[styles.overviewItemIcon, { backgroundColor: '#FFF7D6' }]}>
+                  <Ionicons name="time" size={20} color="#F59E0B" />
+                </View>
+                <ThemedText style={styles.overviewItemText}>Upcoming sessions</ThemedText>
+              </View>
+              <ThemedText style={[styles.overviewItemValue, { color: '#F59E0B' }]}>{stats.upcomingClasses}</ThemedText>
+            </View>
+            <View style={styles.overviewItemDivider} />
+            <View style={styles.overviewItem}>
+              <View style={styles.overviewItemLeft}>
+                <View style={[styles.overviewItemIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="star" size={20} color="#EF4444" />
+                </View>
+                <ThemedText style={styles.overviewItemText}>Rating</ThemedText>
+              </View>
+              <ThemedText style={[styles.overviewItemValue, { color: '#EF4444' }]}>
+                {profile.rating > 0 ? `${profile.rating.toFixed(1)} ⭐` : 'New'}
+              </ThemedText>
             </View>
           </View>
-        </LinearGradient>
+
+          {/* Motivational banner */}
+          <View style={styles.keepItUpBanner}>
+            <View style={styles.lanternBg}>
+              <Ionicons name="flame" size={32} color="#F59E0B" />
+            </View>
+            <View style={styles.bannerTextContainer}>
+              <View style={styles.bannerTitleRow}>
+                <Ionicons name="bulb" size={18} color="#F59E0B" />
+                <ThemedText style={styles.bannerTitle}>Keep it up!</ThemedText>
+              </View>
+              <ThemedText style={styles.bannerSubtitle}>Dedicated teachers create lifelong learners. You're doing great!</ThemedText>
+            </View>
+          </View>
+        </View>
 
         {/* Notification Banner */}
         {notification && (
-          <View style={[
-            styles.notificationBanner,
-            notification.type === 'success' ? styles.successBanner : styles.errorBanner
-          ]}>
-            <Ionicons 
-              name={notification.type === 'success' ? 'checkmark-circle' : 'alert-circle'} 
-              size={18} 
-              color="#fff" 
-            />
+          <View style={[styles.notificationBanner, notification.type === 'success' ? styles.successBanner : styles.errorBanner]}>
+            <Ionicons name={notification.type === 'success' ? 'checkmark-circle' : 'alert-circle'} size={18} color="#fff" />
             <ThemedText style={styles.notificationText}>{notification.message}</ThemedText>
           </View>
         )}
@@ -719,120 +802,302 @@ export default function TeacherDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: '#F7F7F7',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 140 : 120,
   },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  /* Header Styles */
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    borderBottomWidth: 2,
-    borderColor: LingoTheme.colors.border,
+  /* ── Top Bar (mirrors parent dashboard) ── */
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  headerTopRow: {
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 20,
   },
-  greetingText: {
-    fontSize: 14,
-    color: LingoTheme.colors.muted,
-    marginBottom: 2,
-    fontWeight: '700',
-  },
-  userNameText: {
-    fontSize: 24,
-    fontFamily: Fonts.rounded,
-    fontWeight: '800',
-    color: LingoTheme.colors.ink,
-  },
-  headerActions: {
+  userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+  },
+  welcomeText: {
+    justifyContent: 'center',
+    flex: 1,
+  },
+  greetingText: {
+    fontSize: 14,
+    color: '#AFAFAF',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  nameText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  motivationalText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#AFAFAF',
+    marginTop: 3,
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  notificationBadge: {
+  notificationDot: {
     position: 'absolute',
-    top: 4,
-    right: 2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#F59E0B',
-    borderWidth: 2,
-    borderColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  notificationBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#FFF',
-    lineHeight: 10,
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    top: 10,
+    right: 12,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF4B4B',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  profileButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     overflow: 'hidden',
+    backgroundColor: '#FFF',
   },
   profileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+  },
+  profileFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileFallbackText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
-  /* Banners */
-  bannerContainer: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+  /* ── Teacher Hub Card ── */
+  hubCard: {
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    marginBottom: 16,
+    overflow: 'hidden',
   },
-  statusBanner: {
+  hubBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: '#FFF7D6',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#F4D778',
   },
-  statusIconWarning: {
-    marginRight: 12,
+  hubBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B7791F',
+    letterSpacing: 0.5,
   },
-  warningText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#9A3412',
+  hubIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFF7D6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#F4D778',
+  },
+  hubTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  hubSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
     fontWeight: '500',
-    lineHeight: 18,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 260,
   },
 
-  /* Main Content */
-  contentContainer: {
+  /* ── Horizontal Stats Row ── */
+  horizontalStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  metricPill: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#3C3C3C',
+    marginTop: 8,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#AFAFAF',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  metricArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ECFCD8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+
+  /* ── Today's Overview Card ── */
+  overviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     padding: 20,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    marginBottom: 16,
+  },
+  overviewTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  overviewTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#3C3C3C',
+  },
+  overviewItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  overviewItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  overviewItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overviewItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3C3C3C',
+  },
+  overviewItemValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#58cc02',
+  },
+  overviewItemDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+  },
+
+  /* ── Keep It Up Banner ── */
+  keepItUpBanner: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FDE68A',
+    borderBottomWidth: 4,
+    marginBottom: 16,
+    gap: 16,
+  },
+  bannerTextContainer: {
+    flex: 1,
+  },
+  bannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  bannerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  bannerSubtitle: {
+    fontSize: 14,
+    color: '#B45309',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  lanternBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#FFF7D6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#F4D778',
+  },
+
+  /* ── Content sections ── */
+  contentContainer: {
+    paddingHorizontal: 16,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -842,27 +1107,25 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    fontFamily: Fonts.rounded,
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
   },
   editLinkBtn: {
     padding: 4,
   },
   editLinkText: {
     fontSize: 14,
-    color: '#C2410C',
+    color: '#58cc02',
     fontWeight: '800',
   },
 
-  /* Stats Card */
+  /* Stats Row (inside contentContainer) */
   mainStatsCard: {
     borderRadius: 24,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.24)',
     padding: 24,
-    ...LingoTheme.shadow.card,
     marginBottom: 24,
   },
   statsRow: {
@@ -899,7 +1162,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
 
-  /* Secondary Grid */
+  /* Grid cards */
   gridContainer: {
     flexDirection: 'row',
     gap: 16,
@@ -910,9 +1173,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 22,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 16,
-    ...LingoTheme.shadow.card,
     alignItems: 'flex-start',
   },
   gridIcon: {
@@ -926,12 +1189,12 @@ const styles = StyleSheet.create({
   gridValue: {
     fontSize: 20,
     fontWeight: '800',
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
     marginBottom: 4,
   },
   gridLabel: {
     fontSize: 12,
-    color: LingoTheme.colors.muted,
+    color: '#AFAFAF',
     fontWeight: '700',
   },
 
@@ -940,9 +1203,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 22,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 20,
-    ...LingoTheme.shadow.card,
     marginBottom: 24,
   },
   profileDetailRow: {
@@ -953,7 +1216,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: '#FFF7D6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -963,13 +1226,13 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: LingoTheme.colors.muted,
+    color: '#AFAFAF',
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
   },
   detailDivider: {
     height: 1,
@@ -983,9 +1246,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 22,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 20,
-    ...LingoTheme.shadow.card,
     marginBottom: 24,
   },
   availabilityRow: {
@@ -994,7 +1257,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dayBadge: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: '#FFF7D6',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1005,13 +1268,13 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#C2410C',
+    color: '#B7791F',
     textTransform: 'uppercase',
   },
   availabilitySlots: {
     flex: 1,
     fontSize: 14,
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
   },
   emptyAvailability: {
     alignItems: 'center',
@@ -1019,13 +1282,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   availabilityNone: {
-    color: LingoTheme.colors.muted,
+    color: '#AFAFAF',
     fontStyle: 'italic',
     fontSize: 14,
   },
   moreDaysText: {
     fontSize: 12,
-    color: LingoTheme.colors.muted,
+    color: '#AFAFAF',
     textAlign: 'center',
     marginTop: 8,
   },
@@ -1033,6 +1296,7 @@ const styles = StyleSheet.create({
   /* Actions List */
   actionsList: {
     gap: 12,
+    marginBottom: 24,
   },
   actionCard: {
     flexDirection: 'row',
@@ -1040,15 +1304,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
     padding: 16,
-    ...LingoTheme.shadow.card,
   },
   actionIcon: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 16,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: '#FFF7D6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -1059,12 +1323,12 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: LingoTheme.colors.ink,
+    color: '#3C3C3C',
     marginBottom: 2,
   },
   actionDesc: {
     fontSize: 13,
-    color: LingoTheme.colors.muted,
+    color: '#AFAFAF',
   },
 
   /* Error/Loading Utilities */
@@ -1085,7 +1349,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   retryButton: {
-    backgroundColor: '#F97316',
+    backgroundColor: '#58cc02',
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 16,
@@ -1094,7 +1358,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
 
@@ -1130,7 +1394,9 @@ const styles = StyleSheet.create({
   verificationCard: {
     borderRadius: 24,
     padding: 20,
-    ...LingoTheme.shadow.card,
+    borderWidth: 2,
+    borderColor: '#FDE68A',
+    borderBottomWidth: 4,
   },
   verificationHeader: {
     flexDirection: 'row',
@@ -1151,7 +1417,7 @@ const styles = StyleSheet.create({
   },
   verificationTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#92400E',
     marginBottom: 2,
   },

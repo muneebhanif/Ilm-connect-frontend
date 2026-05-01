@@ -60,26 +60,36 @@ export function NotificationStatusCard({
   const handleEnable = async () => {
     setSyncing(true);
     try {
-      const result = await syncDevicePushToken();
-      if (result.error) {
-        if (Platform.OS === 'web') {
-          Alert.alert('Notifications unavailable', result.error);
-        } else {
-          Alert.alert(
-            'Notifications disabled',
-            permissionStatus === 'denied'
-              ? 'Enable notifications in device settings to receive class reminders and updates.'
-              : result.error,
-            permissionStatus === 'denied'
-              ? [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Open Settings', onPress: () => Linking.openSettings() },
-                ]
-              : [{ text: 'OK' }]
-          );
-        }
+      let result: { token: string | null; error: string | null };
+      try {
+        result = await syncDevicePushToken();
+      } catch (err: any) {
+        console.error('syncDevicePushToken threw:', err);
+        result = { token: null, error: err?.message || 'Unexpected error. Please try again.' };
       }
+
+      if (result.error) {
+        const isPermDenied = permissionStatus === 'denied';
+        Alert.alert(
+          'Notifications unavailable',
+          isPermDenied
+            ? 'Notifications are blocked. Please enable them in your device settings.'
+            : result.error,
+          Platform.OS !== 'web' && isPermDenied
+            ? [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              ]
+            : [{ text: 'OK' }]
+        );
+      } else if (result.token) {
+        Alert.alert('✅ Notifications enabled', 'You will now receive class reminders and updates on this device.', [{ text: 'OK' }]);
+      }
+
       await refreshStatus();
+    } catch (err: any) {
+      console.error('handleEnable unexpected error:', err);
+      Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
     } finally {
       setSyncing(false);
     }

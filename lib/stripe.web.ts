@@ -4,7 +4,7 @@
 import React from 'react';
 
 export function StripeProvider({ children }: { children: React.ReactNode; [key: string]: any }) {
-  return <>{children}</>;
+  return React.createElement(React.Fragment, null, children);
 }
 
 export function useStripe() {

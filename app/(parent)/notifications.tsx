@@ -1,12 +1,24 @@
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import { SkeletonScreen } from '@/components/ui/skeleton';
 
 import { ThemedText } from '@/components/themed-text';
-import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import {
+  LingoCard,
+  LingoEmptyState,
+} from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useAuth } from '@/lib/auth-context';
@@ -14,7 +26,13 @@ import { api } from '@/lib/config';
 
 interface Notification {
   id: string;
-  type: 'class_reminder' | 'class_completed' | 'message' | 'booking_confirmed' | 'review_request' | 'system';
+  type:
+    | 'class_reminder'
+    | 'class_completed'
+    | 'message'
+    | 'booking_confirmed'
+    | 'review_request'
+    | 'system';
   title: string;
   message: string;
   data?: any;
@@ -42,28 +60,28 @@ export default function NotificationsScreen() {
   );
 
   const reminderCount = useMemo(
-    () => notifications.filter((notification) => notification.type === 'class_reminder').length,
+    () =>
+      notifications.filter((notification) => notification.type === 'class_reminder')
+        .length,
     [notifications]
   );
 
   const loadNotifications = async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoading(true);
       const accessToken = await AsyncStorage.getItem('access_token');
       if (!accessToken) return;
 
-      // For now, generate notifications from existing data
-      // In a real app, you'd have a notifications table
       const generatedNotifications: Notification[] = [];
 
       // Get upcoming classes
       const classesRes = await fetch(api.parentClasses(user.id), {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       const classesData = await classesRes.json();
-      
+
       if (classesData.classes) {
         const now = new Date();
         classesData.classes.forEach((cls: any) => {
@@ -77,7 +95,15 @@ export default function NotificationsScreen() {
               id: `class-reminder-${cls.id}`,
               type: 'class_reminder',
               title: 'Upcoming Class Reminder',
-              message: `${cls.students?.name || 'Your child'} has a class with ${cls.courses?.teachers?.profiles?.full_name || 'their teacher'} ${hoursUntil < 1 ? 'in less than an hour' : `in ${Math.round(hoursUntil)} hours`}`,
+              message: `${
+                cls.students?.name || 'Your child'
+              } has a class with ${
+                cls.courses?.teachers?.profiles?.full_name || 'their teacher'
+              } ${
+                hoursUntil < 1
+                  ? 'in less than an hour'
+                  : `in ${Math.round(hoursUntil)} hours`
+              }`,
               data: { classId: cls.id },
               read: false,
               created_at: new Date().toISOString(),
@@ -87,13 +113,16 @@ export default function NotificationsScreen() {
           // Class completed recently (within 24 hours)
           if (cls.status === 'completed') {
             const completedDate = new Date(cls.scheduled_date);
-            const hoursSince = (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60);
+            const hoursSince =
+              (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60);
             if (hoursSince >= 0 && hoursSince <= 24) {
               generatedNotifications.push({
                 id: `class-completed-${cls.id}`,
                 type: 'class_completed',
                 title: 'Class Completed',
-                message: `${cls.students?.name || 'Your child'} completed their class. Rate the session!`,
+                message: `${
+                  cls.students?.name || 'Your child'
+                } completed their class. Rate the session!`,
                 data: { classId: cls.id, teacherId: cls.courses?.teachers?.id },
                 read: false,
                 created_at: completedDate.toISOString(),
@@ -106,7 +135,7 @@ export default function NotificationsScreen() {
       // Get recent messages (unread count)
       try {
         const msgRes = await fetch(api.messages.unreadCount(), {
-          headers: { Authorization: `Bearer ${accessToken}` }
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
         const msgData = await msgRes.json();
         if (msgData.unreadCount > 0) {
@@ -114,7 +143,9 @@ export default function NotificationsScreen() {
             id: 'unread-messages',
             type: 'message',
             title: 'New Messages',
-            message: `You have ${msgData.unreadCount} unread message${msgData.unreadCount > 1 ? 's' : ''}`,
+            message: `You have ${msgData.unreadCount} unread message${
+              msgData.unreadCount > 1 ? 's' : ''
+            }`,
             read: false,
             created_at: new Date().toISOString(),
           });
@@ -124,8 +155,9 @@ export default function NotificationsScreen() {
       }
 
       // Sort by date
-      generatedNotifications.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      generatedNotifications.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
       setNotifications(generatedNotifications);
@@ -145,17 +177,41 @@ export default function NotificationsScreen() {
   const getNotificationMeta = (type: Notification['type']) => {
     switch (type) {
       case 'class_reminder':
-        return { name: 'alarm-outline' as const, tone: 'gold' as const, chip: 'Reminder' };
+        return {
+          name: 'alarm-outline' as const,
+          tone: 'gold' as const,
+          chip: 'Reminder',
+        };
       case 'class_completed':
-        return { name: 'checkmark-circle-outline' as const, tone: 'primary' as const, chip: 'Completed' };
+        return {
+          name: 'checkmark-circle-outline' as const,
+          tone: 'primary' as const,
+          chip: 'Completed',
+        };
       case 'message':
-        return { name: 'chatbubble-outline' as const, tone: 'teal' as const, chip: 'Message' };
+        return {
+          name: 'chatbubble-outline' as const,
+          tone: 'teal' as const,
+          chip: 'Message',
+        };
       case 'booking_confirmed':
-        return { name: 'calendar-outline' as const, tone: 'purple' as const, chip: 'Booking' };
+        return {
+          name: 'calendar-outline' as const,
+          tone: 'purple' as const,
+          chip: 'Booking',
+        };
       case 'review_request':
-        return { name: 'star-outline' as const, tone: 'gold' as const, chip: 'Feedback' };
+        return {
+          name: 'star-outline' as const,
+          tone: 'gold' as const,
+          chip: 'Feedback',
+        };
       default:
-        return { name: 'notifications-outline' as const, tone: 'teal' as const, chip: 'Update' };
+        return {
+          name: 'notifications-outline' as const,
+          tone: 'teal' as const,
+          chip: 'Update',
+        };
     }
   };
 
@@ -185,34 +241,64 @@ export default function NotificationsScreen() {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   return (
     <View style={styles.container}>
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
-        </View>
+        <SkeletonScreen />
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingTop: topPadding,
+              paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100),
+            },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={LingoTheme.colors.primary}
+            />
+          }
         >
-          <LingoScreenHeader
-            badge="Parent hub"
-            icon="notifications"
-            title="Family updates in one place"
-            subtitle="Keep class reminders, teacher messages, and completed-session nudges easy to scan."
-            onBack={() => router.back()}
-          >
-            <View style={styles.statsRow}>
-              <LingoStatPill icon="🔔" value={String(notifications.length)} label="Alerts" tone="primary" />
-              <LingoStatPill icon="💬" value={String(unreadCount)} label="Unread" tone="teal" />
-              <LingoStatPill icon="📅" value={String(reminderCount)} label="Reminders" tone="gold" />
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+            </TouchableOpacity>
+            <View style={styles.topBarCenter}>
+              <ThemedText style={styles.topBarTitle}>Notifications</ThemedText>
+              <ThemedText style={styles.topBarSub}>Class reminders &amp; messages</ThemedText>
             </View>
-          </LingoScreenHeader>
+            <View style={styles.topBarSpacer} />
+          </View>
+
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>🔔</ThemedText>
+              <ThemedText style={styles.pillValue}>{notifications.length}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Alerts</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>💬</ThemedText>
+              <ThemedText style={styles.pillValue}>{unreadCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Unread</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>📅</ThemedText>
+              <ThemedText style={styles.pillValue}>{reminderCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Reminders</ThemedText>
+            </View>
+          </View>
 
           {notifications.length === 0 ? (
             <LingoCard>
@@ -231,10 +317,15 @@ export default function NotificationsScreen() {
                 <TouchableOpacity
                   key={notification.id}
                   style={styles.touchCard}
-                  activeOpacity={0.88}
+                  activeOpacity={0.85} // Lingo tactile feel
                   onPress={() => handleNotificationPress(notification)}
                 >
-                  <LingoCard style={[styles.notificationCard, !notification.read && styles.notificationCardUnread]}>
+                  <LingoCard
+                    style={[
+                      styles.notificationCard,
+                      !notification.read && styles.notificationCardUnread,
+                    ]}
+                  >
                     <View style={styles.notificationTopRow}>
                       <View
                         style={[
@@ -245,23 +336,37 @@ export default function NotificationsScreen() {
                           meta.tone === 'purple' && styles.iconBubblePurple,
                         ]}
                       >
-                        <Ionicons name={meta.name} size={22} color={LingoTheme.colors.ink} />
+                        <Ionicons
+                          name={meta.name}
+                          size={22}
+                          color={LingoTheme.colors.ink}
+                        />
                       </View>
 
                       <View style={styles.notificationContent}>
                         <View style={styles.titleRow}>
-                          <ThemedText style={styles.notificationTitle}>{notification.title}</ThemedText>
-                          {!notification.read ? <View style={styles.unreadDot} /> : null}
+                          <ThemedText style={styles.notificationTitle}>
+                            {notification.title}
+                          </ThemedText>
+                          {!notification.read ? (
+                            <View style={styles.unreadDot} />
+                          ) : null}
                         </View>
-                        <ThemedText style={styles.notificationMessage}>{notification.message}</ThemedText>
+                        <ThemedText style={styles.notificationMessage}>
+                          {notification.message}
+                        </ThemedText>
                       </View>
                     </View>
 
                     <View style={styles.footerRow}>
                       <View style={styles.metaBadge}>
-                        <ThemedText style={styles.metaBadgeText}>{meta.chip}</ThemedText>
+                        <ThemedText style={styles.metaBadgeText}>
+                          {meta.chip}
+                        </ThemedText>
                       </View>
-                      <ThemedText style={styles.timeText}>{formatTime(notification.created_at)}</ThemedText>
+                      <ThemedText style={styles.timeText}>
+                        {formatTime(notification.created_at)}
+                      </ThemedText>
                     </View>
                   </LingoCard>
                 </TouchableOpacity>
@@ -288,35 +393,61 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  topBarSpacer: { width: 44 },
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
     justifyContent: 'center',
-    flexWrap: 'wrap',
+    marginBottom: 20,
   },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 8,
+  },
+  pillIcon: { fontSize: 20, marginBottom: 4 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   touchCard: {
-    marginBottom: 14,
+    marginBottom: LingoTheme.spacing[3], // 12
   },
   notificationCard: {
-    padding: 18,
+    padding: LingoTheme.spacing[4], // 16
   },
   notificationCardUnread: {
-    backgroundColor: '#FCFFFC',
-    borderColor: '#CFEAA9',
+    backgroundColor: LingoTheme.colors.softPrimary, // 'ECFCD8'
+    borderColor: LingoTheme.colors.primaryLight, // 'ECFCD8' (same as softPrimary, but used as border)
   },
   notificationTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 14,
+    gap: LingoTheme.spacing[3], // 12
   },
   iconBubble: {
     width: 52,
     height: 52,
-    borderRadius: 18,
+    borderRadius: LingoTheme.radius.md, // 18
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
   },
+  // Bubble background tints use soft* tokens; border colors are slightly darker
+  // but kept as raw hex since no exact Lingo token exists for these accent borders.
   iconBubblePrimary: {
     backgroundColor: LingoTheme.colors.softPrimary,
     borderColor: '#B7E889',
@@ -339,14 +470,14 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    gap: LingoTheme.spacing[2], // 8
+    marginBottom: LingoTheme.spacing[1] * 1.5, // 6 – slight deviation, acceptable
   },
   notificationTitle: {
     flex: 1,
-    fontSize: 17,
+    fontSize: LingoTheme.typography.sizes.base, // 16
     lineHeight: 21,
-    fontWeight: '800',
+    fontWeight: LingoTheme.typography.weights.extrabold, // '800'
     color: LingoTheme.colors.ink,
   },
   unreadDot: {
@@ -356,35 +487,35 @@ const styles = StyleSheet.create({
     backgroundColor: LingoTheme.colors.primary,
   },
   notificationMessage: {
-    fontSize: 14,
+    fontSize: LingoTheme.typography.sizes.sm, // 14
     lineHeight: 21,
     color: LingoTheme.colors.muted,
   },
   footerRow: {
-    marginTop: 16,
+    marginTop: LingoTheme.spacing[4], // 16
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: LingoTheme.spacing[3], // 12
   },
   metaBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: '#FFFFFF',
+    borderRadius: LingoTheme.radius.pill,
+    paddingHorizontal: LingoTheme.spacing[3], // 12
+    paddingVertical: LingoTheme.spacing[2], // 8
+    backgroundColor: LingoTheme.colors.surface,
     borderWidth: 1.5,
     borderColor: LingoTheme.colors.border,
   },
   metaBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: LingoTheme.typography.sizes.xs, // 12
+    fontWeight: LingoTheme.typography.weights.extrabold,
     color: LingoTheme.colors.ink,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   timeText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: LingoTheme.typography.sizes.xs, // 12
+    fontWeight: LingoTheme.typography.weights.bold, // '700'
     color: LingoTheme.colors.muted,
   },
 });

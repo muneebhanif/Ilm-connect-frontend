@@ -1,11 +1,11 @@
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
-import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useAuth } from '@/lib/auth-context';
@@ -132,22 +132,37 @@ export default function TeacherNotificationsScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding + 24 }]}
+          contentContainerStyle={[styles.content, { paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={LingoTheme.colors.primary} />}
         >
-          <LingoScreenHeader
-            badge="Teacher inbox"
-            icon="notifications"
-            title="Notifications that matter"
-            subtitle="Stay ahead of new bookings, enrollments, reminders, and updates without digging through tabs."
-            onBack={() => router.back()}
-          >
-            <View style={styles.statsRow}>
-              <LingoStatPill icon="🔔" value={String(notifications.length)} label="Updates" tone="primary" />
-              <LingoStatPill icon="✨" value={String(unreadCount)} label="Unread" tone="purple" />
-              <LingoStatPill icon="🕒" value={String(recentCount)} label="Today" tone="teal" />
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+            </TouchableOpacity>
+            <View style={styles.topBarCenter}>
+              <ThemedText style={styles.topBarTitle}>Notifications</ThemedText>
+              <ThemedText style={styles.topBarSub}>Bookings &amp; updates</ThemedText>
             </View>
-          </LingoScreenHeader>
+            <View style={{ width: 44 }} />
+          </View>
+          <View style={styles.statsRow}>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>🔔</ThemedText>
+              <ThemedText style={styles.pillValue}>{notifications.length}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Updates</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>✨</ThemedText>
+              <ThemedText style={styles.pillValue}>{unreadCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Unread</ThemedText>
+            </View>
+            <View style={styles.metricPill}>
+              <ThemedText style={styles.pillIcon}>🕒</ThemedText>
+              <ThemedText style={styles.pillValue}>{recentCount}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Today</ThemedText>
+            </View>
+          </View>
 
           {notifications.length === 0 ? (
             <LingoCard>
@@ -219,15 +234,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: LingoTheme.colors.background,
   },
-  content: {
-    paddingHorizontal: 16,
+  content: { paddingHorizontal: 16 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  backButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+  topBarCenter: { flex: 1, alignItems: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
+  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 16 },
+  metricPill: {
+    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    paddingVertical: 12, paddingHorizontal: 4,
   },
+  pillIcon: { fontSize: 18, marginBottom: 2 },
+  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
+  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   touchCard: {
     marginBottom: 14,
   },

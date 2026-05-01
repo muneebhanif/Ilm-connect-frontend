@@ -11,26 +11,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 
+import {
+  createAgoraRtcEngine,
+  RtcSurfaceView,
+  ChannelProfileType,
+  ClientRoleType,
+} from '@/lib/agora';
+
 const isWeb = Platform.OS === 'web';
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 /* ── Native Agora imports (only on Android/iOS) ── */
-let createAgoraRtcEngine: any = null;
-let RtcSurfaceView: any = null;
-let ChannelProfileType: any = null;
-let ClientRoleType: any = null;
 
-if (!isWeb) {
-  try {
-    const agora = require('react-native-agora');
-    createAgoraRtcEngine = agora.createAgoraRtcEngine;
-    RtcSurfaceView = agora.RtcSurfaceView;
-    ChannelProfileType = agora.ChannelProfileType;
-    ClientRoleType = agora.ClientRoleType;
-  } catch (e) {
-    console.warn('react-native-agora not available:', e);
-  }
-}
 
 interface ClassDetails {
   id: string;

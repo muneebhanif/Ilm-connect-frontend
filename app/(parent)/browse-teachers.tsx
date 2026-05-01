@@ -5,9 +5,10 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { SkeletonScreen } from '@/components/ui/skeleton';
 
 interface Teacher {
   id: string;
@@ -36,7 +37,7 @@ export default function BrowseTeachersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const subjects = ['All', 'Quran Memorization', 'Tajweed', 'Arabic Language', 'Islamic Studies', 'Fiqh', 'Hadith'];
+  const subjects = ['All', 'Quran Memorization', 'Tajweed', 'Arabic', 'Islamic Studies', 'Fiqh', 'Hadith'];
 
   useEffect(() => {
     fetchTeachers();
@@ -68,6 +69,10 @@ export default function BrowseTeachersScreen() {
     }
   };
 
+  if (loading) {
+    return <SkeletonScreen />;
+  }
+
   const onRefresh = () => {
     fetchTeachers('refresh');
   };
@@ -84,24 +89,31 @@ export default function BrowseTeachersScreen() {
   });
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.headerScroll}
-        contentContainerStyle={{ paddingTop: topPadding }}
-        horizontal={false}
-        scrollEnabled={false}
+    <View style={[styles.container, { paddingTop: topPadding }]}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={LingoTheme.colors.primary} 
+          />
+        }
       >
         <View style={styles.headerPad}>
+          {/* Removed Parent Hub badge to match Islamic Education theme */}
           <LingoScreenHeader
-            badge="Parent hub"
             icon="people"
             title="Find a teacher with confidence"
             subtitle="Browse verified teachers, compare strengths, and filter by subject in a friendlier flow."
           />
 
-          {/* Mode Switch - Lingo Style */}
+          {/* Mode Switch - Tactile Lingo Style */}
           <View style={styles.modeSwitch}>
-            <TouchableOpacity style={[styles.modePill, styles.modePillActive]} activeOpacity={0.8}>
+            <TouchableOpacity style={[styles.modePill, styles.modePillActive]} activeOpacity={1}>
+              <Ionicons name="person" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
               <ThemedText style={[styles.modePillText, styles.modePillTextActive]}>Teachers</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -109,29 +121,31 @@ export default function BrowseTeachersScreen() {
               onPress={() => router.push('/(parent)/browse-courses')}
               activeOpacity={0.8}
             >
+              <Ionicons name="book" size={18} color="#777777" style={{ marginRight: 6 }} />
               <ThemedText style={styles.modePillText}>Courses</ThemedText>
             </TouchableOpacity>
           </View>
 
-          <LingoCard style={styles.filterCard}>
-            {/* Search - Lingo Style */}
+          {/* Main Filter Card */}
+          <View style={styles.filterCard}>
+            {/* Search Bar */}
             <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color={LingoTheme.colors.textTertiary} />
+              <Ionicons name="search" size={22} color="#AFAFAF" />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search by name or subject..."
-                placeholderTextColor={LingoTheme.colors.textTertiary}
+                placeholderTextColor="#AFAFAF"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
               {searchQuery ? (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color={LingoTheme.colors.textTertiary} />
+                  <Ionicons name="close-circle" size={20} color="#AFAFAF" />
                 </TouchableOpacity>
               ) : null}
             </View>
 
-            {/* Subject Pills - Lingo Style */}
+            {/* Subject Pills */}
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false} 
@@ -150,119 +164,127 @@ export default function BrowseTeachersScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </LingoCard>
-        </View>
-      </ScrollView>
-
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
-            tintColor={LingoTheme.colors.primary} 
-          />
-        }
-      >
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
           </View>
-        ) : filteredTeachers.length === 0 ? (
-          <LingoCard>
-            <LingoEmptyState 
-              icon="search-outline" 
-              title="No teachers found" 
-              subtitle="Try adjusting your search or filters to widen the results." 
-              tone="teal" 
-            />
-          </LingoCard>
-        ) : (
-          filteredTeachers.map((teacher) => (
-            <TouchableOpacity 
-              key={teacher.id} 
-              style={styles.card}
-              activeOpacity={0.85}
-              onPress={() => router.push({ 
-                pathname: '/teacher-profile/[id]',
-                params: { id: teacher.id }
-              })}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.avatarContainer}>
-                  {teacher.profiles.avatar_url ? (
-                    <Image source={{ uri: teacher.profiles.avatar_url }} style={styles.avatarImage} />
-                  ) : (
-                    <LinearGradient
-                      colors={[LingoTheme.colors.teal, '#2BCBBA']}
-                      style={styles.avatarPlaceholder}
-                    >
-                      <ThemedText style={styles.avatarText}>
-                        {teacher.profiles.full_name.charAt(0)}
-                      </ThemedText>
-                    </LinearGradient>
-                  )}
-                  {(['verified', 'approved'].includes(String(teacher.verification_status || '').toLowerCase())) && (
-                    <View style={styles.verifiedBadge}>
-                      <Ionicons name="checkmark" size={10} color={LingoTheme.colors.textInverse} />
-                    </View>
-                  )}
-                </View>
+        </View>
 
-                <View style={styles.headerInfo}>
-                  <View style={styles.nameRow}>
-                    <ThemedText style={styles.nameText} numberOfLines={1}>
-                      {teacher.profiles.full_name}
-                    </ThemedText>
-                    <View style={styles.ratingBadge}>
-                      <Ionicons name="star" size={12} color={LingoTheme.colors.warning} />
-                      <ThemedText style={styles.ratingText}>
-                        {teacher.rating ? teacher.rating.toFixed(1) : 'New'}
-                      </ThemedText>
-                      {teacher.review_count ? (
-                        <ThemedText style={styles.reviewCount}>
-                          ({teacher.review_count})
+        {/* Teacher List */}
+        <View style={styles.listContent}>
+          {filteredTeachers.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <LingoEmptyState 
+                icon="search-outline" 
+                title="No teachers found" 
+                subtitle="Try adjusting your search or filters to widen the results." 
+                tone="teal" 
+              />
+            </View>
+          ) : (
+            filteredTeachers.map((teacher) => (
+              <TouchableOpacity 
+                key={teacher.id} 
+                style={styles.card}
+                activeOpacity={0.85}
+                onPress={() => router.push({ 
+                  pathname: '/teacher-profile/[id]',
+                  params: { id: teacher.id }
+                })}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={styles.avatarContainer}>
+                    {teacher.profiles.avatar_url ? (
+                      <Image source={{ uri: teacher.profiles.avatar_url }} style={styles.avatarImage} />
+                    ) : (
+                      <LinearGradient
+                        colors={[LingoTheme.colors.teal, '#2BCBBA']}
+                        style={styles.avatarPlaceholder}
+                      >
+                        <ThemedText style={styles.avatarText}>
+                          {teacher.profiles.full_name.charAt(0)}
                         </ThemedText>
-                      ) : null}
-                    </View>
-                  </View>
-
-                  <ThemedText style={styles.subjectsText} numberOfLines={1}>
-                    {teacher.subjects.join(' • ')}
-                  </ThemedText>
-
-                  <View style={styles.metaRow}>
-                    <View style={styles.metaItem}>
-                       <Ionicons name="language-outline" size={14} color={LingoTheme.colors.textSecondary} />
-                       <ThemedText style={styles.metaText}>{teacher.languages?.[0] || 'English'}</ThemedText>
-                    </View>
-                    {teacher.has_ijaazah && (
-                      <View style={[styles.metaItem, styles.ijaazahTag]}>
-                         <Ionicons name="ribbon-outline" size={14} color={LingoTheme.colors.gold} />
-                         <ThemedText style={[styles.metaText, { color: LingoTheme.colors.gold }]}>Ijaazah</ThemedText>
+                      </LinearGradient>
+                    )}
+                    {(['verified', 'approved'].includes(String(teacher.verification_status || '').toLowerCase())) && (
+                      <View style={styles.verifiedBadge}>
+                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                       </View>
                     )}
                   </View>
-                </View>
-              </View>
 
-              <View style={styles.cardFooter}>
-                <View>
-                   <ThemedText style={styles.rateLabel}>Hourly Rate</ThemedText>
-                   <ThemedText style={styles.rateValue}>${teacher.hourly_rate}</ThemedText>
+                  <View style={styles.headerInfo}>
+                    <View style={styles.nameRow}>
+                      <ThemedText style={styles.nameText} numberOfLines={1}>
+                        {teacher.profiles.full_name}
+                      </ThemedText>
+                      <View style={styles.ratingBadge}>
+                        <Ionicons name="star" size={14} color="#FFC800" />
+                        <ThemedText style={styles.ratingText}>
+                          {teacher.rating ? teacher.rating.toFixed(1) : 'New'}
+                        </ThemedText>
+                        {teacher.review_count ? (
+                          <ThemedText style={styles.reviewCount}>
+                            ({teacher.review_count})
+                          </ThemedText>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    <ThemedText style={styles.subjectsText} numberOfLines={1}>
+                      {teacher.subjects.join(' • ')}
+                    </ThemedText>
+
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaItem}>
+                         <Ionicons name="globe-outline" size={16} color="#777777" />
+                         <ThemedText style={styles.metaText}>{teacher.languages?.join(', ') || 'English'}</ThemedText>
+                      </View>
+                      {(['verified', 'approved'].includes(String(teacher.verification_status || '').toLowerCase())) && (
+                        <View style={styles.verifiedTag}>
+                           <Ionicons name="checkmark-circle" size={14} color="#58cc02" />
+                           <ThemedText style={[styles.metaText, { color: '#58cc02', fontWeight: '700' }]}>Verified Teacher</ThemedText>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* View Profile Button */}
+                    <TouchableOpacity 
+                      style={styles.viewProfileBtn}
+                      onPress={() => router.push({ 
+                        pathname: '/teacher-profile/[id]',
+                        params: { id: teacher.id }
+                      })}
+                      activeOpacity={0.8}
+                    >
+                      <ThemedText style={styles.viewProfileText}>View Profile</ThemedText>
+                      <Ionicons name="chevron-forward" size={16} color={LingoTheme.colors.primary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                <TouchableOpacity style={styles.bookButton} activeOpacity={0.8}>
-                   <ThemedText style={styles.bookButtonText}>View Profile</ThemedText>
-                   <Ionicons name="arrow-forward" size={16} color={LingoTheme.colors.teal} />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-        <View style={{ height: 40 }} />
+                <View style={styles.cardFooter}>
+                  <View style={styles.footerLeft}>
+                    <View style={styles.rateGroup}>
+                      <ThemedText style={styles.rateLabel}>HOURLY RATE</ThemedText>
+                      <View style={styles.rateValueRow}>
+                        <Ionicons name="cash-outline" size={16} color="#58cc02" />
+                        <ThemedText style={styles.rateValue}>${teacher.hourly_rate}/hour</ThemedText>
+                      </View>
+                    </View>
+                    <View style={styles.rateGroup}>
+                      <ThemedText style={styles.rateLabel}>EXPERIENCE</ThemedText>
+                      <View style={styles.rateValueRow}>
+                        <Ionicons name="ribbon-outline" size={16} color="#ce82ff" />
+                        <ThemedText style={styles.rateValue}>3+ years</ThemedText>
+                      </View>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={styles.heartButton} activeOpacity={0.7}>
+                    <Ionicons name="heart-outline" size={22} color="#AFAFAF" />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -271,118 +293,135 @@ export default function BrowseTeachersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: '#F7F7F7', // Lingo light background
   },
-  headerScroll: {
-    flexGrow: 0,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100, // Safe padding for bottom tabs
   },
   headerPad: {
     paddingHorizontal: 16,
+    paddingTop: 10,
   },
 
   /* Mode Switch - Lingo Style */
   modeSwitch: {
     flexDirection: 'row',
-    backgroundColor: LingoTheme.colors.surface,
-    borderRadius: LingoTheme.radius.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4, // 3D tactile border
     padding: 4,
-    marginBottom: 14,
-    ...LingoTheme.shadow.card,
+    marginBottom: 16,
   },
   modePill: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: LingoTheme.radius.sm,
-    paddingVertical: 10,
+    borderRadius: 20,
+    paddingVertical: 14,
   },
   modePillActive: {
-    backgroundColor: LingoTheme.colors.ink,
+    backgroundColor: '#2D6B22', // Dark green like reference
   },
   modePillText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
-    color: LingoTheme.colors.muted,
+    color: '#777777',
   },
   modePillTextActive: {
-    color: LingoTheme.colors.textInverse,
+    color: '#FFFFFF',
   },
 
   /* Filter Card */
   filterCard: {
-    marginBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    padding: 16,
+    marginBottom: 20,
   },
 
-  /* Search - Lingo Style */
+  /* Search Bar */
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: LingoTheme.colors.surface,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    height: 48,
-    borderRadius: LingoTheme.radius.md,
+    height: 52,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderColor: '#E5E5E5',
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 15,
-    color: LingoTheme.colors.ink,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#3C3C3C',
     height: '100%',
   },
 
   /* Pills - Lingo Style */
   pillsContainer: {
     gap: 8,
-    paddingTop: 14,
+    paddingTop: 16,
     paddingBottom: 4,
   },
   pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: LingoTheme.radius.pill,
-    backgroundColor: LingoTheme.colors.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
-    gap: 8,
+    borderColor: '#E5E5E5',
   },
   pillActive: {
-    backgroundColor: LingoTheme.colors.primary,
+    backgroundColor: LingoTheme.colors.primary, // #58cc02
     borderColor: LingoTheme.colors.primary,
   },
   pillText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: LingoTheme.colors.ink,
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#3C3C3C',
   },
   pillTextActive: {
-    color: LingoTheme.colors.textInverse,
+    color: '#FFFFFF',
   },
 
-  /* List */
-  scrollView: {
-    flex: 1,
-  },
+  /* List Content */
   listContent: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   loadingContainer: {
     paddingVertical: 60,
     alignItems: 'center',
   },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    padding: 24,
+  },
 
-  /* Card - Lingo Style */
+  /* Teacher Card - Tactile Style */
   card: {
-    backgroundColor: LingoTheme.colors.surface,
-    borderRadius: LingoTheme.radius.lg,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4, // 3D tactile border
+    padding: 20,
     marginBottom: 16,
-    ...LingoTheme.shadow.card,
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -393,34 +432,38 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 20, // Squircle look
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
   },
   avatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: LingoTheme.colors.textInverse,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: LingoTheme.colors.success,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 68,
+    height: 68,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: LingoTheme.colors.surface,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: '#58cc02',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   headerInfo: {
     flex: 1,
@@ -433,35 +476,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   nameText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: LingoTheme.colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3C3C3C',
     flex: 1,
     marginRight: 8,
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: LingoTheme.colors.softGold,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    backgroundColor: '#FFF8E5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     gap: 4,
   },
   ratingText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: LingoTheme.colors.gold,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#D4AF37',
   },
   reviewCount: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: LingoTheme.colors.textTertiary,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#AFAFAF',
   },
   subjectsText: {
-    fontSize: 13,
-    color: LingoTheme.colors.textSecondary,
-    marginBottom: 8,
+    fontSize: 14,
+    color: '#777777',
+    fontWeight: '600',
+    marginBottom: 10,
   },
   metaRow: {
     flexDirection: 'row',
@@ -473,50 +517,77 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ijaazahTag: {
-    backgroundColor: LingoTheme.colors.softGold,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    backgroundColor: '#FFF8E5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   metaText: {
-    fontSize: 12,
-    color: LingoTheme.colors.textSecondary,
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#777777',
+    fontWeight: '700',
+  },
+  verifiedTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: '#ECFCD8',
+  },
+  viewProfileText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#58cc02',
   },
 
-  /* Footer */
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: LingoTheme.colors.borderLight,
+    borderTopWidth: 2,
+    borderTopColor: '#E5E5E5',
+  },
+  footerLeft: {
+    flexDirection: 'row',
+    gap: 24,
+    flex: 1,
+  },
+  rateGroup: {
+    gap: 4,
   },
   rateLabel: {
-    fontSize: 11,
-    color: LingoTheme.colors.textTertiary,
+    fontSize: 10,
+    color: '#AFAFAF',
     textTransform: 'uppercase',
-    fontWeight: '600',
-    marginBottom: 2,
+    fontWeight: '800',
   },
-  rateValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: LingoTheme.colors.text,
-  },
-  bookButton: {
+  rateValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: LingoTheme.radius.sm,
-    backgroundColor: LingoTheme.colors.softTeal,
+    gap: 4,
   },
-  bookButtonText: {
+  rateValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: LingoTheme.colors.teal,
+    fontWeight: '800',
+    color: '#58cc02',
+  },
+  heartButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
