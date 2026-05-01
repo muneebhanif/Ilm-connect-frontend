@@ -10,8 +10,6 @@ import { authFetch } from '@/lib/auth-fetch';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
-import { LingoTheme } from '@/constants/theme';
 
 // Validation constants
 const MAX_MESSAGE_LENGTH = 2000;
@@ -386,30 +384,28 @@ export default function ChatScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <LingoScreenHeader
-          title={String(name || 'Chat')}
-          subtitle="Send updates, screenshots, and notes in one conversation."
-          badge="Messages"
-          icon="chatbubble-ellipses-outline"
-          onBack={() => require('expo-router').router.back()}
-          style={styles.headerShell}
-        >
-          <View style={styles.headerRow}>
-            {avatar ? (
-              <Image 
-                source={{ uri: avatar as string }} 
-                style={styles.headerAvatarImage}
-              />
-            ) : (
-              <View style={styles.headerAvatar}>
-                <ThemedText style={styles.headerAvatarText}>
-                  {(name as string)?.charAt(0)?.toUpperCase() || 'U'}
-                </ThemedText>
-              </View>
-            )}
-            <LingoBadge label={messages.length ? `${messages.length} messages` : 'New thread'} icon="mail-outline" tone="teal" />
+        <TouchableOpacity onPress={() => require('expo-router').router.back()} style={{ padding: 8 }}>
+          <Ionicons name="arrow-back" size={22} color="#1F2937" />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          {avatar ? (
+            <Image 
+              source={{ uri: avatar as string }} 
+              style={styles.headerAvatarImage}
+            />
+          ) : (
+            <View style={styles.headerAvatar}>
+              <ThemedText style={styles.headerAvatarText}>
+                {(name as string)?.charAt(0)?.toUpperCase() || 'U'}
+              </ThemedText>
+            </View>
+          )}
+          <View>
+            <ThemedText style={styles.headerTitle} numberOfLines={1}>
+              {name || 'Chat'}
+            </ThemedText>
           </View>
-        </LingoScreenHeader>
+        </View>
       </View>
 
       {/* Messages */}
@@ -429,9 +425,13 @@ export default function ChatScreen() {
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
           removeClippedSubviews={false}
           ListEmptyComponent={
-            <LingoCard style={styles.emptyCard}>
-              <LingoEmptyState icon="chatbubbles-outline" title="No messages yet" subtitle="Say hello to start the conversation." tone="teal" />
-            </LingoCard>
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconBg}>
+                <Ionicons name="chatbubbles-outline" size={32} color="#9CA3AF" />
+              </View>
+              <ThemedText style={styles.emptyText}>No messages yet</ThemedText>
+              <ThemedText style={styles.emptySubtext}>Say hello to start the conversation!</ThemedText>
+            </View>
           }
         />
       )}
@@ -563,28 +563,36 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: '#F3F4F6', // Slightly darker background for chat contrast
   },
   // Header
   header: {
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 8 : 6,
-    paddingBottom: 8,
-  },
-  headerShell: {
-    marginBottom: 0,
-  },
-  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    zIndex: 10,
+  },
+  headerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
   },
   headerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: LingoTheme.colors.primary,
+    backgroundColor: '#4ECDC4',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -603,6 +611,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  headerStatus: {
+    fontSize: 12,
+    color: '#4ECDC4',
+    fontWeight: '500',
   },
   
   // List
@@ -744,15 +762,38 @@ const styles = StyleSheet.create({
   },
 
   // Empty State
-  emptyCard: {
-    marginTop: 60,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 80,
+    transform: [{ scaleY: -1 }] // Counteract inverted list if necessary, but here normal list
+  },
+  emptyIconBg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 4,
   },
 
   // Input Area
   inputWrapper: {
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 2,
-    borderTopColor: LingoTheme.colors.border,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -763,8 +804,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 8,
     paddingVertical: 8,
-    borderWidth: 2,
-    borderColor: LingoTheme.colors.border,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   attachButton: {
     width: 36,
@@ -787,7 +828,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: LingoTheme.colors.primary,
+    backgroundColor: '#4ECDC4',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,

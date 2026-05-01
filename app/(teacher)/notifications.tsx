@@ -9,9 +9,10 @@ import { LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { useAuth } from '@/lib/auth-context';
+import { authFetch } from '@/lib/auth-fetch';
 import { api } from '@/lib/config';
 
-type TeacherNotificationType = 'student_enrolled' | 'upcoming_class' | 'system';
+type TeacherNotificationType = 'student_enrolled' | 'class_booked' | 'upcoming_class' | 'system';
 
 interface TeacherNotification {
   id: string;
@@ -63,7 +64,7 @@ export default function TeacherNotificationsScreen() {
 
     try {
       setLoading(true);
-      const response = await fetch(api.teacherNotifications(user.id));
+      const response = await authFetch(api.teacherNotifications(user.id));
       const data = await response.json();
 
       if (!response.ok) {
@@ -87,6 +88,8 @@ export default function TeacherNotificationsScreen() {
 
   const getNotificationMeta = (type: TeacherNotificationType) => {
     switch (type) {
+      case 'class_booked':
+        return { name: 'calendar-outline' as const, tone: 'primary' as const, chip: 'New booking' };
       case 'student_enrolled':
         return { name: 'person-add-outline' as const, tone: 'primary' as const, chip: 'New student' };
       case 'upcoming_class':
@@ -102,26 +105,22 @@ export default function TeacherNotificationsScreen() {
       return;
     }
 
-    if (notification.type === 'upcoming_class') {
+    if (notification.type === 'upcoming_class' || notification.type === 'class_booked') {
       router.push('/(teacher)/schedule');
     }
   };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    if (!Number.isFinite(date.getTime())) return 'Just now';
+    if (!Number.isFinite(date.getTime())) return 'Date unavailable';
 
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -140,7 +139,7 @@ export default function TeacherNotificationsScreen() {
             badge="Teacher inbox"
             icon="notifications"
             title="Notifications that matter"
-            subtitle="Stay ahead of new enrollments, reminders, and updates without digging through tabs."
+            subtitle="Stay ahead of new bookings, enrollments, reminders, and updates without digging through tabs."
             onBack={() => router.back()}
           >
             <View style={styles.statsRow}>
@@ -155,7 +154,7 @@ export default function TeacherNotificationsScreen() {
               <LingoEmptyState
                 icon="notifications-off-outline"
                 title="No teacher alerts yet"
-                subtitle="New student enrollments and upcoming class reminders will appear here as soon as they happen."
+                subtitle="New class bookings, student enrollments, and upcoming class reminders will appear here as soon as they happen."
                 tone="teal"
               />
             </LingoCard>

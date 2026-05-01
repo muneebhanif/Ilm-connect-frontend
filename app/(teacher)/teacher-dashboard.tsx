@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
+import { authFetch } from '@/lib/auth-fetch';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts, LingoTheme } from '@/constants/theme';
 import { TeacherDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
@@ -99,7 +100,7 @@ export default function TeacherDashboard() {
     if (!user?.id) return;
 
     try {
-      const response = await fetch(api.teacherNotifications(user.id));
+      const response = await authFetch(api.teacherNotifications(user.id));
       const data = await response.json();
       if (response.ok && Number.isFinite(Number(data.unreadCount))) {
         setNotificationCount(Number(data.unreadCount));
@@ -331,7 +332,13 @@ export default function TeacherDashboard() {
                 onPress={() => router.push('/(teacher)/notifications')}
               >
                 <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-                {notificationCount > 0 && <View style={styles.notificationDot} />}
+                {notificationCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <ThemedText style={styles.notificationBadgeText}>
+                      {notificationCount > 99 ? '99+' : String(notificationCount)}
+                    </ThemedText>
+                  </View>
+                )}
               </TouchableOpacity>
                 <TouchableOpacity 
                 style={styles.profileButton}
@@ -766,16 +773,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  notificationDot: {
+  notificationBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    borderWidth: 1.5,
+    top: 4,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#F59E0B',
+    borderWidth: 2,
     borderColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  notificationBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFF',
+    lineHeight: 10,
   },
   profileButton: {
     width: 44,

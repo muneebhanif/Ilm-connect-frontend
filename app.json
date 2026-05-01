@@ -20,7 +20,6 @@
       "package": "com.ilmconnect.app",
       "versionCode": 1,
       "permissions": [
-        "android.permission.POST_NOTIFICATIONS",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
@@ -54,7 +53,6 @@
         }
       ],
       "expo-web-browser",
-      "expo-notifications",
       [
         "@stripe/stripe-react-native",
         {

@@ -1,6 +1,6 @@
 import { StyleSheet, View, TouchableOpacity, Alert, Platform, ActivityIndicator, TextInput, ScrollView, Animated, Dimensions, PermissionsAndroid, Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/config';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
@@ -12,7 +12,7 @@ import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/com
 import { LingoTheme } from '@/constants/theme';
 
 const isWeb = Platform.OS === 'web';
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 /* ── Native Agora imports (only on Android/iOS) ── */
 let createAgoraRtcEngine: any = null;
@@ -58,6 +58,35 @@ interface RemoteParticipant {
   hasAudio: boolean;
 }
 
+const applyNativeMediaQuality = (engine: any) => {
+  try { engine?.setAudioProfile?.(1, 1); } catch {}
+  try { engine?.setEnableSpeakerphone?.(true); } catch {}
+  try {
+    engine?.setVideoEncoderConfiguration?.({
+      dimensions: { width: 1280, height: 720 },
+      frameRate: 24,
+      minFrameRate: 15,
+      bitrate: 0,
+      orientationMode: 0,
+      degradationPreference: 1,
+      mirrorMode: 0,
+    });
+  } catch {}
+};
+
+const createOptimizedWebTracks = async (AgoraRTC: any) => {
+  const audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+    AEC: true, AGC: true, ANS: true,
+    encoderConfig: { sampleRate: 48000, stereo: false, bitrate: 64 },
+  });
+  const videoTrack = await AgoraRTC.createCameraVideoTrack({
+    encoderConfig: '720p_2',
+    optimizationMode: 'detail',
+  });
+  try { audioTrack.setVolume?.(85); } catch {}
+  return [audioTrack, videoTrack];
+};
+
 export default function ClassRoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -77,6 +106,8 @@ export default function ClassRoomScreen() {
   const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [participantCount, setParticipantCount] = useState(1);
+  const [focusedUid, setFocusedUid] = useState<string | number>('local');
+  const [isLandscape, setIsLandscape] = useState(SCREEN_W > SCREEN_H);
 
   // Web-only refs
   const rtcClientRef = useRef<any>(null);
@@ -92,6 +123,15 @@ export default function ClassRoomScreen() {
   const joiningRef = useRef(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const chatScrollRef = useRef<ScrollView>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // ─── Orientation & Dimensions ──────────────────────────────
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ window }) => {
+      setIsLandscape(window.width > window.height);
+    });
+    return () => sub?.remove?.();
+  }, []);
 
   // ─── Animations & Timers ─────────────────────────────────
   useEffect(() => {
@@ -135,25 +175,57 @@ export default function ClassRoomScreen() {
 
   useEffect(() => { return () => { void cleanup(); }; }, []);
 
-  // Web-only: play local video
+  // Auto-focus first remote when they join
+  useEffect(() => {
+    if (!joined) return;
+    if (remoteParticipants.length > 0 && focusedUid === 'local') {
+      setFocusedUid(remoteParticipants[0].uid);
+    }
+  }, [joined, remoteParticipants, focusedUid]);
+
+  // If focused remote leaves, fall back
+  useEffect(() => {
+    if (!joined || focusedUid === 'local') return;
+    const stillHere = remoteParticipants.some((p) => String(p.uid) === String(focusedUid));
+    if (!stillHere) {
+      if (remoteParticipants.length > 0) {
+        setFocusedUid(remoteParticipants[0].uid);
+      } else {
+        setFocusedUid('local');
+      }
+    }
+  }, [remoteParticipants, joined, focusedUid]);
+
+  // Web-only: play local video (routes to main or pip based on focus)
   useEffect(() => {
     if (!isWeb || !joined) return;
     const vt = localTracksRef.current.videoTrack;
     if (!vt) return;
     const t = setTimeout(() => {
-      const el = document.getElementById('local-player');
+      const elId = focusedUid === 'local' ? 'main-player' : 'local-player';
+      const el = document.getElementById(elId);
       if (el) vt.play(el);
     }, 0);
     return () => clearTimeout(t);
-  }, [joined]);
+  }, [joined, focusedUid]);
 
-  // Web-only: play remote video
+  // Web-only: play remote video (routes to main or grid based on focus)
   useEffect(() => {
-    const videoParticipants = remoteParticipants.filter((participant) => participant.hasVideo);
+    const videoParticipants = remoteParticipants.filter((p) => p.hasVideo);
     if (!isWeb || !joined || videoParticipants.length === 0) return;
-    const t = setTimeout(() => videoParticipants.forEach((participant) => renderRemoteVideo(String(participant.uid))), 0);
+    const t = setTimeout(() => {
+      videoParticipants.forEach((participant) => {
+        const client = rtcClientRef.current;
+        if (!client) return;
+        const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(participant.uid));
+        if (!ru?.videoTrack) return;
+        const elId = String(participant.uid) === String(focusedUid) ? 'main-player' : `remote-player-${participant.uid}`;
+        const el = document.getElementById(elId);
+        if (el) ru.videoTrack.play(el);
+      });
+    }, 0);
     return () => clearTimeout(t);
-  }, [remoteParticipants, joined]);
+  }, [remoteParticipants, joined, focusedUid]);
 
   useEffect(() => {
     setParticipantCount(1 + (isWeb ? remoteParticipants.length : remoteUids.length));
@@ -199,7 +271,7 @@ export default function ClassRoomScreen() {
         await rtcClientRef.current.leave();
       }
     } catch (e) { console.warn('Web cleanup warning:', e); }
-    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); }
+    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
   };
 
   const cleanupNativeAgora = async () => {
@@ -211,7 +283,7 @@ export default function ClassRoomScreen() {
         engine.release();
       }
     } catch (e) { console.warn('Native cleanup warning:', e); }
-    finally { nativeEngineRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); }
+    finally { nativeEngineRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
   };
 
   // ─── Token Renewal ───────────────────────────────────────
@@ -264,15 +336,12 @@ export default function ClassRoomScreen() {
 
   const ensureClassroomPermissions = async () => {
     if (Platform.OS !== 'android') return true;
-
     const result = await PermissionsAndroid.requestMultiple([
       PermissionsAndroid.PERMISSIONS.CAMERA,
       PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
     ]);
-
     const denied = Object.values(result).some((value) => value !== PermissionsAndroid.RESULTS.GRANTED);
     if (!denied) return true;
-
     Alert.alert(
       'Permissions required',
       'Camera and microphone permissions are required for live classes.',
@@ -281,7 +350,6 @@ export default function ClassRoomScreen() {
         { text: 'Open Settings', onPress: () => Linking.openSettings() },
       ]
     );
-
     return false;
   };
 
@@ -327,6 +395,7 @@ export default function ClassRoomScreen() {
 
       joinedRef.current = true;
       setJoined(true);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     } catch (e: any) {
       console.error('Join failed:', e);
       setError(String(e?.message || '').toLowerCase().includes('permission')
@@ -347,6 +416,7 @@ export default function ClassRoomScreen() {
       appId,
       channelProfile: ChannelProfileType.ChannelProfileCommunication,
     });
+    applyNativeMediaQuality(engine);
 
     engine.addListener('onUserJoined', (_connection: any, remoteUid: number) => {
       addRemoteUid(remoteUid);
@@ -413,7 +483,10 @@ export default function ClassRoomScreen() {
           hasAudio: mediaType === 'audio' ? true : Boolean(remoteUser.hasAudio),
         });
         await client.subscribe(remoteUser, mediaType);
-        if (mediaType === 'audio') remoteUser.audioTrack?.play();
+        if (mediaType === 'audio') {
+          try { remoteUser.audioTrack?.setVolume?.(80); } catch {}
+          remoteUser.audioTrack?.play();
+        }
       } catch (subErr: any) {
         if (!String(subErr?.message || '').includes('not joined')) console.warn('Subscribe:', subErr);
       }
@@ -450,7 +523,7 @@ export default function ClassRoomScreen() {
     if (!canMedia) { setMicOn(false); setCameraOn(false); }
     else {
       try {
-        const [at, vt] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        const [at, vt] = await createOptimizedWebTracks(AgoraRTC);
         localTracksRef.current = { audioTrack: at, videoTrack: vt };
         await client.publish([at, vt]);
         setMicOn(true); setCameraOn(true);
@@ -561,15 +634,36 @@ export default function ClassRoomScreen() {
     }
   };
 
-  // ─── RENDER ──────────────────────────────────────────────
+  // ─── RENDER HELPERS ──────────────────────────────────────
 
+  const isLocalFocused = focusedUid === 'local';
+  const focusedRemote = remoteParticipants.find((p) => String(p.uid) === String(focusedUid));
+
+  const filmstripParticipants: (RemoteParticipant & { isLocal?: boolean })[] = [];
+  if (!isLocalFocused) {
+    filmstripParticipants.push({
+      uid: 'local' as any,
+      isLocal: true,
+      hasVideo: cameraOn,
+      hasAudio: micOn,
+    });
+  }
+  remoteParticipants.forEach((p) => {
+    if (String(p.uid) !== String(focusedUid)) {
+      filmstripParticipants.push({ ...p, isLocal: false });
+    }
+  });
+
+  // ─── LOADING STATE ───────────────────────────────────────
   if (loading || authLoading) {
     return (
       <View style={st.container}>
         <StatusBar style="light" />
         <View style={st.centered}>
           <LingoCard style={st.stateCard}>
-            <View style={st.loadingRing}><ActivityIndicator size="large" color={LingoTheme.colors.primary} /></View>
+            <View style={st.loadingRing}>
+              <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
+            </View>
             <ThemedText style={st.loadingTitle}>Preparing Classroom</ThemedText>
             <ThemedText style={st.loadingSub}>Setting up your live session…</ThemedText>
           </LingoCard>
@@ -578,6 +672,7 @@ export default function ClassRoomScreen() {
     );
   }
 
+  // ─── ERROR STATE ─────────────────────────────────────────
   if (error) {
     return (
       <View style={st.container}>
@@ -595,6 +690,7 @@ export default function ClassRoomScreen() {
     );
   }
 
+  // ─── LOBBY / PRE-JOIN ────────────────────────────────────
   if (!joined) {
     return (
       <View style={st.container}>
@@ -615,32 +711,66 @@ export default function ClassRoomScreen() {
             </View>
           </LingoScreenHeader>
         </View>
+
         <View style={st.centered}>
+          {/* Camera preview card */}
           <View style={st.previewBox}>
             <LinearGradient colors={['#0F172A', '#1E293B']} style={st.previewInner}>
               <View style={st.previewAvatar}>
-                <ThemedText style={st.previewInitial}>{user?.full_name?.charAt(0)?.toUpperCase() || '?'}</ThemedText>
+                <ThemedText style={st.previewInitial}>
+                  {user?.full_name?.charAt(0)?.toUpperCase() || '?'}
+                </ThemedText>
               </View>
               <ThemedText style={st.previewName}>{user?.full_name || 'You'}</ThemedText>
-              <ThemedText style={st.previewRole}>{user?.role === 'teacher' ? '🎓 Teacher' : '📖 Student'}</ThemedText>
+              <ThemedText style={st.previewRole}>
+                {user?.role === 'teacher' ? '🎓 Teacher' : '📖 Student'}
+              </ThemedText>
             </LinearGradient>
+
+            {/* Preview controls */}
             <View style={st.previewCtrls}>
-              <TouchableOpacity style={[st.previewCtrl, !micOn && st.previewCtrlOff]} onPress={() => setMicOn(v => !v)}>
+              <TouchableOpacity
+                style={[st.previewCtrl, !micOn && st.previewCtrlOff]}
+                onPress={() => setMicOn((v) => !v)}
+                activeOpacity={0.8}
+              >
                 <Ionicons name={micOn ? 'mic' : 'mic-off'} size={20} color={micOn ? '#FFF' : '#F87171'} />
               </TouchableOpacity>
-              <TouchableOpacity style={[st.previewCtrl, !cameraOn && st.previewCtrlOff]} onPress={() => setCameraOn(v => !v)}>
+              <TouchableOpacity
+                style={[st.previewCtrl, !cameraOn && st.previewCtrlOff]}
+                onPress={() => setCameraOn((v) => !v)}
+                activeOpacity={0.8}
+              >
                 <Ionicons name={cameraOn ? 'videocam' : 'videocam-off'} size={20} color={cameraOn ? '#FFF' : '#F87171'} />
               </TouchableOpacity>
             </View>
           </View>
+
           <ThemedText style={st.lobbySubject}>{classDetails?.subject || 'Class Session'}</ThemedText>
-          <ThemedText style={st.lobbyTeacher}>{user?.role === 'teacher' ? 'You are hosting' : `With ${classDetails?.teacher_name || 'Teacher'}`}</ThemedText>
-          <TouchableOpacity style={[st.joinBtn, joining && { opacity: 0.6 }]} onPress={joinClass} disabled={joining} activeOpacity={0.85}>
-            <LinearGradient colors={joining ? ['#475569', '#475569'] : ['#14B8A6', '#0D9488']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={st.joinGrad}>
-              {joining ? <ActivityIndicator size="small" color="#FFF" /> : (
+          <ThemedText style={st.lobbyTeacher}>
+            {user?.role === 'teacher' ? 'You are hosting' : `With ${classDetails?.teacher_name || 'Teacher'}`}
+          </ThemedText>
+
+          <TouchableOpacity
+            style={[st.joinBtn, joining && { opacity: 0.6 }]}
+            onPress={joinClass}
+            disabled={joining}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={joining ? ['#475569', '#475569'] : ['#14B8A6', '#0D9488']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={st.joinGrad}
+            >
+              {joining ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
                 <>
                   <Ionicons name="videocam" size={20} color="#FFF" style={{ marginRight: 10 }} />
-                  <ThemedText style={st.joinText}>{user?.role === 'teacher' ? 'Start Class' : 'Join Now'}</ThemedText>
+                  <ThemedText style={st.joinText}>
+                    {user?.role === 'teacher' ? 'Start Class' : 'Join Now'}
+                  </ThemedText>
                 </>
               )}
             </LinearGradient>
@@ -651,11 +781,13 @@ export default function ClassRoomScreen() {
   }
 
   /* ═══════════════════════════════════════════════════════════
-   *  IN-CALL VIEW
+   *  IN-CALL VIEW — Zoom-style 1:1 layout
    * ═══════════════════════════════════════════════════════════ */
   return (
     <View style={st.container}>
       <StatusBar style="light" />
+
+      {/* ── Top bar ── */}
       <View style={st.topBar}>
         <View style={st.topLeft}>
           <View style={st.liveChip}>
@@ -664,7 +796,9 @@ export default function ClassRoomScreen() {
           </View>
           <ThemedText style={st.topTimer}>{formatElapsed(elapsed)}</ThemedText>
         </View>
-        <ThemedText style={st.topTitle} numberOfLines={1}>{classDetails?.subject || 'Live Class'}</ThemedText>
+        <ThemedText style={st.topTitle} numberOfLines={1}>
+          {classDetails?.subject || 'Live Class'}
+        </ThemedText>
         <View style={st.topRight}>
           <View style={st.participantChip}>
             <Ionicons name="people" size={14} color="#94A3B8" />
@@ -673,70 +807,215 @@ export default function ClassRoomScreen() {
         </View>
       </View>
 
+      {/* ── Main Video Area ── */}
       <View style={st.videoArea}>
         {isWeb ? (
           <>
-            <div id="remote-grid" style={{ position: 'absolute', inset: 0, padding: 16, background: '#0B1120' }}>
-              {remoteParticipants.length === 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' as any, alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 88, height: 88, borderRadius: 44, background: 'linear-gradient(135deg, #1E293B, #334155)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.08)' }}>
+            {/* Main Stage */}
+            <div id="main-player" style={{
+              position: 'absolute',
+              inset: 0,
+              background: '#0B1120',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {remoteParticipants.length === 0 && isLocalFocused ? (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column' as any,
+                  alignItems: 'center',
+                  gap: 16,
+                }}>
+                  <div style={{
+                    width: 88, height: 88, borderRadius: 44,
+                    background: 'linear-gradient(135deg, #1E293B, #334155)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '2px solid rgba(255,255,255,0.08)',
+                  }}>
                     <span style={{ fontSize: 36, color: 'rgba(255,255,255,0.25)' }}>👤</span>
                   </div>
                   <span style={{ color: '#475569', fontSize: 15, fontWeight: '500' }}>Waiting for participant…</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(78,205,196,0.08)', border: '1px solid rgba(78,205,196,0.15)' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '5px 14px', borderRadius: 20,
+                    background: 'rgba(78,205,196,0.08)',
+                    border: '1px solid rgba(78,205,196,0.15)',
+                  }}>
                     <span style={{ width: 6, height: 6, borderRadius: 3, background: '#4ECDC4' }} />
                     <span style={{ color: '#4ECDC4', fontSize: 12, fontWeight: '600' }}>Connected</span>
                   </div>
                 </div>
-                </div>
-              ) : (
+              ) : focusedRemote && !focusedRemote.hasVideo ? (
                 <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: remoteParticipants.length === 1 ? '1fr' : remoteParticipants.length === 2 ? '1fr 1fr' : '1fr 1fr',
-                  gap: 12,
-                  height: '100%',
+                  display: 'flex', flexDirection: 'column' as any,
+                  alignItems: 'center', justifyContent: 'center', gap: 12,
                 }}>
-                  {remoteParticipants.map((participant) => (
-                    <div key={participant.uid} style={{ position: 'relative', overflow: 'hidden', borderRadius: 18, background: '#111827', border: '1px solid rgba(255,255,255,0.08)' }}>
-                      <div id={`remote-player-${participant.uid}`} style={{ position: 'absolute', inset: 0, display: participant.hasVideo ? 'block' : 'none' as any, background: '#111827' }} />
-                      {!participant.hasVideo && (
-                        <div style={{ height: '100%', minHeight: 220, display: 'flex', flexDirection: 'column' as any, alignItems: 'center', justifyContent: 'center', gap: 10, background: 'linear-gradient(135deg, #111827, #0F172A)' }}>
-                          <div style={{ width: 72, height: 72, borderRadius: 36, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ color: '#FFF', fontSize: 24, fontWeight: 700 }}>{String(participant.uid).charAt(0).toUpperCase()}</span>
-                          </div>
-                          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>Participant connected</span>
-                          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>Camera is off or still connecting</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  <div style={{
+                    width: 96, height: 96, borderRadius: 48,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '2px solid rgba(255,255,255,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ color: '#FFF', fontSize: 40, fontWeight: '700' }}>
+                      {String(focusedRemote.uid).charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: '600' }}>
+                    Participant {focusedRemote.uid}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>Camera off</span>
                 </div>
+              ) : null}
+            </div>
+
+            {/* Local PiP — draggable, tappable to swap */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setFocusedUid('local')}
+              style={{
+                position: 'absolute',
+                bottom: isLandscape ? 90 : 100,
+                right: 16,
+                width: isLandscape ? 160 : 120,
+                height: isLandscape ? 120 : 160,
+                borderRadius: 14,
+                overflow: 'hidden',
+                borderWidth: 2,
+                borderColor: isLocalFocused ? 'rgba(78,205,196,0.8)' : 'rgba(78,205,196,0.4)',
+                backgroundColor: '#0F172A',
+                zIndex: 20,
+                elevation: 10,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.5,
+                shadowRadius: 10,
+              }}
+            >
+              <div id="local-player" style={{ width: '100%', height: '100%' }} />
+              <View style={{
+                position: 'absolute',
+                bottom: 0, left: 0, right: 0,
+                paddingVertical: 3, paddingHorizontal: 8,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+              }}>
+                <ThemedText style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>You</ThemedText>
+              </View>
+              {!isLocalFocused && (
+                <View style={{
+                  position: 'absolute',
+                  top: 4, right: 4,
+                  backgroundColor: 'rgba(20,184,166,0.8)',
+                  borderRadius: 8,
+                  paddingHorizontal: 5,
+                  paddingVertical: 2,
+                }}>
+                  <ThemedText style={{ color: '#FFF', fontSize: 9, fontWeight: '600' }}>Tap</ThemedText>
+                </View>
               )}
-            </div>
-            <div id="local-player" style={{
-              position: 'absolute', bottom: 100, right: 16, width: 120, height: 160, borderRadius: 14, overflow: 'hidden',
-              border: '2px solid rgba(78,205,196,0.5)', background: '#0F172A', zIndex: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-            }}>
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 8px', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', zIndex: 10 }}>
-                <span style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>You</span>
-              </div>
-            </div>
+            </TouchableOpacity>
+
+            {/* Bottom Filmstrip — tappable thumbnails */}
+            {filmstripParticipants.length > 0 && (
+              <View style={{
+                position: 'absolute',
+                bottom: isLandscape ? 90 : 100,
+                left: 16,
+                right: isLandscape ? 190 : 150,
+                height: 72,
+                flexDirection: 'row',
+                gap: 8,
+                zIndex: 20,
+              }}>
+                {filmstripParticipants.map((p) => (
+                  <TouchableOpacity
+                    key={String(p.uid)}
+                    activeOpacity={0.8}
+                    onPress={() => setFocusedUid(p.isLocal ? 'local' : p.uid)}
+                    style={{
+                      width: 100,
+                      height: 72,
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      borderWidth: 2,
+                      borderColor: 'rgba(255,255,255,0.1)',
+                      backgroundColor: '#111827',
+                    }}
+                  >
+                    {p.isLocal ? (
+                      <div id="local-player-filmstrip" style={{ width: '100%', height: '100%' }} />
+                    ) : (
+                      <>
+                        <div
+                          id={`remote-player-${p.uid}`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            display: p.hasVideo ? 'block' : 'none' as any,
+                            background: '#111827',
+                          }}
+                        />
+                        {!p.hasVideo && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #111827, #0F172A)',
+                          }}>
+                            <span style={{ color: '#FFF', fontSize: 20, fontWeight: '700' }}>
+                              {String(p.uid).charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <View style={{
+                      position: 'absolute',
+                      bottom: 0, left: 0, right: 0,
+                      paddingVertical: 2, paddingHorizontal: 6,
+                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}>
+                      <ThemedText style={{ color: '#FFF', fontSize: 9, fontWeight: '600' }}>
+                        {p.isLocal ? 'You' : `P ${p.uid}`}
+                      </ThemedText>
+                      {!p.hasAudio && (
+                        <Ionicons name="mic-off" size={10} color="#F87171" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </>
         ) : RtcSurfaceView ? (
           <View style={st.nativeVideoContainer}>
+            {/* Main Stage */}
             {remoteUids.length > 0 ? (
-              <View style={st.nativeRemoteGrid}>
+              <View style={st.nativeMainStage}>
                 {remoteUids.map((remoteUid) => (
-                  <View
+                  <TouchableOpacity
                     key={remoteUid}
+                    activeOpacity={0.95}
+                    onPress={() => setFocusedUid(remoteUid)}
                     style={[
                       st.nativeRemoteTile,
                       remoteUids.length === 1 ? st.nativeRemoteTileSingle : st.nativeRemoteTileSplit,
                     ]}
                   >
-                    <RtcSurfaceView style={st.nativeRemoteVideo} canvas={{ uid: remoteUid }} />
-                  </View>
+                    <RtcSurfaceView
+                      style={st.nativeRemoteVideo}
+                      canvas={{ uid: remoteUid }}
+                    />
+                    {/* Label overlay */}
+                    <View style={st.nativeRemoteLabel}>
+                      <ThemedText style={st.nativeRemoteLabelText}>Participant {remoteUid}</ThemedText>
+                    </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             ) : (
@@ -751,12 +1030,37 @@ export default function ClassRoomScreen() {
                 </View>
               </View>
             )}
-            <View style={st.nativeLocalPip}>
-              <RtcSurfaceView style={st.nativeLocalVideo} canvas={{ uid: 0 }} zOrderMediaOverlay />
+
+            {/* Local PiP — tappable to swap */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setFocusedUid('local')}
+              style={[
+                st.nativeLocalPip,
+                isLocalFocused && { borderColor: 'rgba(78,205,196,0.8)' },
+              ]}
+            >
+              <RtcSurfaceView
+                style={st.nativeLocalVideo}
+                canvas={{ uid: 0 }}
+                zOrderMediaOverlay
+              />
               <View style={st.nativeLocalLabel}>
                 <ThemedText style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>You</ThemedText>
               </View>
-            </View>
+              {!isLocalFocused && (
+                <View style={{
+                  position: 'absolute',
+                  top: 4, right: 4,
+                  backgroundColor: 'rgba(20,184,166,0.8)',
+                  borderRadius: 8,
+                  paddingHorizontal: 5,
+                  paddingVertical: 2,
+                }}>
+                  <ThemedText style={{ color: '#FFF', fontSize: 9, fontWeight: '600' }}>Tap</ThemedText>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={st.centered}>
@@ -765,6 +1069,7 @@ export default function ClassRoomScreen() {
         )}
       </View>
 
+      {/* ── Bottom Controls ── */}
       <View style={st.bottomBar}>
         <TouchableOpacity onPress={toggleMic} style={[st.ctrlBtn, !micOn && st.ctrlBtnRed]} activeOpacity={0.7}>
           <Ionicons name={micOn ? 'mic' : 'mic-off'} size={24} color="#FFF" />
@@ -780,12 +1085,21 @@ export default function ClassRoomScreen() {
             <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={user?.role === 'teacher' ? handleEndClass : goBackWithoutEnding} style={st.endBtn} activeOpacity={0.8}>
-          <Ionicons name={user?.role === 'teacher' ? 'call' : 'exit-outline'} size={24} color="#FFF"
-            style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined} />
+        <TouchableOpacity
+          onPress={user?.role === 'teacher' ? handleEndClass : goBackWithoutEnding}
+          style={st.endBtn}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={user?.role === 'teacher' ? 'call' : 'exit-outline'}
+            size={24}
+            color="#FFF"
+            style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined}
+          />
         </TouchableOpacity>
       </View>
 
+      {/* ── Chat Panel (Web only) ── */}
       {isWeb && chatOpen && (
         <View style={st.chatPanel}>
           <View style={st.chatHeader}>
@@ -794,10 +1108,20 @@ export default function ClassRoomScreen() {
               <Ionicons name="close" size={22} color="#94A3B8" />
             </TouchableOpacity>
           </View>
-          <ScrollView ref={chatScrollRef} style={st.chatList} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            ref={chatScrollRef}
+            style={st.chatList}
+            contentContainerStyle={{ paddingBottom: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
             {chatMessages.length === 0 && (
               <LingoCard style={st.emptyChatCard}>
-                <LingoEmptyState icon="chatbubbles-outline" title="No messages yet" subtitle="Messages shared during the lesson will appear here." tone="teal" />
+                <LingoEmptyState
+                  icon="chatbubbles-outline"
+                  title="No messages yet"
+                  subtitle="Messages shared during the lesson will appear here."
+                  tone="teal"
+                />
               </LingoCard>
             )}
             {chatMessages.map((m) => (
@@ -811,7 +1135,15 @@ export default function ClassRoomScreen() {
             ))}
           </ScrollView>
           <View style={st.chatInputRow}>
-            <TextInput style={st.chatInput} placeholder="Type a message…" placeholderTextColor="#64748B" value={chatInput} onChangeText={setChatInput} onSubmitEditing={sendChatMessage} returnKeyType="send" />
+            <TextInput
+              style={st.chatInput}
+              placeholder="Type a message…"
+              placeholderTextColor="#64748B"
+              value={chatInput}
+              onChangeText={setChatInput}
+              onSubmitEditing={sendChatMessage}
+              returnKeyType="send"
+            />
             <TouchableOpacity onPress={sendChatMessage} activeOpacity={0.8}>
               <LinearGradient colors={['#14B8A6', '#0D9488']} style={st.sendBtn}>
                 <Ionicons name="send" size={16} color="#FFF" />
@@ -828,69 +1160,238 @@ const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B1120' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   stateCard: { width: '100%', maxWidth: 420, alignItems: 'center' },
-  loadingRing: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(78,205,196,0.08)', borderWidth: 2, borderColor: 'rgba(78,205,196,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  loadingRing: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: 'rgba(78,205,196,0.08)',
+    borderWidth: 2, borderColor: 'rgba(78,205,196,0.2)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+  },
   loadingTitle: { color: '#F1F5F9', fontSize: 18, fontWeight: '700', marginBottom: 4 },
   loadingSub: { color: '#64748B', fontSize: 14 },
-  errorBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  errorBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 12, paddingHorizontal: 24,
+    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
   errorBtnText: { color: '#FFF', fontWeight: '600', fontSize: 15 },
+
+  // Lobby
   lobbyHeaderWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   lobbyMetaRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  previewBox: { width: Math.min(SCREEN_W - 80, 300), height: 220, borderRadius: 20, overflow: 'hidden', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  previewBox: {
+    width: Math.min(SCREEN_W - 80, 300),
+    height: Math.min(SCREEN_W - 80, 300) * 0.75,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 12,
+  },
   previewInner: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  previewAvatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(78,205,196,0.12)', borderWidth: 2, borderColor: 'rgba(78,205,196,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  previewAvatar: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: 'rgba(78,205,196,0.12)',
+    borderWidth: 2, borderColor: 'rgba(78,205,196,0.25)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+  },
   previewInitial: { color: '#4ECDC4', fontSize: 28, fontWeight: '800' },
-  previewName: { color: '#F1F5F9', fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  previewName: { color: '#F1F5F9', fontSize: 17, fontWeight: '700', marginBottom: 3 },
   previewRole: { color: '#94A3B8', fontSize: 13 },
-  previewCtrls: { position: 'absolute', bottom: 14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 12 },
-  previewCtrl: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  previewCtrls: {
+    position: 'absolute',
+    bottom: 14, left: 0, right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center', gap: 14,
+  },
+  previewCtrl: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
   previewCtrlOff: { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.25)' },
-  lobbySubject: { color: '#F1F5F9', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 4 },
-  lobbyTeacher: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 14 },
-  joinBtn: { borderRadius: 16, overflow: 'hidden', shadowColor: '#14B8A6', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
-  joinGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, paddingHorizontal: 44 },
+  lobbySubject: { color: '#F1F5F9', fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 4 },
+  lobbyTeacher: { color: '#94A3B8', fontSize: 14, textAlign: 'center', marginBottom: 20 },
+  joinBtn: {
+    borderRadius: 16, overflow: 'hidden',
+    shadowColor: '#14B8A6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3, shadowRadius: 14,
+    elevation: 8,
+  },
+  joinGrad: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 16, paddingHorizontal: 48,
+  },
   joinText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
   webHint: { color: '#475569', fontSize: 12, marginTop: 16, textAlign: 'center' },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingHorizontal: 14, paddingBottom: 8, backgroundColor: 'rgba(11,17,32,0.92)' },
-  topLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  liveChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+
+  // In-call top bar
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 54 : 50,
+    paddingHorizontal: 14, paddingBottom: 10,
+    backgroundColor: 'rgba(11,17,32,0.92)',
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  topLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  liveChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+  },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444' },
   liveLabel: { color: '#FCA5A5', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  topTimer: { color: '#64748B', fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  topTimer: { color: '#94A3B8', fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   topTitle: { color: '#E2E8F0', fontSize: 14, fontWeight: '700', flex: 1, textAlign: 'center', marginHorizontal: 8 },
   topRight: { flexDirection: 'row', alignItems: 'center' },
-  participantChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  participantChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+  },
   participantText: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
+
+  // Video area
   videoArea: { flex: 1, position: 'relative' },
+
+  // Native video
   nativeVideoContainer: { flex: 1, backgroundColor: '#0B1120' },
-  nativeRemoteGrid: { flex: 1, flexDirection: 'row', flexWrap: 'wrap' },
-  nativeRemoteTile: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
+  nativeMainStage: { flex: 1, flexDirection: 'row', flexWrap: 'wrap' },
+  nativeRemoteTile: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+    position: 'relative',
+  },
   nativeRemoteTileSingle: { width: '100%', height: '100%' },
   nativeRemoteTileSplit: { width: '50%', height: '50%' },
   nativeRemoteVideo: { flex: 1 },
+  nativeRemoteLabel: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    paddingVertical: 6, paddingHorizontal: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  nativeRemoteLabelText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '600' },
   nativeWaiting: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B1120' },
-  nativeWaitingCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(30,41,59,0.8)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  nativeWaitingCircle: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: 'rgba(30,41,59,0.8)',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
   nativeWaitingText: { color: '#475569', fontSize: 15, fontWeight: '500', marginBottom: 12 },
-  nativeConnectedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(78,205,196,0.08)', borderWidth: 1, borderColor: 'rgba(78,205,196,0.15)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20 },
-  nativeLocalPip: { position: 'absolute', bottom: 16, right: 16, width: 120, height: 160, borderRadius: 14, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(78,205,196,0.5)', backgroundColor: '#0F172A', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10 },
+  nativeConnectedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(78,205,196,0.08)',
+    borderWidth: 1, borderColor: 'rgba(78,205,196,0.15)',
+    paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20,
+  },
+  nativeLocalPip: {
+    position: 'absolute',
+    bottom: 16, right: 16,
+    width: 120, height: 160,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(78,205,196,0.4)',
+    backgroundColor: '#0F172A',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5, shadowRadius: 10,
+  },
   nativeLocalVideo: { flex: 1 },
-  nativeLocalLabel: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 2, paddingHorizontal: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
-  bottomBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 32 : 16, backgroundColor: 'rgba(15,23,42,0.95)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
-  ctrlBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  nativeLocalLabel: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    paddingVertical: 3, paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+
+  // Bottom controls
+  bottomBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14,
+    paddingVertical: 12, paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+    backgroundColor: 'rgba(15,23,42,0.95)',
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  ctrlBtn: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   ctrlBtnRed: { backgroundColor: 'rgba(239,68,68,0.2)' },
   ctrlBtnTeal: { backgroundColor: 'rgba(78,205,196,0.2)' },
-  endBtn: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', shadowColor: '#DC2626', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
-  chatPanel: { position: 'absolute', right: 0, top: 0, bottom: 0, width: Math.min(SCREEN_W * 0.85, 340), backgroundColor: 'rgba(15,23,42,0.98)', borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.06)', zIndex: 50 },
-  chatHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 54, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  endBtn: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#DC2626',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 10,
+    elevation: 6,
+  },
+
+  // Chat
+  chatPanel: {
+    position: 'absolute',
+    right: 0, top: 0, bottom: 0,
+    width: Math.min(SCREEN_W * 0.85, 340),
+    backgroundColor: 'rgba(15,23,42,0.98)',
+    borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.06)',
+    zIndex: 50,
+  },
+  chatHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 54 : 50,
+    paddingHorizontal: 16, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
   chatTitle: { color: '#F1F5F9', fontWeight: '700', fontSize: 17 },
   chatList: { flex: 1, paddingHorizontal: 14, paddingTop: 10 },
   emptyChatCard: { marginTop: 16 },
   bubble: { marginBottom: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, maxWidth: '85%' },
-  bubbleMine: { alignSelf: 'flex-end', backgroundColor: '#0D9488', borderBottomRightRadius: 4 },
-  bubbleOther: { alignSelf: 'flex-start', backgroundColor: '#1E293B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', borderBottomLeftRadius: 4 },
+  bubbleMine: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#0D9488',
+    borderBottomRightRadius: 4,
+  },
+  bubbleOther: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1E293B',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    borderBottomLeftRadius: 4,
+  },
   bubbleSender: { color: '#4ECDC4', fontSize: 11, fontWeight: '700', marginBottom: 2 },
   bubbleText: { color: '#E2E8F0', fontSize: 14, lineHeight: 19 },
   bubbleTime: { fontSize: 10, color: '#475569', marginTop: 3, textAlign: 'right' },
-  chatInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, paddingBottom: Platform.OS === 'ios' ? 30 : 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
-  chatInput: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', color: '#F1F5F9', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  sendBtn: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  chatInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    padding: 12,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 14,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  chatInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    color: '#F1F5F9',
+    borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10,
+    fontSize: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+  },
+  sendBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });
