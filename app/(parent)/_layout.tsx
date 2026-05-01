@@ -46,12 +46,7 @@ export default function ParentLayout() {
         headerShown: false,
         tabBarActiveTintColor: LingoTheme.colors.primary,
         tabBarInactiveTintColor: LingoTheme.colors.textTertiary || '#afafaf',
-        tabBarShowLabel: true,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-          marginTop: -2,
-        },
+        tabBarShowLabel: false,
         tabBarIconStyle: {
           marginBottom: 0,
         },

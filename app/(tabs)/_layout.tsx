@@ -24,10 +24,7 @@ export default function TabLayout() {
           paddingTop: 8,
           paddingBottom: 8,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '800',
-        },
+        tabBarShowLabel: false,
       }}
       initialRouteName="index"
     >

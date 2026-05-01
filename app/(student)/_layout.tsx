@@ -17,12 +17,7 @@ export default function StudentLayout() {
         headerShown: false,
         tabBarActiveTintColor: LingoTheme.colors.primary,
         tabBarInactiveTintColor: '#AFAFAF', // Standard Lingo inactive icon grey
-        tabBarShowLabel: true,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-          marginTop: -2,
-        },
+        tabBarShowLabel: false,
         tabBarIconStyle: {
           marginBottom: 0,
         },

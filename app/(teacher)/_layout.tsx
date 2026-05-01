@@ -47,12 +47,7 @@ export default function TeacherLayout() {
         tabBarActiveTintColor: LingoTheme.colors.primary,
         tabBarInactiveTintColor: '#94A3B8',
         headerShown: false,
-        tabBarShowLabel: true,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-          marginTop: -2,
-        },
+        tabBarShowLabel: false,
         tabBarIconStyle: {
           marginBottom: 0,
         },
