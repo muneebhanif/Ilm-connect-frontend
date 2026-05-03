@@ -365,25 +365,24 @@ export default function ScheduleScreen() {
       <View style={[styles.header, { paddingTop: topPadding }]}>
         {/* Top Bar */}
         <View style={styles.topBar}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="calendar-outline" size={22} color="#F59E0B" />
-          </View>
-          <View style={styles.topBarCenter}>
-            <ThemedText style={styles.topBarTitle}>My Schedule</ThemedText>
-            <ThemedText style={styles.topBarSub}>{(serverNowIso ? DateTime.fromISO(serverNowIso, { zone: 'utc' }).setZone(teacherTz) : DateTime.now().setZone(teacherTz)).toFormat('ccc, LLL dd')} · {teacherTz.replace(/_/g, ' ')}</ThemedText>
-          </View>
-          <View style={{ width: 44 }} />
+          <ThemedText style={styles.topBarTitle}>My Schedule</ThemedText>
+          <ThemedText style={styles.topBarSub}>{(serverNowIso ? DateTime.fromISO(serverNowIso, { zone: 'utc' }).setZone(teacherTz) : DateTime.now().setZone(teacherTz)).toFormat('ccc, LLL dd')}</ThemedText>
         </View>
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>📅</ThemedText>
-            <ThemedText style={styles.pillValue}>{todayClasses.length}</ThemedText>
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="today" size={22} color="#3B82F6" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{todayClasses.length}</ThemedText>
             <ThemedText style={styles.pillLabel}>Today</ThemedText>
           </View>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>⏭️</ThemedText>
-            <ThemedText style={styles.pillValue}>{upcomingClasses.length}</ThemedText>
+          <View style={styles.statDivider} />
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="calendar" size={22} color="#22C55E" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{upcomingClasses.length}</ThemedText>
             <ThemedText style={styles.pillLabel}>Upcoming</ThemedText>
           </View>
         </View>
@@ -456,18 +455,14 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
     justifyContent: 'center', alignItems: 'center',
   },
-  topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 12, color: '#AFAFAF', fontWeight: '600', marginTop: 2, textAlign: 'center' },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 12 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBarTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 1 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  pillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   tabsShell: {
     padding: 8,
   },

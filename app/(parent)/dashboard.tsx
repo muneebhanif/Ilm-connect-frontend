@@ -339,12 +339,16 @@ export default function ParentDashboard() {
             end={{ x: 1, y: 1 }}
             style={styles.parentHubCard}
           >
-            <View style={styles.hubBadge}>
-              <Ionicons name="leaf" size={14} color="#58cc02" />
-              <ThemedText style={styles.hubBadgeText}>PARENT HUB</ThemedText>
-            </View>
-            <View style={styles.hubIconBg}>
-              <Ionicons name="people" size={40} color="#58cc02" />
+            <View style={styles.hubAvatarContainer}>
+              {user?.avatar_url ? (
+                <Image source={{ uri: user.avatar_url }} style={styles.hubAvatar} />
+              ) : (
+                <View style={[styles.hubAvatar, styles.hubAvatarFallback]}>
+                  <ThemedText style={styles.hubAvatarInitial}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </ThemedText>
+                </View>
+              )}
             </View>
             <ThemedText style={styles.hubTitle}>{displayName}</ThemedText>
             <ThemedText style={styles.hubSubtitle}>Stay updated with your children's learning and class activity.</ThemedText>
@@ -876,22 +880,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
   },
-  hubBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFCD8',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-    marginBottom: 16,
-  },
-  hubBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#58cc02',
-    letterSpacing: 0.5,
-  },
   hubTitle: {
     fontSize: 24,
     fontWeight: '800',
@@ -907,13 +895,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     maxWidth: 260,
   },
-  hubIconBg: {
+  hubAvatarContainer: {
+    marginBottom: 4,
+  },
+  hubAvatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#ECFCD8',
+    borderWidth: 3,
+    borderColor: '#A8E063',
+  },
+  hubAvatarFallback: {
+    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  hubAvatarInitial: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
   horizontalStatsRow: {

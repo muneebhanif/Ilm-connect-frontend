@@ -214,29 +214,33 @@ export default function PerformanceAnalyticsScreen() {
         {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+            <Ionicons name="chevron-back" size={26} color="#111827" />
           </TouchableOpacity>
-          <View style={styles.topBarCenter}>
-            <ThemedText style={styles.topBarTitle}>Analytics</ThemedText>
-            <ThemedText style={styles.topBarSub}>Your teaching performance</ThemedText>
-          </View>
-          <View style={{ width: 44 }} />
+          <ThemedText style={styles.topBarTitle}>Analytics</ThemedText>
         </View>
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>📚</ThemedText>
-            <ThemedText style={styles.pillValue}>{analytics.total30}</ThemedText>
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="book" size={22} color="#3B82F6" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{analytics.total30}</ThemedText>
             <ThemedText style={styles.pillLabel}>30d classes</ThemedText>
           </View>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>✅</ThemedText>
-            <ThemedText style={styles.pillValue}>{analytics.completionRate}%</ThemedText>
+          <View style={styles.statDivider} />
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{analytics.completionRate}%</ThemedText>
             <ThemedText style={styles.pillLabel}>Done</ThemedText>
           </View>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>👥</ThemedText>
-            <ThemedText style={styles.pillValue}>{analytics.activeStudents}</ThemedText>
+          <View style={styles.statDivider} />
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+              <Ionicons name="people" size={22} color="#F97316" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#F97316' }]}>{analytics.activeStudents}</ThemedText>
             <ThemedText style={styles.pillLabel}>Students</ThemedText>
           </View>
         </View>
@@ -396,17 +400,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 16 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 16, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 10, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBarTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  pillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   metricsGrid: {
     marginTop: 4,
     flexDirection: 'row',

@@ -225,32 +225,32 @@ export default function MessagesScreen() {
             <View style={[styles.topBarWrap, { paddingTop: topPadding + 10 }]}>
               {/* Top Bar */}
               <View style={styles.topBar}>
-                <View style={styles.topBarLeft}>
-                  <View style={styles.topBarIconBg}>
-                    <Ionicons name="chatbubbles" size={28} color="#58cc02" />
-                  </View>
-                  <View>
-                    <ThemedText style={styles.topBarTitle}>Messages</ThemedText>
-                    <ThemedText style={styles.topBarSub}>Your teacher conversations</ThemedText>
-                  </View>
-                </View>
+                <ThemedText style={styles.topBarTitle}>Messages</ThemedText>
               </View>
               {/* Stats Row */}
               <View style={styles.statsRow}>
-                <View style={styles.statPill}>
-                  <Ionicons name="chatbubbles" size={20} color="#58cc02" />
-                  <ThemedText style={styles.statValue}>{conversations.length}</ThemedText>
-                  <ThemedText style={styles.statLabel}>CHATS</ThemedText>
+                <View style={styles.statChip}>
+                  <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                    <Ionicons name="chatbubbles" size={22} color="#3B82F6" />
+                  </View>
+                  <ThemedText style={[styles.statValue, { color: '#3B82F6' }]}>{conversations.length}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Chats</ThemedText>
                 </View>
-                <View style={styles.statPill}>
-                  <Ionicons name="mail-unread" size={20} color="#14B8A6" />
-                  <ThemedText style={styles.statValue}>{unreadConversations}</ThemedText>
-                  <ThemedText style={styles.statLabel}>UNREAD</ThemedText>
+                <View style={styles.statDivider} />
+                <View style={styles.statChip}>
+                  <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+                    <Ionicons name="mail-unread" size={22} color="#F97316" />
+                  </View>
+                  <ThemedText style={[styles.statValue, { color: '#F97316' }]}>{unreadConversations}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Unread</ThemedText>
                 </View>
-                <View style={styles.statPill}>
-                  <Ionicons name="notifications" size={20} color="#FFC800" />
-                  <ThemedText style={styles.statValue}>{totalUnreadMessages}</ThemedText>
-                  <ThemedText style={styles.statLabel}>NEW MSGS</ThemedText>
+                <View style={styles.statDivider} />
+                <View style={styles.statChip}>
+                  <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                    <Ionicons name="notifications" size={22} color="#22C55E" />
+                  </View>
+                  <ThemedText style={[styles.statValue, { color: '#22C55E' }]}>{totalUnreadMessages}</ThemedText>
+                  <ThemedText style={styles.statLabel}>New msgs</ThemedText>
                 </View>
               </View>
             </View>
@@ -312,35 +312,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 1,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  statPill: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderBottomWidth: 4,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#3C3C3C',
-    marginTop: 4,
-  },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#AFAFAF',
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  statValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  statLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   list: {
     paddingHorizontal: 16,
     paddingBottom: 4,

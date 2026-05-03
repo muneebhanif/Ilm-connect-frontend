@@ -90,17 +90,9 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       {/* ── Top Bar ── */}
       <View style={[styles.topBar, { paddingTop: topPadding + 8 }]}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="people-circle-outline" size={24} color="#58CC02" />
-        </View>
-        <View style={styles.topBarCenter}>
-          <ThemedText style={styles.topBarTitle}>Profile</ThemedText>
-          <ThemedText style={styles.topBarSub} numberOfLines={1}>
-            {profile?.full_name ?? 'My Account'}
-          </ThemedText>
-        </View>
-        <TouchableOpacity style={styles.iconCircle} onPress={() => router.push('/(parent)/edit-profile')}>
-          <Ionicons name="create-outline" size={22} color="#58CC02" />
+        <ThemedText style={styles.topBarTitle}>Profile</ThemedText>
+        <TouchableOpacity onPress={() => router.push('/(parent)/edit-profile')} activeOpacity={0.8} style={styles.topBarAction}>
+          <Ionicons name="create-outline" size={22} color="#111827" />
         </TouchableOpacity>
       </View>
 
@@ -230,8 +222,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 18, fontWeight: '800', color: '#111827', letterSpacing: -0.3 },
-  topBarSub: { fontSize: 12, color: '#6B7280', fontWeight: '500', marginTop: 1 },
+  topBarTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
+  topBarAction: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
 
   /* ── Pills ── */
   pillsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 16 },

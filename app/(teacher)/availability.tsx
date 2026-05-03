@@ -222,110 +222,118 @@ export default function AvailabilityScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.headerWrap, { paddingTop: topPadding }]}>
-        {/* Top Bar */}
-        <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace('/(teacher)/' as any)} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
-          </TouchableOpacity>
-          <View style={styles.topBarCenter}>
-            <ThemedText style={styles.topBarTitle}>Availability</ThemedText>
-            <ThemedText style={styles.topBarSub}>{hasUnsaved ? '🟡 Unsaved changes' : 'Ready for bookings'}</ThemedText>
-          </View>
-          <View style={{ width: 44 }} />
-        </View>
-        <View style={styles.statsRow}>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>🗓️</ThemedText>
-            <ThemedText style={styles.pillValue}>{configuredDays}</ThemedText>
-            <ThemedText style={styles.pillLabel}>Days set</ThemedText>
-          </View>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>⏰</ThemedText>
-            <ThemedText style={styles.pillValue}>{totalWeeklySlots}</ThemedText>
-            <ThemedText style={styles.pillLabel}>Open slots</ThemedText>
-          </View>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>✨</ThemedText>
-            <ThemedText style={styles.pillValue}>{selectedSlots.length}</ThemedText>
-            <ThemedText style={styles.pillLabel}>Today</ThemedText>
-          </View>
-        </View>
-      </View>
-
-      {/* Day Selector */}
-      <View style={styles.daySelectorWrap}>
-      <View style={styles.daySelector}>
-        {DAYS.map((day, i) => {
-          const isActive = selectedDay === day;
-          const slotCount = availability[day]?.length || 0;
-          const isToday = day === todayDayName();
-          return (
-            <TouchableOpacity
-              key={day}
-              style={[styles.dayPill, isActive && styles.dayPillActive]}
-              onPress={() => setSelectedDay(day)}
-              activeOpacity={0.75}
-            >
-              <ThemedText style={[styles.dayPillAbbr, isActive && styles.dayPillAbbrActive]}>
-                {DAY_ABBR[i]}
-              </ThemedText>
-              <View style={styles.dayIndicatorRow}>
-                {isToday && !isActive && <View style={styles.todayRing} />}
-                {slotCount > 0 ? (
-                  <View style={[styles.dayDotFilled, isActive && styles.dayDotFilledActive]}>
-                    <ThemedText style={[styles.dayDotCount, isActive && styles.dayDotCountActive]}>
-                      {slotCount}
-                    </ThemedText>
-                  </View>
-                ) : (
-                  <View style={styles.dayDotEmpty} />
-                )}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      </View>
-
-      {/* Day Header Bar */}
-      <View style={styles.dayBar}>
-        <View style={styles.dayBarLeft}>
-          <ThemedText style={styles.dayBarName}>{selectedDay}</ThemedText>
-          <ThemedText style={styles.dayBarCount}>
-            {selectedSlots.length === 0
-              ? 'No slots selected — tap chips below to open time slots'
-              : `${selectedSlots.length} slot${selectedSlots.length !== 1 ? 's' : ''} open for bookings`}
-          </ThemedText>
-        </View>
-        {selectedSlots.length > 0 && (
-          <TouchableOpacity
-            style={styles.clearBtn}
-            activeOpacity={0.75}
-            onPress={() =>
-              Alert.alert(
-                `Clear ${selectedDay}?`,
-                `Remove all ${selectedSlots.length} slot${selectedSlots.length !== 1 ? 's' : ''} from ${selectedDay}?`,
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Clear', style: 'destructive', onPress: () => clearDay(selectedDay) },
-                ]
-              )
-            }
-          >
-            <Ionicons name="trash-outline" size={13} color="#EF4444" />
-            <ThemedText style={styles.clearBtnText}>Clear</ThemedText>
-          </TouchableOpacity>
-        )}
-      </View>
-
       {/* Scroll Body */}
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Top Bar */}
+        <View style={styles.headerWrap}>
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.replace('/(teacher)/' as any)} activeOpacity={0.8}>
+              <Ionicons name="chevron-back" size={26} color="#111827" />
+            </TouchableOpacity>
+            <ThemedText style={styles.topBarTitle}>Availability</ThemedText>
+            {hasUnsaved && (
+              <View style={styles.unsavedBadge}>
+                <ThemedText style={styles.unsavedBadgeText}>Unsaved</ThemedText>
+              </View>
+            )}
+          </View>
+          <View style={styles.statsRow}>
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="calendar" size={20} color="#3B82F6" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{configuredDays}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Days set</ThemedText>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="time" size={20} color="#22C55E" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{totalWeeklySlots}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Open slots</ThemedText>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="sunny" size={20} color="#F97316" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#F97316' }]}>{selectedSlots.length}</ThemedText>
+              <ThemedText style={styles.pillLabel}>Today</ThemedText>
+            </View>
+          </View>
+        </View>
+
+        {/* Day Selector */}
+        <View style={styles.daySelectorWrap}>
+          <View style={styles.daySelector}>
+            {DAYS.map((day, i) => {
+              const isActive = selectedDay === day;
+              const slotCount = availability[day]?.length || 0;
+              const isToday = day === todayDayName();
+              return (
+                <TouchableOpacity
+                  key={day}
+                  style={[styles.dayPill, isActive && styles.dayPillActive]}
+                  onPress={() => setSelectedDay(day)}
+                  activeOpacity={0.75}
+                >
+                  <ThemedText style={[styles.dayPillAbbr, isActive && styles.dayPillAbbrActive]}>
+                    {DAY_ABBR[i]}
+                  </ThemedText>
+                  <View style={styles.dayIndicatorRow}>
+                    {isToday && !isActive && <View style={styles.todayRing} />}
+                    {slotCount > 0 ? (
+                      <View style={[styles.dayDotFilled, isActive && styles.dayDotFilledActive]}>
+                        <ThemedText style={[styles.dayDotCount, isActive && styles.dayDotCountActive]}>
+                          {slotCount}
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.dayDotEmpty} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Day Header Bar */}
+        <View style={styles.dayBar}>
+          <View style={styles.dayBarLeft}>
+            <ThemedText style={styles.dayBarName}>{selectedDay}</ThemedText>
+            <ThemedText style={styles.dayBarCount}>
+              {selectedSlots.length === 0
+                ? 'No slots selected — tap chips below to open time slots'
+                : `${selectedSlots.length} slot${selectedSlots.length !== 1 ? 's' : ''} open for bookings`}
+            </ThemedText>
+          </View>
+          {selectedSlots.length > 0 && (
+            <TouchableOpacity
+              style={styles.clearBtn}
+              activeOpacity={0.75}
+              onPress={() =>
+                Alert.alert(
+                  `Clear ${selectedDay}?`,
+                  `Remove all ${selectedSlots.length} slot${selectedSlots.length !== 1 ? 's' : ''} from ${selectedDay}?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Clear', style: 'destructive', onPress: () => clearDay(selectedDay) },
+                  ]
+                )
+              }
+            >
+              <Ionicons name="trash-outline" size={13} color="#EF4444" />
+              <ThemedText style={styles.clearBtnText}>Clear</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
         {SLOT_GROUPS.map(group => {
           const state = getGroupState(group.slots);
           const groupSelected = group.slots.filter(s => selectedSlots.includes(s)).length;
@@ -446,12 +454,10 @@ export default function AvailabilityScreen() {
             );
           })}
         </View>
-
-        <View style={{ height: 130 }} />
       </ScrollView>
 
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}> 
+      <View style={[styles.footer, { paddingBottom: bottomPadding + 12 }]}> 
         {!!feedback && (
           <View style={[
             styles.feedbackBanner,
@@ -494,8 +500,8 @@ const styles = StyleSheet.create({
     maxWidth: 340,
   },
   loadingText: { fontSize: 14, color: LingoTheme.colors.muted, fontWeight: '700' },
-  headerWrap: { paddingHorizontal: 20, paddingBottom: 12 },
-  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
+  headerWrap: { paddingBottom: 6 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 12 },
   backButton: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#FFFFFF',
@@ -503,20 +509,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBarTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
+  unsavedBadge: { backgroundColor: '#FEF3C7', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#FCD34D' },
+  unsavedBadgeText: { fontSize: 12, fontWeight: '600', color: '#92400E' },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 4 },
+  statIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 1 },
+  pillValue: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  pillLabel: { fontSize: 11, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 36, backgroundColor: '#E5E7EB' },
   daySelectorWrap: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   daySelector: {
     flexDirection: 'row', backgroundColor: '#FFF',
@@ -544,8 +548,10 @@ const styles = StyleSheet.create({
   dayDotEmpty: { width: 5, height: 5, borderRadius: 3, backgroundColor: LingoTheme.colors.border },
   dayBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 12,
+    paddingVertical: 12, marginHorizontal: -20,
+    paddingHorizontal: 20,
     backgroundColor: '#FFF', borderTopWidth: 2, borderBottomWidth: 2, borderColor: LingoTheme.colors.border,
+    marginBottom: 8,
   },
   dayBarLeft: { flex: 1 },
   dayBarName: { fontSize: 16, fontWeight: '800', color: LingoTheme.colors.ink },
@@ -553,7 +559,7 @@ const styles = StyleSheet.create({
   clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: LingoTheme.colors.softDanger, marginLeft: 12, borderWidth: 1.5, borderColor: '#F7A7A7' },
   clearBtnText: { fontSize: 12, fontWeight: '700', color: LingoTheme.colors.danger },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 14 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 20 },
   groupCard: {
     backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 12,
     borderWidth: 2, borderColor: LingoTheme.colors.border,
@@ -597,7 +603,7 @@ const styles = StyleSheet.create({
   overviewCount: { fontSize: 12, fontWeight: '700', color: LingoTheme.colors.muted, width: 30, textAlign: 'right' },
   overviewCountActive: { color: LingoTheme.colors.primaryDark },
   footer: {
-    backgroundColor: '#FFF', paddingHorizontal: 20, paddingTop: 14,
+    backgroundColor: '#FFF', paddingHorizontal: 20, paddingTop: 10,
     borderTopWidth: 2, borderTopColor: LingoTheme.colors.border,
   },
   feedbackBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, marginBottom: 12 },

@@ -293,12 +293,16 @@ export default function StudentDashboardScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.hubCard}
           >
-            <View style={styles.hubBadge}>
-              <Ionicons name="school" size={14} color="#0D9488" />
-              <ThemedText style={styles.hubBadgeText}>STUDENT HUB</ThemedText>
-            </View>
-            <View style={styles.hubIconBg}>
-              <Ionicons name="book" size={40} color="#14B8A6" />
+            <View style={styles.hubAvatarContainer}>
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.hubAvatar} />
+              ) : (
+                <View style={[styles.hubAvatar, styles.hubAvatarFallback]}>
+                  <ThemedText style={styles.hubAvatarInitial}>
+                    {(profile?.name || user?.full_name || 'S').charAt(0).toUpperCase()}
+                  </ThemedText>
+                </View>
+              )}
             </View>
             <ThemedText style={styles.hubTitle}>{(profile?.name || user?.full_name || 'Student').split(' ')[0]}</ThemedText>
             <ThemedText style={styles.hubSubtitle}>Track classes, build habits, and grow your knowledge every day.</ThemedText>
@@ -749,33 +753,25 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
   },
-  hubBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E0FDF4',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#99F6E4',
+  hubAvatarContainer: {
+    marginBottom: 4,
   },
-  hubBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0D9488',
-    letterSpacing: 0.5,
-  },
-  hubIconBg: {
+  hubAvatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E0FDF4',
+    borderWidth: 3,
+    borderColor: '#99F6E4',
+  },
+  hubAvatarFallback: {
+    backgroundColor: '#0D9488',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#99F6E4',
+  },
+  hubAvatarInitial: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   hubTitle: {
     fontSize: 24,

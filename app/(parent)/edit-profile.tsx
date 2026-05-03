@@ -328,13 +328,9 @@ export default function EditProfileScreen() {
           {/* Top Bar */}
           <View style={styles.topBar}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+              <Ionicons name="chevron-back" size={26} color="#111827" />
             </TouchableOpacity>
-            <View style={styles.topBarCenter}>
-              <ThemedText style={styles.topBarTitle}>Edit Profile</ThemedText>
-              <ThemedText style={styles.topBarSub}>Update your account details</ThemedText>
-            </View>
-            <View style={styles.topBarSpacer} />
+            <ThemedText style={styles.topBarTitle}>Edit Profile</ThemedText>
           </View>
 
           {/* Avatar Section - Tactile Card */}
@@ -515,8 +511,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  topBarTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
   topBarSpacer: { width: 44 },
 
   /* Avatar Section */

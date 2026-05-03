@@ -332,15 +332,7 @@ export default function ClassesScreen() {
       {/* ── Top Bar ── */}
       <View style={[styles.header, { paddingTop: topPadding + 10 }]}>
         <View style={styles.topBar}>
-          <View style={styles.topBarLeft}>
-            <View style={styles.topBarIconBg}>
-              <Ionicons name="calendar" size={28} color="#58cc02" />
-            </View>
-            <View>
-              <ThemedText style={styles.topBarTitle}>My Classes</ThemedText>
-              <ThemedText style={styles.topBarSub}>Track lessons &amp; history</ThemedText>
-            </View>
-          </View>
+          <ThemedText style={styles.topBarTitle}>My Classes</ThemedText>
         </View>
 
         {/* Stats Row */}
@@ -480,8 +472,9 @@ const styles = StyleSheet.create({
     borderColor: '#BBF7D0',
   },
   topBarTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: '#3C3C3C',
   },
   topBarSub: {

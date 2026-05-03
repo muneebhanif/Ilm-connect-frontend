@@ -41,6 +41,25 @@ interface TeacherStudent {
   parent_name?: string | null;
 }
 
+interface ClassRecording {
+  id: string;
+  title: string;
+  description?: string | null;
+  visibility: 'paid' | 'free';
+  status: string;
+  duration_seconds?: number | null;
+  created_at: string;
+  session_id?: string | null;
+  class_sessions?: { session_date: string; courses?: { title?: string } | null } | null;
+}
+
+interface EditingRecording {
+  id: string;
+  title: string;
+  description: string;
+  visibility: 'paid' | 'free';
+}
+
 interface SelectedVideo {
   uri: string;
   name: string;
@@ -106,6 +125,10 @@ export default function UploadRecordingScreen() {
   const [fulfillBooking, setFulfillBooking] = useState(Boolean(params.sessionId));
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
+  const [recordings, setRecordings] = useState<ClassRecording[]>([]);
+  const [editingRecording, setEditingRecording] = useState<EditingRecording | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === selectedSessionId) || null,
@@ -118,14 +141,16 @@ export default function UploadRecordingScreen() {
       if (mode === 'initial') setLoading(true);
       if (mode === 'refresh') setRefreshing(true);
 
-      const [scheduleResponse, studentsResponse] = await Promise.all([
+      const [scheduleResponse, studentsResponse, recordingsResponse] = await Promise.all([
         authFetch(api.teacherSchedule(user.id)),
         authFetch(api.teacherStudents(user.id)),
+        authFetch(api.teacherRecordings(user.id)),
       ]);
 
-      const [scheduleData, studentsData] = await Promise.all([
+      const [scheduleData, studentsData, recordingsData] = await Promise.all([
         scheduleResponse.json().catch(() => ({})),
         studentsResponse.json().catch(() => ({})),
+        recordingsResponse.json().catch(() => ({})),
       ]);
 
       if (!scheduleResponse.ok) {
@@ -138,6 +163,7 @@ export default function UploadRecordingScreen() {
 
       setSessions((scheduleData.sessions || []).filter((session: TeacherSession) => session.status !== 'cancelled'));
       setStudents(studentsData.students || []);
+      setRecordings(recordingsData.recordings || []);
     } catch (error: any) {
       Alert.alert('Error', String(error?.message || 'Unable to load recording form'));
     } finally {
@@ -171,6 +197,58 @@ export default function UploadRecordingScreen() {
       current.includes(studentId)
         ? current.filter((id) => id !== studentId)
         : [...current, studentId]
+    );
+  };
+
+  const saveEdit = async () => {
+    if (!user?.id || !editingRecording) return;
+    try {
+      setSavingEdit(true);
+      const response = await authFetch(api.updateClassRecording(user.id, editingRecording.id), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editingRecording.title,
+          description: editingRecording.description,
+          visibility: editingRecording.visibility,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || 'Failed to update');
+      setRecordings((prev) => prev.map((r) => r.id === editingRecording.id ? { ...r, ...data.recording } : r));
+      setEditingRecording(null);
+    } catch (error: any) {
+      Alert.alert('Error', String(error?.message || 'Failed to update recording'));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const confirmDelete = (recording: ClassRecording) => {
+    Alert.alert(
+      'Delete recording',
+      `Delete "${recording.title}"? This will also remove student access. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user?.id) return;
+            try {
+              setDeletingId(recording.id);
+              const response = await authFetch(api.deleteClassRecording(user.id, recording.id), { method: 'DELETE' });
+              const data = await response.json().catch(() => ({}));
+              if (!response.ok) throw new Error(data?.error || 'Failed to delete');
+              setRecordings((prev) => prev.filter((r) => r.id !== recording.id));
+            } catch (error: any) {
+              Alert.alert('Error', String(error?.message || 'Failed to delete recording'));
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
     );
   };
 
@@ -281,29 +359,33 @@ export default function UploadRecordingScreen() {
           {/* Top Bar */}
           <View style={styles.topBar}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+              <Ionicons name="chevron-back" size={26} color="#111827" />
             </TouchableOpacity>
-            <View style={styles.topBarCenter}>
-              <ThemedText style={styles.topBarTitle}>Upload Recording</ThemedText>
-              <ThemedText style={styles.topBarSub}>Fulfill bookings with a video</ThemedText>
-            </View>
-            <View style={{ width: 44 }} />
+            <ThemedText style={styles.topBarTitle}>Upload Recording</ThemedText>
           </View>
           {/* Stats Row */}
           <View style={styles.statsRow}>
-            <View style={styles.metricPill}>
-              <Ionicons name="film-outline" size={20} color="#F59E0B" />
-              <ThemedText style={styles.pillValue}>{sessions.length}</ThemedText>
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="film" size={22} color="#3B82F6" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{sessions.length}</ThemedText>
               <ThemedText style={styles.pillLabel}>Sessions</ThemedText>
             </View>
-            <View style={styles.metricPill}>
-              <Ionicons name="people-outline" size={20} color="#F59E0B" />
-              <ThemedText style={styles.pillValue}>{students.length}</ThemedText>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="people" size={22} color="#22C55E" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{students.length}</ThemedText>
               <ThemedText style={styles.pillLabel}>Students</ThemedText>
             </View>
-            <View style={styles.metricPill}>
-              <Ionicons name={selectedVideo ? 'cloud-done-outline' : 'cloud-upload-outline'} size={20} color={selectedVideo ? '#10B981' : '#AFAFAF'} />
-              <ThemedText style={styles.pillValue}>{selectedVideo ? 'Ready' : 'No file'}</ThemedText>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: selectedVideo ? '#F0FDF4' : '#F9FAFB' }]}>
+                <Ionicons name={selectedVideo ? 'cloud-done' : 'cloud-upload'} size={22} color={selectedVideo ? '#22C55E' : '#9CA3AF'} />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: selectedVideo ? '#22C55E' : '#9CA3AF' }]}>{selectedVideo ? 'Ready' : 'No file'}</ThemedText>
               <ThemedText style={styles.pillLabel}>Video</ThemedText>
             </View>
           </View>
@@ -424,7 +506,7 @@ export default function UploadRecordingScreen() {
                   />
                 </View>
                 <View style={styles.inlineRow}>
-                  <View style={[styles.fieldGroup, styles.inlineField]}>
+                  <View style={[styles.fieldGroup, selectedSessionId ? styles.inlineFull : styles.inlineField]}>
                     <ThemedText style={styles.label}>Duration (seconds)</ThemedText>
                     <TextInput
                       value={durationSeconds}
@@ -435,22 +517,24 @@ export default function UploadRecordingScreen() {
                       style={styles.input}
                     />
                   </View>
-                  <View style={[styles.fieldGroup, styles.inlineField]}>
-                    <ThemedText style={styles.label}>Access</ThemedText>
-                    <View style={styles.visibilityRow}>
-                      {(['paid', 'free'] as const).map((value) => (
-                        <TouchableOpacity
-                          key={value}
-                          style={[styles.visibilityChip, visibility === value && styles.visibilityChipActive]}
-                          onPress={() => setVisibility(value)}
-                        >
-                          <ThemedText style={[styles.visibilityChipText, visibility === value && styles.visibilityChipTextActive]}>
-                            {value === 'paid' ? 'Paid' : 'Free'}
-                          </ThemedText>
-                        </TouchableOpacity>
-                      ))}
+                  {!selectedSessionId ? (
+                    <View style={[styles.fieldGroup, styles.inlineField]}>
+                      <ThemedText style={styles.label}>Access</ThemedText>
+                      <View style={styles.visibilityRow}>
+                        {(['paid', 'free'] as const).map((value) => (
+                          <TouchableOpacity
+                            key={value}
+                            style={[styles.visibilityChip, visibility === value && styles.visibilityChipActive]}
+                            onPress={() => setVisibility(value)}
+                          >
+                            <ThemedText style={[styles.visibilityChipText, visibility === value && styles.visibilityChipTextActive]}>
+                              {value === 'paid' ? 'Paid' : 'Free'}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     </View>
-                  </View>
+                  ) : null}
                 </View>
 
                 <TouchableOpacity style={styles.videoPicker} onPress={pickVideo} activeOpacity={0.85}>
@@ -505,6 +589,93 @@ export default function UploadRecordingScreen() {
                 loading={uploading}
                 style={[styles.submitButton, uploading && styles.submitButtonDisabled]}
               />
+
+              {recordings.length > 0 ? (
+                <LingoCard style={styles.card}>
+                  <ThemedText style={styles.sectionTitle}>Uploaded recordings</ThemedText>
+                  <ThemedText style={styles.sectionSubtitle}>Tap a recording to edit or delete it.</ThemedText>
+                  <View style={{ gap: 10 }}>
+                    {recordings.map((rec) => (
+                      <View key={rec.id} style={styles.recRow}>
+                        {editingRecording?.id === rec.id ? (
+                          <View style={{ flex: 1, gap: 10 }}>
+                            <TextInput
+                              value={editingRecording.title}
+                              onChangeText={(t) => setEditingRecording({ ...editingRecording, title: t })}
+                              style={styles.input}
+                              placeholder="Title"
+                              placeholderTextColor="#9CA3AF"
+                            />
+                            <TextInput
+                              value={editingRecording.description}
+                              onChangeText={(t) => setEditingRecording({ ...editingRecording, description: t })}
+                              style={[styles.input, { minHeight: 70 }]}
+                              placeholder="Description (optional)"
+                              placeholderTextColor="#9CA3AF"
+                              multiline
+                              textAlignVertical="top"
+                            />
+                            <View style={styles.visibilityRow}>
+                              {(['paid', 'free'] as const).map((v) => (
+                                <TouchableOpacity
+                                  key={v}
+                                  style={[styles.visibilityChip, editingRecording.visibility === v && styles.visibilityChipActive]}
+                                  onPress={() => setEditingRecording({ ...editingRecording, visibility: v })}
+                                >
+                                  <ThemedText style={[styles.visibilityChipText, editingRecording.visibility === v && styles.visibilityChipTextActive]}>
+                                    {v === 'paid' ? 'Paid' : 'Free'}
+                                  </ThemedText>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                            <View style={styles.recEditActions}>
+                              <TouchableOpacity style={styles.recSaveBtn} onPress={saveEdit} disabled={savingEdit}>
+                                {savingEdit ? <ActivityIndicator size="small" color="#FFFFFF" /> : <ThemedText style={styles.recSaveBtnText}>Save</ThemedText>}
+                              </TouchableOpacity>
+                              <TouchableOpacity style={styles.recCancelBtn} onPress={() => setEditingRecording(null)}>
+                                <ThemedText style={styles.recCancelBtnText}>Cancel</ThemedText>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ) : (
+                          <>
+                            <View style={{ flex: 1 }}>
+                              <ThemedText style={styles.recTitle}>{rec.title}</ThemedText>
+                              {rec.class_sessions ? (
+                                <ThemedText style={styles.recMeta}>{rec.class_sessions.courses?.title || 'Linked session'}</ThemedText>
+                              ) : null}
+                              <View style={styles.recBadgeRow}>
+                                <View style={[styles.recBadge, rec.visibility === 'free' ? styles.recBadgeFree : styles.recBadgePaid]}>
+                                  <ThemedText style={[styles.recBadgeText, rec.visibility === 'free' ? styles.recBadgeFreeText : styles.recBadgePaidText]}>
+                                    {rec.visibility === 'free' ? 'Free' : 'Paid'}
+                                  </ThemedText>
+                                </View>
+                              </View>
+                            </View>
+                            <View style={styles.recActions}>
+                              <TouchableOpacity
+                                style={styles.recEditBtn}
+                                onPress={() => setEditingRecording({ id: rec.id, title: rec.title, description: rec.description || '', visibility: rec.visibility })}
+                              >
+                                <Ionicons name="create-outline" size={18} color="#3B82F6" />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.recDeleteBtn}
+                                onPress={() => confirmDelete(rec)}
+                                disabled={deletingId === rec.id}
+                              >
+                                {deletingId === rec.id
+                                  ? <ActivityIndicator size="small" color="#EF4444" />
+                                  : <Ionicons name="trash-outline" size={18} color="#EF4444" />}
+                              </TouchableOpacity>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                </LingoCard>
+              ) : null}
             </>
           )}
         </View>
@@ -533,16 +704,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4, gap: 2,
-  },
-  pillValue: { fontSize: 15, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 10, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBarTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  pillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   content: {
     paddingHorizontal: 20,
   },
@@ -785,5 +954,101 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: {
     opacity: 0.7,
+  },
+  inlineFull: {
+    flex: 1,
+  },
+  recRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  recTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  recMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  recBadgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  recBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  recBadgePaid: {
+    backgroundColor: '#FFF7ED',
+  },
+  recBadgeFree: {
+    backgroundColor: '#F0FDF4',
+  },
+  recBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  recBadgePaidText: {
+    color: '#F97316',
+  },
+  recBadgeFreeText: {
+    color: '#22C55E',
+  },
+  recActions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 4,
+  },
+  recEditBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recDeleteBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recEditActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  recSaveBtn: {
+    flex: 1,
+    backgroundColor: '#0F766E',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  recSaveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  recCancelBtn: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  recCancelBtnText: {
+    color: '#374151',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

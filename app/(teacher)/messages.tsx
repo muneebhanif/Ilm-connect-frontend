@@ -186,30 +186,31 @@ export default function TeacherMessagesScreen() {
             <View style={{ paddingTop: topPadding, paddingHorizontal: 16, paddingBottom: 8 }}>
               {/* Top Bar */}
               <View style={styles.topBar}>
-                <View style={styles.iconCircle}>
-                  <Ionicons name="chatbubbles" size={22} color="#F59E0B" />
-                </View>
-                <View style={styles.topBarCenter}>
-                  <ThemedText style={styles.topBarTitle}>Messages</ThemedText>
-                  <ThemedText style={styles.topBarSub}>Parent conversations</ThemedText>
-                </View>
-                <View style={{ width: 44 }} />
+                <ThemedText style={styles.topBarTitle}>Messages</ThemedText>
               </View>
               {/* Stats Row */}
               <View style={styles.statsRow}>
-                <View style={styles.metricPill}>
-                  <ThemedText style={styles.pillIcon}>💬</ThemedText>
-                  <ThemedText style={styles.pillValue}>{conversations.length}</ThemedText>
+                <View style={styles.statChip}>
+                  <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                    <Ionicons name="chatbubbles" size={22} color="#3B82F6" />
+                  </View>
+                  <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{conversations.length}</ThemedText>
                   <ThemedText style={styles.pillLabel}>Chats</ThemedText>
                 </View>
-                <View style={styles.metricPill}>
-                  <ThemedText style={styles.pillIcon}>📨</ThemedText>
-                  <ThemedText style={styles.pillValue}>{unreadConversations}</ThemedText>
+                <View style={styles.statDivider} />
+                <View style={styles.statChip}>
+                  <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                    <Ionicons name="mail-unread" size={22} color="#22C55E" />
+                  </View>
+                  <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{unreadConversations}</ThemedText>
                   <ThemedText style={styles.pillLabel}>Unread</ThemedText>
                 </View>
-                <View style={styles.metricPill}>
-                  <ThemedText style={styles.pillIcon}>✨</ThemedText>
-                  <ThemedText style={styles.pillValue}>{totalUnreadMessages}</ThemedText>
+                <View style={styles.statDivider} />
+                <View style={styles.statChip}>
+                  <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+                    <Ionicons name="notifications" size={22} color="#F97316" />
+                  </View>
+                  <ThemedText style={[styles.pillValue, { color: '#F97316' }]}>{totalUnreadMessages}</ThemedText>
                   <ThemedText style={styles.pillLabel}>New msgs</ThemedText>
                 </View>
               </View>
@@ -243,17 +244,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBarTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  pillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   list: {
     paddingHorizontal: 16,
     paddingBottom: 8,

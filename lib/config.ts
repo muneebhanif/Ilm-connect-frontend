@@ -73,6 +73,7 @@ export const api = {
     verify: () => `${API_URL}/api/payments/verify`,
     teacherConnectStatus: () => `${API_URL}/api/payments/teacher/connect-status`,
     teacherConnectOnboarding: () => `${API_URL}/api/payments/teacher/connect-onboarding`,
+    teacherManualPayoutInfo: () => `${API_URL}/api/payments/teacher/manual-payout-info`,
     teacherDashboardLink: () => `${API_URL}/api/payments/teacher/dashboard-link`,
   },
 
@@ -91,6 +92,9 @@ export const api = {
   uploadTeacherPortfolioMedia: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/portfolio-media`,
   deleteTeacherPortfolioMedia: (teacherId: string, mediaId: string) => `${API_URL}/api/upload/teacher/${teacherId}/portfolio-media/${mediaId}`,
   uploadClassRecording: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/recording`,
+  teacherRecordings: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/recordings`,
+  updateClassRecording: (teacherId: string, recordingId: string) => `${API_URL}/api/upload/teacher/${teacherId}/recording/${recordingId}`,
+  deleteClassRecording: (teacherId: string, recordingId: string) => `${API_URL}/api/upload/teacher/${teacherId}/recording/${recordingId}`,
   recordingAccess: (recordingId: string) => `${API_URL}/api/upload/recording/${recordingId}/access`,
   
   // Review endpoints

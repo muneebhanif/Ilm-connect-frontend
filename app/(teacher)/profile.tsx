@@ -72,47 +72,43 @@ export default function TeacherProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Top Bar ── */}
-      <View style={[styles.topBar, { paddingTop: topPadding + 8 }]}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="person-circle-outline" size={24} color="#F59E0B" />
-        </View>
-        <View style={styles.topBarCenter}>
-          <ThemedText style={styles.topBarTitle}>Profile</ThemedText>
-          <ThemedText style={styles.topBarSub}>
-            {isVerified ? '✅ Verified Teacher' : '⏳ Pending Verification'}
-          </ThemedText>
-        </View>
-        <TouchableOpacity style={styles.iconCircle} onPress={() => router.push('/(teacher)/edit-profile')}>
-          <Ionicons name="create-outline" size={22} color="#F59E0B" />
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Stat Pills ── */}
-      <View style={styles.pillsRow}>
-        <View style={styles.metricPill}>
-          <ThemedText style={styles.pillEmoji}>💰</ThemedText>
-          <ThemedText style={styles.pillValue}>${profile?.hourly_rate || 0}</ThemedText>
-          <ThemedText style={styles.pillLabel}>HOURLY</ThemedText>
-        </View>
-        <View style={styles.metricPill}>
-          <ThemedText style={styles.pillEmoji}>⭐</ThemedText>
-          <ThemedText style={styles.pillValue}>{profile?.rating?.toFixed(1) || 'New'}</ThemedText>
-          <ThemedText style={styles.pillLabel}>RATING</ThemedText>
-        </View>
-        <View style={styles.metricPill}>
-          <ThemedText style={styles.pillEmoji}>{isVerified ? '✅' : '⏳'}</ThemedText>
-          <ThemedText style={styles.pillValue}>{isVerified ? 'Active' : 'Pending'}</ThemedText>
-          <ThemedText style={styles.pillLabel}>STATUS</ThemedText>
-        </View>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
       >
+        {/* ── Top Bar ── */}
+        <View style={[styles.headerWrap, { paddingTop: topPadding }]}>
+          <View style={styles.topBar}>
+            <View style={{ flex: 1 }}>
+              <ThemedText style={styles.topBarTitle}>My Profile</ThemedText>
+              <ThemedText style={styles.topBarSub}>{isVerified ? '✅ Verified Teacher' : '⏳ Pending Verification'}</ThemedText>
+            </View>
+            <TouchableOpacity style={styles.editButton} onPress={() => router.push('/(teacher)/edit-profile')} activeOpacity={0.8}>
+              <Ionicons name="create-outline" size={22} color="#111827" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Stat Pills ── */}
+        <View style={styles.pillsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillEmoji}>💰</ThemedText>
+            <ThemedText style={styles.pillValue}>${profile?.hourly_rate || 0}</ThemedText>
+            <ThemedText style={styles.pillLabel}>HOURLY</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillEmoji}>⭐</ThemedText>
+            <ThemedText style={styles.pillValue}>{profile?.rating?.toFixed(1) || 'New'}</ThemedText>
+            <ThemedText style={styles.pillLabel}>RATING</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillEmoji}>{isVerified ? '✅' : '⏳'}</ThemedText>
+            <ThemedText style={styles.pillValue}>{isVerified ? 'Active' : 'Pending'}</ThemedText>
+            <ThemedText style={styles.pillLabel}>STATUS</ThemedText>
+          </View>
+        </View>
         {/* ── Profile Hero Card ── */}
         <View style={styles.heroCard}>
           <View style={styles.avatarWrapper}>
@@ -235,46 +231,43 @@ const styles = StyleSheet.create({
   },
 
   /* ── Top Bar ── */
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: '#F7F7F7',
+    marginBottom: 16,
     gap: 12,
   },
-  iconCircle: {
+  topBarTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.5,
+  },
+  topBarSub: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '400',
+    marginTop: 2,
+  },
+  editButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFF7D6',
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#E5E5E5',
     borderBottomWidth: 4,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  topBarCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  topBarTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  topBarSub: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginTop: 1,
   },
 
   /* ── Pills Row ── */
   pillsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
     gap: 8,
     marginBottom: 16,
   },

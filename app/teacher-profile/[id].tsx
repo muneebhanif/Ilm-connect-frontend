@@ -133,20 +133,28 @@ export default function TeacherProfileScreen() {
         </View>
         {/* Stats Row */}
         <View style={styles.headerStatsRow}>
-          <View style={styles.statPill}>
-            <Ionicons name="star" size={20} color="#FFC800" />
-            <ThemedText style={styles.statPillValue}>{teacher.rating ? teacher.rating.toFixed(1) : 'New'}</ThemedText>
-            <ThemedText style={styles.statPillLabel}>RATING</ThemedText>
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#FEFCE8' }]}>
+              <Ionicons name="star" size={22} color="#EAB308" />
+            </View>
+            <ThemedText style={[styles.statPillValue, { color: '#EAB308' }]}>{teacher.rating ? teacher.rating.toFixed(1) : 'New'}</ThemedText>
+            <ThemedText style={styles.statPillLabel}>Rating</ThemedText>
           </View>
-          <View style={styles.statPill}>
-            <Ionicons name="cash" size={20} color="#58cc02" />
-            <ThemedText style={styles.statPillValue}>${teacher.hourly_rate}/hr</ThemedText>
-            <ThemedText style={styles.statPillLabel}>HOURLY</ThemedText>
+          <View style={styles.statDivider} />
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="cash" size={22} color="#22C55E" />
+            </View>
+            <ThemedText style={[styles.statPillValue, { color: '#22C55E' }]}>${teacher.hourly_rate}/hr</ThemedText>
+            <ThemedText style={styles.statPillLabel}>Hourly</ThemedText>
           </View>
-          <View style={styles.statPill}>
-            <Ionicons name="language" size={20} color="#14B8A6" />
-            <ThemedText style={styles.statPillValue} numberOfLines={1}>{teacher.languages?.[0] || 'English'}</ThemedText>
-            <ThemedText style={styles.statPillLabel}>LANGUAGE</ThemedText>
+          <View style={styles.statDivider} />
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="language" size={22} color="#3B82F6" />
+            </View>
+            <ThemedText style={[styles.statPillValue, { color: '#3B82F6' }]} numberOfLines={1}>{teacher.languages?.[0] || 'English'}</ThemedText>
+            <ThemedText style={styles.statPillLabel}>Language</ThemedText>
           </View>
         </View>
       </View>
@@ -525,35 +533,12 @@ const styles = StyleSheet.create({
   topBarSpacer: {
     width: 44,
   },
-  headerStatsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  statPill: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderBottomWidth: 4,
-  },
-  statPillValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#3C3C3C',
-    marginTop: 4,
-  },
-  statPillLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#AFAFAF',
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
+  headerStatsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
+  statPillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  statPillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
 
   /* Profile Card (Gradient) */
   profileHeaderContainer: {

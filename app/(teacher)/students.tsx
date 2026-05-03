@@ -276,31 +276,32 @@ export default function StudentsScreen() {
       <View style={[styles.header, { paddingTop: topPadding }]}>
         {/* Top Bar */}
         <View style={styles.topBar}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="people-outline" size={22} color="#F59E0B" />
-          </View>
-          <View style={styles.topBarCenter}>
-            <ThemedText style={styles.topBarTitle}>My Students</ThemedText>
-            <ThemedText style={styles.topBarSub}>Roster &amp; attendance</ThemedText>
-          </View>
-          <View style={{ width: 44 }} />
+          <ThemedText style={styles.topBarTitle}>My Students</ThemedText>
         </View>
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>👥</ThemedText>
-            <ThemedText style={styles.pillValue}>{students.length}</ThemedText>
-            <ThemedText style={styles.pillLabel}>Students</ThemedText>
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="people" size={22} color="#3B82F6" />
+            </View>
+            <ThemedText style={[styles.statChipValue, { color: '#3B82F6' }]}>{students.length}</ThemedText>
+            <ThemedText style={styles.statChipLabel}>Students</ThemedText>
           </View>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>✅</ThemedText>
-            <ThemedText style={styles.pillValue}>{activeCount}</ThemedText>
-            <ThemedText style={styles.pillLabel}>Active</ThemedText>
+          <View style={styles.statDivider} />
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="person" size={22} color="#22C55E" />
+            </View>
+            <ThemedText style={[styles.statChipValue, { color: '#22C55E' }]}>{activeCount}</ThemedText>
+            <ThemedText style={styles.statChipLabel}>Active</ThemedText>
           </View>
-          <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>🎯</ThemedText>
-            <ThemedText style={styles.pillValue}>{averageAttendance}%</ThemedText>
-            <ThemedText style={styles.pillLabel}>Attendance</ThemedText>
+          <View style={styles.statDivider} />
+          <View style={styles.statChip}>
+            <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+              <Ionicons name="trending-up" size={22} color="#F97316" />
+            </View>
+            <ThemedText style={[styles.statChipValue, { color: '#F97316' }]}>{averageAttendance}%</ThemedText>
+            <ThemedText style={styles.statChipLabel}>Attendance</ThemedText>
           </View>
         </View>
 
@@ -473,25 +474,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
-  iconCircle: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#FFF7D6',
-    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 12 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  topBarTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  statChipValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  statChipLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   filterCard: {
     gap: 14,
   },

@@ -143,31 +143,36 @@ export default function MyProfileScreen() {
       <View style={[styles.header, { paddingTop: topPadding }]}>
         {/* Top Bar */}
         <View style={styles.topBar}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="person-circle-outline" size={22} color="#F59E0B" />
-          </View>
-          <View style={styles.topBarCenter}>
-            <ThemedText style={styles.topBarTitle}>My Profile</ThemedText>
-            <ThemedText style={styles.topBarSub}>{getVerificationLabel()}</ThemedText>
-          </View>
-          <TouchableOpacity style={styles.iconCircle} onPress={() => router.push('/(teacher)/edit-profile')} activeOpacity={0.8}>
-            <Ionicons name="create-outline" size={20} color="#F59E0B" />
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+            <Ionicons name="chevron-back" size={26} color="#111827" />
+          </TouchableOpacity>
+          <ThemedText style={styles.topBarTitle}>My Profile</ThemedText>
+          <TouchableOpacity onPress={() => router.push('/(teacher)/edit-profile')} activeOpacity={0.8} style={styles.editButton}>
+            <Ionicons name="create-outline" size={22} color="#111827" />
           </TouchableOpacity>
         </View>
         <View style={styles.statsRow}>
           <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>⭐</ThemedText>
-            <ThemedText style={styles.pillValue}>{profile?.rating?.toFixed(1) || '0.0'}</ThemedText>
+            <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+              <Ionicons name="star" size={22} color="#F97316" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#F97316' }]}>{profile?.rating?.toFixed(1) || '0.0'}</ThemedText>
             <ThemedText style={styles.pillLabel}>Rating</ThemedText>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>👥</ThemedText>
-            <ThemedText style={styles.pillValue}>{stats?.totalStudents || 0}</ThemedText>
+            <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="people" size={22} color="#3B82F6" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{stats?.totalStudents || 0}</ThemedText>
             <ThemedText style={styles.pillLabel}>Students</ThemedText>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>📚</ThemedText>
-            <ThemedText style={styles.pillValue}>{stats?.completedClasses || 0}</ThemedText>
+            <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="book" size={22} color="#22C55E" />
+            </View>
+            <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{stats?.completedClasses || 0}</ThemedText>
             <ThemedText style={styles.pillLabel}>Classes</ThemedText>
           </View>
         </View>
@@ -453,24 +458,25 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
-  iconCircle: {
+  backButton: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#FFF7D6',
-    borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
     justifyContent: 'center', alignItems: 'center',
   },
-  topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4,
+  editButton: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBarTitle: { flex: 1, fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: '#111827' },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  metricPill: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  pillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   scrollView: {
     flex: 1,
   },

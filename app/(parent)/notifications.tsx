@@ -272,30 +272,34 @@ export default function NotificationsScreen() {
           {/* Top Bar */}
           <View style={styles.topBar}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+              <Ionicons name="chevron-back" size={26} color="#111827" />
             </TouchableOpacity>
-            <View style={styles.topBarCenter}>
-              <ThemedText style={styles.topBarTitle}>Notifications</ThemedText>
-              <ThemedText style={styles.topBarSub}>Class reminders &amp; messages</ThemedText>
-            </View>
-            <View style={styles.topBarSpacer} />
+            <ThemedText style={styles.topBarTitle}>Notifications</ThemedText>
           </View>
 
           {/* Stats Row */}
           <View style={styles.statsRow}>
-            <View style={styles.metricPill}>
-              <ThemedText style={styles.pillIcon}>🔔</ThemedText>
-              <ThemedText style={styles.pillValue}>{notifications.length}</ThemedText>
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="notifications" size={22} color="#3B82F6" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{notifications.length}</ThemedText>
               <ThemedText style={styles.pillLabel}>Alerts</ThemedText>
             </View>
-            <View style={styles.metricPill}>
-              <ThemedText style={styles.pillIcon}>💬</ThemedText>
-              <ThemedText style={styles.pillValue}>{unreadCount}</ThemedText>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="mail-unread" size={22} color="#F97316" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#F97316' }]}>{unreadCount}</ThemedText>
               <ThemedText style={styles.pillLabel}>Unread</ThemedText>
             </View>
-            <View style={styles.metricPill}>
-              <ThemedText style={styles.pillIcon}>📅</ThemedText>
-              <ThemedText style={styles.pillValue}>{reminderCount}</ThemedText>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="calendar" size={22} color="#22C55E" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{reminderCount}</ThemedText>
               <ThemedText style={styles.pillLabel}>Reminders</ThemedText>
             </View>
           </View>
@@ -406,8 +410,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
+  topBarTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
   topBarSpacer: { width: 44 },
   statsRow: {
     flexDirection: 'row',

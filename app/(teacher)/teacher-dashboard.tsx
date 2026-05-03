@@ -359,12 +359,16 @@ export default function TeacherDashboard() {
             end={{ x: 1, y: 1 }}
             style={styles.hubCard}
           >
-            <View style={styles.hubBadge}>
-              <Ionicons name="ribbon" size={14} color="#F59E0B" />
-              <ThemedText style={styles.hubBadgeText}>TEACHER HUB</ThemedText>
-            </View>
-            <View style={styles.hubIconBg}>
-              <Ionicons name="school" size={40} color="#F59E0B" />
+            <View style={styles.hubAvatarContainer}>
+              {profile.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.hubAvatar} />
+              ) : (
+                <View style={[styles.hubAvatar, styles.hubAvatarFallback]}>
+                  <ThemedText style={styles.hubAvatarInitial}>
+                    {(profile.full_name || 'T').charAt(0).toUpperCase()}
+                  </ThemedText>
+                </View>
+              )}
             </View>
             <ThemedText style={styles.hubTitle}>{profile.full_name.split(' ')[0]}</ThemedText>
             <ThemedText style={styles.hubSubtitle}>Manage classes, track progress, and grow your teaching impact.</ThemedText>
@@ -910,33 +914,25 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
   },
-  hubBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7D6',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#F4D778',
+  hubAvatarContainer: {
+    marginBottom: 4,
   },
-  hubBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#B7791F',
-    letterSpacing: 0.5,
-  },
-  hubIconBg: {
+  hubAvatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFF7D6',
+    borderWidth: 3,
+    borderColor: '#F4D778',
+  },
+  hubAvatarFallback: {
+    backgroundColor: '#D97706',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#F4D778',
+  },
+  hubAvatarInitial: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   hubTitle: {
     fontSize: 24,

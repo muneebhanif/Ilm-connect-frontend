@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguagesMultiSelectDropdown } from '@/components/dropdowns';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { SimpleProfileSkeleton } from '@/components/ui/dashboard-skeletons';
-import { LingoBadge, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
+import { LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 
 interface TeacherProfileData {
@@ -592,26 +592,18 @@ export default function EditTeacherProfileScreen() {
         </View>
       )}
       
-      <View style={[styles.headerWrap, { paddingTop: topPadding }]}>
-        <LingoScreenHeader
-          title="Edit Profile"
-          subtitle="Refresh your teaching story, pricing, and showcase assets."
-          badge="Teacher profile"
-          icon="create-outline"
-          onBack={() => router.back()}
-        >
-          <View style={styles.headerActionsRow}>
-            <LingoBadge label={`${profile.subjects.length} subjects`} icon="book-outline" tone="teal" />
-            <LingoBadge label={`${profile.languages.length} languages`} icon="language-outline" tone="gold" />
-            <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <ThemedText style={styles.saveText}>Save</ThemedText>
-              )}
-            </TouchableOpacity>
-          </View>
-        </LingoScreenHeader>
+      <View style={[styles.topBar, { paddingTop: topPadding + 8 }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
+          <Ionicons name="chevron-back" size={26} color="#111827" />
+        </TouchableOpacity>
+        <ThemedText style={styles.topBarTitle}>Edit Profile</ThemedText>
+        <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
+          {saving ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <ThemedText style={styles.saveText}>Save</ThemedText>
+          )}
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView 
@@ -965,15 +957,30 @@ const styles = StyleSheet.create({
     maxWidth: 220,
     alignItems: 'center',
   },
-  headerWrap: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  headerActionsRow: {
+  topBar: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    borderBottomWidth: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBarTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
   },
   saveButton: {
     backgroundColor: LingoTheme.colors.primary,

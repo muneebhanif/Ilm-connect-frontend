@@ -11,8 +11,7 @@ import { StudentClassesSkeleton } from '@/components/ui/dashboard-skeletons';
 import { ThemedText } from '@/components/themed-text';
 import {
   LingoEmptyState,
-  LingoScreenHeader,
-} from '@/components/ui/lingo-mobile';
+  } from '@/components/ui/lingo-mobile';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/config';
 import { authFetch } from '@/lib/auth-fetch';
@@ -227,37 +226,33 @@ export default function StudentClassesScreen() {
         }
       >
         <View style={styles.contentPad}>
-          <LingoScreenHeader
-            badge="Student hub"
-            icon="school"
-            title="Classes that stay easy to follow"
-            subtitle="See live lessons, upcoming sessions, and completed classes in one bright, clear view."
-          >
-            {/* Custom Tactile Horizontal Stats Row */}
+          <ThemedText style={styles.pageTitle}>Classes</ThemedText>
+            {/* Stats Row */}
             <View style={styles.horizontalStatsRow}>
-              <View style={styles.metricPill}>
-                 <Ionicons name="calendar" size={20} color="#58cc02" />
-                 <View style={styles.metricTextWrap}>
-                   <ThemedText style={styles.metricValue}>{upcoming.length}</ThemedText>
-                   <ThemedText style={styles.metricLabel}>UPCOMING</ThemedText>
-                 </View>
+              <View style={styles.statChip}>
+                <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="calendar" size={22} color="#3B82F6" />
+                </View>
+                <ThemedText style={[styles.metricValue, { color: '#3B82F6' }]}>{upcoming.length}</ThemedText>
+                <ThemedText style={styles.metricLabel}>Upcoming</ThemedText>
               </View>
-              <View style={styles.metricPill}>
-                 <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
-                 <View style={styles.metricTextWrap}>
-                   <ThemedText style={styles.metricValue}>{completed.length}</ThemedText>
-                   <ThemedText style={styles.metricLabel}>COMPLETED</ThemedText>
-                 </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statChip}>
+                <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                  <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                </View>
+                <ThemedText style={[styles.metricValue, { color: '#22C55E' }]}>{completed.length}</ThemedText>
+                <ThemedText style={styles.metricLabel}>Completed</ThemedText>
               </View>
-              <View style={styles.metricPill}>
-                 <Ionicons name="stats-chart" size={20} color="#ffc800" />
-                 <View style={styles.metricTextWrap}>
-                   <ThemedText style={styles.metricValue}>{attendance.attendancePercentage}%</ThemedText>
-                   <ThemedText style={styles.metricLabel}>ATTENDANCE</ThemedText>
-                 </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statChip}>
+                <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+                  <Ionicons name="stats-chart" size={22} color="#F97316" />
+                </View>
+                <ThemedText style={[styles.metricValue, { color: '#F97316' }]}>{attendance.attendancePercentage}%</ThemedText>
+                <ThemedText style={styles.metricLabel}>Attendance</ThemedText>
               </View>
             </View>
-          </LingoScreenHeader>
 
           {/* Tactile Attendance Card */}
           <View style={styles.tactileCard}>
@@ -386,43 +381,22 @@ const styles = StyleSheet.create({
   contentPad: {
     paddingHorizontal: 20,
   },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+    marginTop: 8,
+  },
 
-  /* Custom Horizontal Stats Row */
-  horizontalStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  metricPill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderBottomWidth: 4, // 3D effect
-  },
-  metricTextWrap: {
-    marginLeft: 6,
-  },
-  metricValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#3C3C3C',
-    lineHeight: 18,
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#AFAFAF',
-    textTransform: 'uppercase',
-  },
+  /* Stats Row */
+  horizontalStatsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  metricValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  metricLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
 
   /* Tactile Base Card */
   tactileCard: {

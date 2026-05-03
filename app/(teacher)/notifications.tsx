@@ -138,28 +138,32 @@ export default function TeacherNotificationsScreen() {
           {/* Top Bar */}
           <View style={styles.topBar}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color="#3C3C3C" />
+              <Ionicons name="chevron-back" size={26} color="#111827" />
             </TouchableOpacity>
-            <View style={styles.topBarCenter}>
-              <ThemedText style={styles.topBarTitle}>Notifications</ThemedText>
-              <ThemedText style={styles.topBarSub}>Bookings &amp; updates</ThemedText>
-            </View>
-            <View style={{ width: 44 }} />
+            <ThemedText style={styles.topBarTitle}>Notifications</ThemedText>
           </View>
           <View style={styles.statsRow}>
-            <View style={styles.metricPill}>
-              <ThemedText style={styles.pillIcon}>🔔</ThemedText>
-              <ThemedText style={styles.pillValue}>{notifications.length}</ThemedText>
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="notifications" size={22} color="#3B82F6" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#3B82F6' }]}>{notifications.length}</ThemedText>
               <ThemedText style={styles.pillLabel}>Updates</ThemedText>
             </View>
-            <View style={styles.metricPill}>
-              <ThemedText style={styles.pillIcon}>✨</ThemedText>
-              <ThemedText style={styles.pillValue}>{unreadCount}</ThemedText>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="mail-unread" size={22} color="#F97316" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#F97316' }]}>{unreadCount}</ThemedText>
               <ThemedText style={styles.pillLabel}>Unread</ThemedText>
             </View>
-            <View style={styles.metricPill}>
-              <ThemedText style={styles.pillIcon}>🕒</ThemedText>
-              <ThemedText style={styles.pillValue}>{recentCount}</ThemedText>
+            <View style={styles.statDivider} />
+            <View style={styles.statChip}>
+              <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="time" size={22} color="#22C55E" />
+              </View>
+              <ThemedText style={[styles.pillValue, { color: '#22C55E' }]}>{recentCount}</ThemedText>
               <ThemedText style={styles.pillLabel}>Today</ThemedText>
             </View>
           </View>
@@ -243,17 +247,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   topBarCenter: { flex: 1, alignItems: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: '#3C3C3C' },
-  topBarSub: { fontSize: 13, color: '#AFAFAF', fontWeight: '600', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 16 },
-  metricPill: {
-    flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
-    paddingVertical: 12, paddingHorizontal: 4,
-  },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 18, fontWeight: '800', color: '#3C3C3C' },
-  pillLabel: { fontSize: 11, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
+  topBarTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, color: '#111827' },
+  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
+  statChip: { flex: 1, alignItems: 'center', gap: 6 },
+  statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  pillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   touchCard: {
     marginBottom: 14,
   },
