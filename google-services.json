@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1065936603840",
+    "project_id": "ilmconnect-59b1b",
+    "storage_bucket": "ilmconnect-59b1b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1065936603840:android:5b67946a28a923bb42fb25",
+        "android_client_info": {
+          "package_name": "com.ilmconnect.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtTfhIVm6OVUBeB5CZ2nVl7YxOYErPkuM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

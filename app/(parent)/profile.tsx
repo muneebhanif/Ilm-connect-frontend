@@ -88,39 +88,42 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Top Bar ── */}
-      <View style={[styles.topBar, { paddingTop: topPadding + 8 }]}>
-        <ThemedText style={styles.topBarTitle}>Profile</ThemedText>
-        <TouchableOpacity onPress={() => router.push('/(parent)/edit-profile')} activeOpacity={0.8} style={styles.topBarAction}>
-          <Ionicons name="create-outline" size={22} color="#111827" />
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Stat Pills ── */}
-      <View style={styles.pillsRow}>
-        <View style={styles.metricPill}>
-          <ThemedText style={styles.pillEmoji}>👨‍👩‍👧</ThemedText>
-          <ThemedText style={styles.pillValue}>{stats.children}</ThemedText>
-          <ThemedText style={styles.pillLabel}>CHILDREN</ThemedText>
-        </View>
-        <View style={styles.metricPill}>
-          <ThemedText style={styles.pillEmoji}>📚</ThemedText>
-          <ThemedText style={styles.pillValue}>{stats.activeClasses}</ThemedText>
-          <ThemedText style={styles.pillLabel}>CLASSES</ThemedText>
-        </View>
-        <View style={styles.metricPill}>
-          <ThemedText style={styles.pillEmoji}>🎓</ThemedText>
-          <ThemedText style={styles.pillValue}>{stats.teachers}</ThemedText>
-          <ThemedText style={styles.pillLabel}>TEACHERS</ThemedText>
-        </View>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding, paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 100) }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#58CC02" />}
       >
+        {/* ── Top Bar ── */}
+        <View style={styles.headerWrap}>
+          <View style={styles.topBar}>
+            <View style={{ flex: 1 }}>
+              <ThemedText style={styles.topBarTitle}>Profile</ThemedText>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/(parent)/edit-profile')} activeOpacity={0.8} style={styles.topBarAction}>
+              <Ionicons name="create-outline" size={22} color="#111827" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Stat Pills ── */}
+        <View style={styles.pillsRow}>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillEmoji}>👨‍👩‍👧</ThemedText>
+            <ThemedText style={styles.pillValue}>{stats.children}</ThemedText>
+            <ThemedText style={styles.pillLabel}>CHILDREN</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillEmoji}>📚</ThemedText>
+            <ThemedText style={styles.pillValue}>{stats.activeClasses}</ThemedText>
+            <ThemedText style={styles.pillLabel}>CLASSES</ThemedText>
+          </View>
+          <View style={styles.metricPill}>
+            <ThemedText style={styles.pillEmoji}>🎓</ThemedText>
+            <ThemedText style={styles.pillValue}>{stats.teachers}</ThemedText>
+            <ThemedText style={styles.pillLabel}>TEACHERS</ThemedText>
+          </View>
+        </View>
         {/* ── Profile Hero Card (all data from DB) ── */}
         <View style={styles.heroCard}>
           <View style={styles.avatarWrapper}>
@@ -201,29 +204,14 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F7F7' },
 
-  /* ── Top Bar ── */
+  /* ── Header ── */
+  headerWrap: { paddingHorizontal: 16, paddingBottom: 8 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: '#F7F7F7',
     gap: 12,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ECFCD8',
-    borderWidth: 2,
-    borderColor: '#58CC02',
-    borderBottomWidth: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topBarCenter: { flex: 1, alignItems: 'center' },
   topBarTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5, color: '#111827' },
-  topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 2 },
   topBarAction: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
 
   /* ── Pills ── */
@@ -245,7 +233,7 @@ const styles = StyleSheet.create({
 
   /* ── Scroll ── */
   scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, gap: 16 },
+  scrollContent: { paddingHorizontal: 16, gap: 16, paddingTop: 8 },
 
   /* ── Hero Card ── */
   heroCard: {

@@ -19,6 +19,7 @@
     "android": {
       "package": "com.ilmconnect.app",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -40,6 +41,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#2e9e2e",
+          "androidMode": "default"
+        }
+      ],
       [
         "expo-splash-screen",
         {

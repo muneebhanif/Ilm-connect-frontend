@@ -67,9 +67,13 @@ export async function registerForPushNotificationsAsync() {
   } catch (err: any) {
     console.error('getExpoPushTokenAsync failed:', err);
     const msg = err?.message || 'Failed to get push token';
+    // Firebase not initialized — app needs a valid google-services.json and a proper native build (not Expo Go)
+    if (msg.includes('Firebase') || msg.includes('FirebaseApp')) {
+      return { token: null, error: 'Push notifications require a native build with Firebase configured. Use the IlmConnect app build instead of Expo Go.' };
+    }
     // Common Android issue: Google Play Services unavailable
     if (msg.includes('Play') || msg.includes('GCM') || msg.includes('FCM')) {
-      return { token: null, error: 'Google Play Services required for push notifications on Android.' };
+      return { token: null, error: 'Google Play Services is required for push notifications on Android.' };
     }
     return { token: null, error: msg };
   }
