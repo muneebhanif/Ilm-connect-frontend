@@ -10,6 +10,7 @@ import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { useDeviceTimezone } from '@/hooks/use-device-timezone';
 import { LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { ParentDashboardSkeleton } from '@/components/ui/dashboard-skeletons';
@@ -78,6 +79,11 @@ export default function ParentDashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [stats, setStats] = useState({ children: 0, activeClasses: 0, teachers: 0 });
   const [parentName, setParentName] = useState('Parent');
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [storedTimezone, setStoredTimezone] = useState<string | null>(null);
+
+  // Silently sync device timezone to backend when it changes
+  useDeviceTimezone(user?.id, 'parent', storedTimezone, accessToken);
   const [parentId, setParentId] = useState<string | null>(null);
   
   const [showAddChildModal, setShowAddChildModal] = useState(false);
@@ -152,6 +158,7 @@ export default function ParentDashboard() {
         await signOut();
         return;
       }
+      setAccessToken(accessToken);
       const authHeaders = { Authorization: `Bearer ${accessToken}` };
 
       const profileRes = await fetch(api.parentProfile(user.id), { headers: authHeaders });
@@ -171,6 +178,7 @@ export default function ParentDashboard() {
       if (profileData.profile) {
         setParentName(profileData.profile.full_name);
         setStats(profileData.stats);
+        if (profileData.profile.timezone) setStoredTimezone(profileData.profile.timezone);
       }
 
       const childrenRes = await fetch(api.parentChildren(user.id), { headers: authHeaders });
@@ -240,19 +248,8 @@ export default function ParentDashboard() {
     }
   };
 
-  const getUserTimezone = () => {
-    const offsetMinutes = new Date().getTimezoneOffset();
-    const offsetHours = -offsetMinutes / 60;
-    const tzMap: Record<number, string> = {
-      5: 'Asia/Karachi',
-      5.5: 'Asia/Kolkata',
-      0: 'UTC',
-      1: 'Europe/London',
-      '-5': 'America/New_York',
-      '-8': 'America/Los_Angeles',
-    };
-    return tzMap[offsetHours] || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  };
+  const getUserTimezone = () =>
+    Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
   const formatTime = (dateStr: string) => {
     const utcDate = new Date(dateStr);

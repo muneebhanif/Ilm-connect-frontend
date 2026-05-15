@@ -87,6 +87,7 @@ export const api = {
   // Upload endpoints
   uploadProfileImage: (userId: string) => `${API_URL}/api/upload/${userId}/profile-image`,
   uploadTeacherDocument: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/document`,
+  replaceTeacherDocument: (teacherId: string, docType: string) => `${API_URL}/api/upload/teacher/${teacherId}/document/${encodeURIComponent(docType)}`,
   getTeacherDocuments: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/documents`,
   uploadCourseThumbnail: (teacherId: string, courseId: string) => `${API_URL}/api/upload/teacher/${teacherId}/course/${courseId}/thumbnail`,
   uploadTeacherPortfolioMedia: (teacherId: string) => `${API_URL}/api/upload/teacher/${teacherId}/portfolio-media`,

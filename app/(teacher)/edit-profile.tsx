@@ -10,6 +10,8 @@ import { api } from '@/lib/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguagesMultiSelectDropdown } from '@/components/dropdowns';
 import { useSafePadding } from '@/hooks/use-safe-padding';
+import { useDeviceTimezone } from '@/hooks/use-device-timezone';
+import * as DocumentPicker from 'expo-document-picker';
 import { SimpleProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 import { LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
@@ -70,6 +72,14 @@ export default function EditTeacherProfileScreen() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [storedTimezone, setStoredTimezone] = useState<string | null>(null);
+
+  // Silently sync device timezone to backend when it changes
+  useDeviceTimezone(user?.id, 'teacher', storedTimezone, accessToken);
+
+  const [documents, setDocuments] = useState<Array<{ type: string; url: string; fileName?: string; uploadedAt?: string; status?: string }>>([]);
+  const [replacingDoc, setReplacingDoc] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -104,6 +114,19 @@ export default function EditTeacherProfileScreen() {
         if (data.profile.avatar_url) {
           setImageUri(data.profile.avatar_url);
         }
+        if (data.profile.timezone) setStoredTimezone(data.profile.timezone);
+      }
+
+      // Capture access token for timezone sync
+      const tok = await AsyncStorage.getItem('access_token');
+      if (tok) {
+        setAccessToken(tok);
+        // Load verification documents
+        try {
+          const docsRes = await fetch(api.getTeacherDocuments(user.id), { headers: { Authorization: `Bearer ${tok}` } });
+          const docsData = await docsRes.json();
+          setDocuments(docsData.documents || []);
+        } catch { /* non-critical */ }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -342,6 +365,41 @@ export default function EditTeacherProfileScreen() {
       }));
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to remove media');
+    }
+  };
+
+  const replaceDocument = async (docType: string) => {
+    if (!user?.id) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      const tok = await AsyncStorage.getItem('access_token');
+      if (!tok) { Alert.alert('Error', 'Session expired. Please login again.'); return; }
+
+      setReplacingDoc(docType);
+
+      const ext = (asset.name?.split('.').pop() || 'pdf').toLowerCase();
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
+
+      const response = await fetch(api.replaceTeacherDocument(user.id, docType), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+        body: JSON.stringify({ document: base64, documentType: docType, fileExtension: ext, fileName: asset.name }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to replace document');
+
+      setDocuments(data.documents || []);
+      Alert.alert('Document replaced', 'Your updated document has been sent for admin approval.');
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to replace document');
+    } finally {
+      setReplacingDoc(null);
     }
   };
 
@@ -869,6 +927,32 @@ export default function EditTeacherProfileScreen() {
               </View>
             )}
           </View>
+        </LingoCard>
+
+        {/* Verification Documents */}
+        <LingoCard style={{ marginHorizontal: 16, marginBottom: 16 }}>
+          <ThemedText style={[styles.sectionTitle, { marginBottom: 12 }]}>Verification Documents</ThemedText>
+          {documents.length === 0 ? (
+            <ThemedText style={{ color: '#888', fontSize: 13 }}>No documents uploaded yet. Upload from the web dashboard.</ThemedText>
+          ) : (
+            documents.map((doc, idx) => (
+              <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: idx < documents.length - 1 ? 1 : 0, borderBottomColor: '#f0f0f0' }}>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={{ fontSize: 13, fontWeight: '600', color: '#1a1a1a' }}>{doc.fileName || doc.type}</ThemedText>
+                  <ThemedText style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{doc.type} • {doc.status || 'pending'}</ThemedText>
+                </View>
+                <TouchableOpacity
+                  onPress={() => replaceDocument(doc.type)}
+                  disabled={replacingDoc === doc.type}
+                  style={{ backgroundColor: '#fff8e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6, marginLeft: 8 }}
+                >
+                  <ThemedText style={{ fontSize: 12, fontWeight: '700', color: '#b45309' }}>
+                    {replacingDoc === doc.type ? 'Uploading…' : 'Replace'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </LingoCard>
 
         <View style={styles.bottomPadding} />
