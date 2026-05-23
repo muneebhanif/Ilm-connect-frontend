@@ -3,11 +3,13 @@ import { useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { LingoButton, LingoCard, LingoHero } from '@/components/ui/lingo-mobile';
+import { LingoButton, LingoCard } from '@/components/ui/lingo-mobile';
 import { Fonts, LingoTheme } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 export default function SignUpStudentScreen() {
   const router = useRouter();
+  const { topPadding, bottomPadding } = useSafePadding();
 
   return (
     <ThemedView style={styles.container}>
@@ -17,13 +19,19 @@ export default function SignUpStudentScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         style={styles.keyboardWrap}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <LingoHero
-            icon="school"
-            badge="Student portal"
-            title="Student sign-up moved to parent dashboard"
-            subtitle="Parents now create student login credentials first, then students sign in with those details on web or mobile."
-          />
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: topPadding + 12, paddingBottom: bottomPadding + 32 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.signupHeader}>
+            <ThemedText style={styles.signupTitle}>Student sign-up</ThemedText>
+            <ThemedText style={styles.signupSubtitle}>
+              Parents create student credentials from the parent dashboard. Sign in with those details here.
+            </ThemedText>
+          </View>
 
           <LingoCard>
             <ThemedText style={styles.cardTitle}>What changed?</ThemedText>
@@ -66,13 +74,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 24,
     paddingHorizontal: 20,
-    paddingBottom: 40,
     gap: 18,
   },
   headerRow: {
     display: 'none',
+  },
+  signupHeader: {
+    gap: 6,
+  },
+  signupTitle: {
+    fontSize: 32,
+    lineHeight: 38,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+    letterSpacing: -0.5,
+  },
+  signupSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: LingoTheme.colors.muted,
+    fontWeight: '500',
   },
   cardTitle: {
     fontSize: 24,

@@ -1,8 +1,7 @@
 import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { PhoneInput } from '@/components/phone-input';
-import { LingoBadge, LingoButton, LingoCard, LingoHero } from '@/components/ui/lingo-mobile';
+import { LingoButton } from '@/components/ui/lingo-mobile';
 import { Fonts, LingoTheme } from '@/constants/theme';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
@@ -12,9 +11,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '@/lib/config';
 import { CountryDropdown, CityDropdown } from '@/components/dropdowns';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
 export default function SignUpParentScreen() {
   const router = useRouter();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const [serverProgress, setServerProgress] = useState<number | null>(null);
@@ -34,7 +35,9 @@ export default function SignUpParentScreen() {
   });
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
-  // Validate form and return true if valid
+  // --------------------------------------------------------
+  // BACKEND & VALIDATION LOGIC (Unchanged)
+  // --------------------------------------------------------
   const validateForm = (): boolean => {
     const errors: {[key: string]: string} = {};
 
@@ -82,7 +85,6 @@ export default function SignUpParentScreen() {
     return Object.keys(errors).length === 0;
   };
 
-  // Clear error when user starts typing
   const clearError = (field: string) => {
     if (formErrors[field]) {
       setFormErrors(prev => {
@@ -125,7 +127,7 @@ export default function SignUpParentScreen() {
         const profileCompleted = !!(profile.full_name && profile.email);
         const percent = children.length > 0 ? 100 : (profileCompleted ? 50 : 0);
         if (mounted) setServerProgress(percent);
-      } catch (e) {
+      } catch {
         // ignore network errors
       }
     };
@@ -134,11 +136,7 @@ export default function SignUpParentScreen() {
   }, [user]);
 
   const handleSignUp = async () => {
-    // Validate form first
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setLoading(true);
 
     try {
@@ -161,7 +159,6 @@ export default function SignUpParentScreen() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Show API error inline if it's a field-specific error
         if (data.error?.toLowerCase().includes('email')) {
           setFormErrors({ email: data.error });
         } else if (data.error?.toLowerCase().includes('password')) {
@@ -176,21 +173,12 @@ export default function SignUpParentScreen() {
         await AsyncStorage.setItem('userId', data.user.id);
       }
 
-      const successMessage = 'Congratulations! Your parent account has been created successfully. Welcome to IlmConnect.\n\n— IlmConnect Team';
+      const successMessage = 'Congratulations! Your parent account has been created successfully. Welcome to IlmConnect.\n\n- IlmConnect Team';
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.alert(`🎉 Account Created\n\n${successMessage}`);
+        window.alert(`Account Created\n\n${successMessage}`);
         router.replace('/login');
       } else {
-        Alert.alert(
-          '🎉 Account Created',
-          successMessage,
-          [
-            {
-              text: 'Go to Login',
-              onPress: () => router.replace('/login'),
-            },
-          ]
-        );
+        Alert.alert('Account Created', successMessage, [{ text: 'Go to Login', onPress: () => router.replace('/login') }]);
       }
     } catch (error: any) {
       setFormErrors({ general: error.message || 'Something went wrong' });
@@ -199,7 +187,9 @@ export default function SignUpParentScreen() {
     }
   };
 
-  // Custom Input Component matching the "Native Mobile" aesthetic
+  // --------------------------------------------------------
+  // UI PRESENTATION
+  // --------------------------------------------------------
   const renderInput = (
     key: keyof typeof formData,
     label: string,
@@ -209,9 +199,10 @@ export default function SignUpParentScreen() {
       keyboardType?: 'default' | 'email-address' | 'phone-pad';
       autoCapitalize?: 'none' | 'sentences';
       secureTextEntry?: boolean;
+      icon?: keyof typeof Ionicons.glyphMap;
     }
   ) => (
-    <View>
+    <View style={styles.inputWrapper}>
       <View style={[
         styles.filledInputContainer,
         formErrors[key] && styles.inputError
@@ -220,6 +211,9 @@ export default function SignUpParentScreen() {
           {label} {options?.required && <ThemedText style={styles.required}>*</ThemedText>}
         </ThemedText>
         <View style={styles.inputContentRow}>
+          {options?.icon && (
+            <Ionicons name={options.icon} size={18} color="#94A3B8" style={styles.inputIcon} />
+          )}
           <TextInput
             style={styles.mainInput}
             placeholder={placeholder}
@@ -234,114 +228,106 @@ export default function SignUpParentScreen() {
             secureTextEntry={options?.secureTextEntry && !showPassword}
           />
           {options?.secureTextEntry && (
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.iconButton}
-            >
-              <Ionicons 
-                name={showPassword ? "eye-off" : "eye"} 
-                size={20} 
-                color="#9CA3AF" 
-              />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.iconButton}>
+              <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="#9CA3AF" />
             </TouchableOpacity>
           )}
         </View>
       </View>
-      {formErrors[key] && (
-        <ThemedText style={styles.errorText}>{formErrors[key]}</ThemedText>
-      )}
+      {formErrors[key] && <ThemedText style={styles.errorText}>{formErrors[key]}</ThemedText>}
     </View>
   );
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={[styles.container, { paddingTop: topPadding }]}>
       <KeyboardAvoidingView 
         enabled={Platform.OS === 'ios'}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         style={styles.keyboardView}
       >
-        <ScrollView 
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
-        >
-          <View style={styles.content}>
+        {/* --- TOP HEADER SECTION --- */}
+        <View style={styles.topHeader}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => router.back()} 
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          
+          <View style={styles.titleContainer}>
+            <ThemedText style={styles.signupTitle}>Parent Sign-up</ThemedText>
+            <ThemedText style={styles.signupSubtitle}>
+              Create your account to find trusted teachers for your children.
+            </ThemedText>
+          </View>
+        </View>
 
-            <LingoHero
-              icon="people"
-              badge="Parent account"
-              title="Create a family learning space"
-              subtitle="Set up your parent account and start finding trusted teachers for your children."
-            />
-
-            {/* Progress Bar */}
-            <View style={styles.progressSection}>
-              {(() => {
-                let percent = 0;
-                if (user && user.role === 'parent' && serverProgress !== null) {
-                  percent = serverProgress;
-                } else {
-                  const total = 6;
-                  let completed = 0;
-                  if (formData.fullName?.trim().length > 0) completed++;
-                  if (formData.email?.includes('@')) completed++;
-                  if (formData.password?.length >= 6) completed++;
-                  if (formData.phoneNumber && isPhoneValid) completed++;
-                  if (formData.country) completed++;
-                  if (formData.city) completed++;
-                  percent = Math.round((completed / total) * 100);
-                }
-                return (
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBarBg}>
-                       <LinearGradient
-                          colors={['#4ECDC4', '#2BCBBA']}
-                          style={[styles.progressBarFill, { width: `${percent}%` }]}
-                       />
+        {/* --- BOTTOM SHEET CONTENT --- */}
+        <View style={styles.bottomSheetContainer}>
+          <ScrollView 
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 32 }]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+          >
+            <View style={styles.formContent}>
+              
+              {/* Progress Bar */}
+              <View style={styles.progressSection}>
+                {(() => {
+                  let percent = 0;
+                  if (user && user.role === 'parent' && serverProgress !== null) {
+                    percent = serverProgress;
+                  } else {
+                    const total = 6;
+                    let completed = 0;
+                    if (formData.fullName?.trim().length > 0) completed++;
+                    if (formData.email?.includes('@')) completed++;
+                    if (formData.password?.length >= 6) completed++;
+                    if (formData.phoneNumber && isPhoneValid) completed++;
+                    if (formData.country) completed++;
+                    if (formData.city) completed++;
+                    percent = Math.round((completed / total) * 100);
+                  }
+                  return (
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBarBg}>
+                         <LinearGradient
+                            colors={[LingoTheme.colors.primaryDark || '#0D9488', LingoTheme.colors.primary || '#2DD4BF']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[styles.progressBarFill, { width: `${percent}%` }]}
+                         />
+                      </View>
+                      <ThemedText style={styles.progressText}>{percent}% Completed</ThemedText>
                     </View>
-                    <ThemedText style={styles.progressText}>{percent}% Completed</ThemedText>
-                  </View>
-                );
-              })()}
-            </View>
-
-            {/* Form Fields */}
-            <LingoCard style={styles.formContainer}>
-              <View style={styles.formHeaderRow}>
-                <ThemedText style={styles.formTitle}>Parent sign up</ThemedText>
-                <LingoBadge label="Guided setup" icon="sparkles" tone="teal" />
+                  );
+                })()}
               </View>
 
               {/* General Error */}
               {formErrors.general && (
                 <View style={styles.generalErrorContainer}>
-                  <Ionicons name="alert-circle" size={18} color="#fff" />
+                  <Ionicons name="alert-circle" size={20} color="#EF4444" />
                   <ThemedText style={styles.generalErrorText}>{formErrors.general}</ThemedText>
                 </View>
               )}
               
-              {renderInput('fullName', 'Full Name', 'e.g. Alina Ahmed', { required: true })}
-              <View style={styles.spacer} />
-              
-              {renderInput('email', 'Email', 'alina@example.com', { required: true, keyboardType: 'email-address', autoCapitalize: 'none' })}
-              <View style={styles.spacer} />
-              
-              {renderInput('password', 'Password', '••••••••', { required: true, secureTextEntry: true })}
-              <View style={styles.spacer} />
+              {renderInput('fullName', 'Full Name', 'e.g. Alina Ahmed', { required: true, icon: 'person-outline' })}
+              {renderInput('email', 'Email Address', 'alina@example.com', { required: true, keyboardType: 'email-address', autoCapitalize: 'none', icon: 'mail-outline' })}
+              {renderInput('password', 'Password', '••••••••', { required: true, secureTextEntry: true, icon: 'lock-closed-outline' })}
 
               {/* Confirm Password */}
-              <View>
-                <View style={[
-                  styles.filledInputContainer,
-                  formErrors.confirmPassword && styles.inputError
-                ]}>
+              <View style={styles.inputWrapper}>
+                <View style={[styles.filledInputContainer, formErrors.confirmPassword && styles.inputError]}>
                   <ThemedText style={styles.tinyLabel}>
                     Confirm Password <ThemedText style={styles.required}>*</ThemedText>
                   </ThemedText>
                   <View style={styles.inputContentRow}>
+                    <Ionicons name="shield-checkmark-outline" size={18} color="#94A3B8" style={styles.inputIcon} />
                     <TextInput
                       style={styles.mainInput}
                       placeholder="••••••••"
@@ -353,47 +339,36 @@ export default function SignUpParentScreen() {
                       }}
                       secureTextEntry={!showConfirmPassword}
                     />
-                    <TouchableOpacity 
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                      style={styles.iconButton}
-                    >
-                      <Ionicons 
-                        name={showConfirmPassword ? "eye-off" : "eye"} 
-                        size={20} 
-                        color="#9CA3AF" 
-                      />
+                    <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.iconButton}>
+                      <Ionicons name={showConfirmPassword ? "eye-off" : "eye"} size={20} color="#9CA3AF" />
                     </TouchableOpacity>
                   </View>
                 </View>
-                {formErrors.confirmPassword && (
-                  <ThemedText style={styles.errorText}>{formErrors.confirmPassword}</ThemedText>
-                )}
+                {formErrors.confirmPassword && <ThemedText style={styles.errorText}>{formErrors.confirmPassword}</ThemedText>}
               </View>
-              <View style={styles.spacer} />
 
-              {/* Phone Input - Wrapped to match look */}
-              <View style={[styles.filledInputContainer, formErrors.phoneNumber && styles.inputError]}>
-                 <ThemedText style={styles.tinyLabel}>Phone Number <ThemedText style={styles.required}>*</ThemedText></ThemedText>
-                 <View style={styles.phoneInputWrapper}>
-                   <PhoneInput
-                      value={formData.phoneNumber}
-                      onChangePhone={handlePhoneChange}
-                      label=""
-                      placeholder="300 1234567"
-                      accentColor="#4ECDC4"
-                      error={phoneError}
-                      defaultCountryCode="PK"
-                   />
+              {/* Phone Input Wrapper */}
+              <View style={styles.inputWrapper}>
+                 <View style={[styles.filledInputContainer, formErrors.phoneNumber && styles.inputError]}>
+                   <ThemedText style={styles.tinyLabel}>Phone Number <ThemedText style={styles.required}>*</ThemedText></ThemedText>
+                   <View style={styles.phoneInputWrapper}>
+                     <PhoneInput
+                        value={formData.phoneNumber}
+                        onChangePhone={handlePhoneChange}
+                        label=""
+                        placeholder="300 1234567"
+                        accentColor={LingoTheme.colors.primaryDark || "#0D9488"}
+                        error={phoneError}
+                        defaultCountryCode="PK"
+                     />
+                   </View>
                  </View>
+                 {formErrors.phoneNumber && <ThemedText style={styles.errorText}>{formErrors.phoneNumber}</ThemedText>}
               </View>
-              {formErrors.phoneNumber && (
-                <ThemedText style={styles.errorText}>{formErrors.phoneNumber}</ThemedText>
-              )}
-              <View style={styles.spacer} />
 
+              {/* Location Row */}
               <View style={styles.row}>
                 <View style={styles.halfInput}>
-                    {/* Country Wrapper */}
                     <View style={[styles.filledInputContainer, formErrors.country && styles.inputError]}>
                         <ThemedText style={styles.tinyLabel}>Country <ThemedText style={styles.required}>*</ThemedText></ThemedText>
                         <CountryDropdown
@@ -406,12 +381,10 @@ export default function SignUpParentScreen() {
                             required
                         />
                     </View>
-                    {formErrors.country && (
-                      <ThemedText style={styles.errorText}>{formErrors.country}</ThemedText>
-                    )}
+                    {formErrors.country && <ThemedText style={styles.errorText}>{formErrors.country}</ThemedText>}
                 </View>
+                
                 <View style={styles.halfInput}>
-                    {/* City Wrapper */}
                     <View style={[styles.filledInputContainer, formErrors.city && styles.inputError]}>
                         <ThemedText style={styles.tinyLabel}>City <ThemedText style={styles.required}>*</ThemedText></ThemedText>
                         <CityDropdown
@@ -425,9 +398,7 @@ export default function SignUpParentScreen() {
                             required
                         />
                     </View>
-                    {formErrors.city && (
-                      <ThemedText style={styles.errorText}>{formErrors.city}</ThemedText>
-                    )}
+                    {formErrors.city && <ThemedText style={styles.errorText}>{formErrors.city}</ThemedText>}
                 </View>
               </View>
 
@@ -440,55 +411,111 @@ export default function SignUpParentScreen() {
                   loading={loading}
                 />
               </View>
-            </LingoCard>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-              <ThemedText style={styles.termsText}>
-                By creating an account, you agree to our{' '}
-                <ThemedText style={styles.termsLink}>Terms</ThemedText>
-                {' '}and{' '}
-                <ThemedText style={styles.termsLink}>Privacy Policy</ThemedText>
-              </ThemedText>
+              {/* Footer */}
+              <View style={styles.footer}>
+                <ThemedText style={styles.termsText}>
+                  By creating an account, you agree to our{' '}
+                  <ThemedText style={styles.termsLink}>Terms</ThemedText>
+                  {' '}and{' '}
+                  <ThemedText style={styles.termsLink}>Privacy Policy</ThemedText>
+                </ThemedText>
+              </View>
+
             </View>
-
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
+// --------------------------------------------------------
+// STYLES
+// --------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: LingoTheme.colors.primary || '#2DD4BF',
   },
   keyboardView: {
     flex: 1,
+  },
+  
+  // --- Top Header ---
+  topHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 32,
+    gap: 24,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  titleContainer: {
+    gap: 8,
+  },
+  signupTitle: {
+    fontSize: 32,
+    lineHeight: 38,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  signupSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    paddingRight: 20,
+  },
+
+  // --- Bottom Sheet ---
+  bottomSheetContainer: {
+    flex: 1,
+    backgroundColor: LingoTheme.colors.background,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 20,
+      },
+    }),
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    paddingTop: 32,
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
+  formContent: {
+    paddingHorizontal: 24,
   },
 
-  /* Progress Bar */
+  // --- Progress Bar ---
   progressSection: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   progressContainer: {
-    gap: 8,
+    gap: 10,
   },
   progressBarBg: {
-    height: 10,
-    backgroundColor: '#EAF1DA',
+    height: 8,
+    backgroundColor: '#F1F5F9', // Light slate
     borderRadius: 999,
     overflow: 'hidden',
   },
@@ -497,49 +524,30 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   progressText: {
-    fontSize: 12,
-    color: LingoTheme.colors.muted,
+    fontSize: 13,
+    color: LingoTheme.colors.primaryDark || '#0D9488',
     textAlign: 'right',
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
-  /* Form */
-  formContainer: {
-    width: '100%',
-  },
-  formHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
+  // --- Form Inputs ---
+  inputWrapper: {
     marginBottom: 16,
   },
-  formTitle: {
-    flex: 1,
-    fontSize: 24,
-    fontFamily: Fonts.rounded,
-    fontWeight: '800',
-    color: LingoTheme.colors.ink,
-  },
-  spacer: {
-    height: 16,
-  },
-  
-  /* NEW Filled Input Styles - Matches Reference Image */
   filledInputContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC', // Lighter background for inputs in the white sheet
     borderRadius: 18,
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderWidth: 2,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderWidth: 1.5,
     borderColor: LingoTheme.colors.border,
   },
   tinyLabel: {
     fontSize: 11,
     color: LingoTheme.colors.muted,
-    fontWeight: '700',
-    marginBottom: 2,
+    fontWeight: '800',
+    marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -550,47 +558,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  inputIcon: {
+    marginRight: 10,
+  },
   mainInput: {
     flex: 1,
     fontSize: 16,
     color: LingoTheme.colors.ink,
-    fontWeight: '500',
-    paddingVertical: Platform.OS === 'android' ? 4 : 2,
+    fontWeight: '600',
+    paddingVertical: Platform.OS === 'android' ? 2 : 0,
     minHeight: 24,
   },
   iconButton: {
     padding: 4,
+    marginLeft: 8,
   },
 
-  /* Custom component overrides */
+  // --- Phone Input Override ---
   phoneInputWrapper: {
-    marginTop: -4, // Adjust alignment for phone input
-  },
-  phoneInputOverride: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    paddingHorizontal: 0,
-    marginBottom: 0,
-    height: 28,
+    marginTop: -2,
   },
 
-  /* Layout */
+  // --- Layout & Buttons ---
   row: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 16,
   },
   halfInput: {
     flex: 1,
   },
-
-  /* Button */
   submitWrap: {
-    marginTop: 18,
+    marginTop: 16,
   },
 
-  /* Footer Terms */
+  // --- Footer ---
   footer: {
-    marginTop: 24,
+    marginTop: 32,
     paddingHorizontal: 16,
   },
   termsText: {
@@ -598,37 +602,40 @@ const styles = StyleSheet.create({
     color: LingoTheme.colors.muted,
     textAlign: 'center',
     lineHeight: 20,
+    fontWeight: '500',
   },
   termsLink: {
     color: LingoTheme.colors.primaryDark,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
-  /* Error Styles */
+  // --- Error Styles ---
   inputError: {
     borderColor: '#EF4444',
-    borderWidth: 2,
+    backgroundColor: '#FEF2F2',
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#EF4444',
     fontSize: 12,
+    fontWeight: '600',
     marginTop: 6,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   generalErrorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEF2F2',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
   },
   generalErrorText: {
-    color: '#B91C1C',
+    color: '#991B1B',
     fontSize: 14,
+    fontWeight: '600',
     flex: 1,
   },
 });

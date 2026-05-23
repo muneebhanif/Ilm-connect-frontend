@@ -1,22 +1,26 @@
-import { StyleSheet, View, TouchableOpacity, Dimensions, Platform, Image } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Fonts } from '@/constants/theme';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/lib/auth-context';
+import { Image, StyleSheet, TouchableOpacity, View, Platform, useWindowDimensions } from 'react-native';
 import { useEffect } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+
+import { ThemedText } from '@/components/themed-text';
+import { LingoButton } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
+import { useAuth } from '@/lib/auth-context';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 
 const logo = require('@/assets/images/logo.png');
 
-const { width, height } = Dimensions.get('window');
-
 export default function HomeScreen() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { topPadding, bottomPadding } = useSafePadding();
+  const { height } = useWindowDimensions();
 
+  // --------------------------------------------------------
+  // BACKEND LOGIC (Unchanged)
+  // --------------------------------------------------------
   useEffect(() => {
     if (loading) return;
     if (!user) return;
@@ -26,298 +30,267 @@ export default function HomeScreen() {
         ? '/(student)/dashboard'
         : '/(parent)/dashboard';
     router.replace(target);
-  }, [user, loading]);
+  }, [user, loading, router]);
 
-  if (loading) {
-    return <SkeletonScreen />;
-  }
-
+  if (loading) return <SkeletonScreen />;
   if (user) return null;
 
+  // --------------------------------------------------------
+  // UI PRESENTATION
+  // --------------------------------------------------------
   return (
-    <View style={styles.container}>
-      {/* 1. Top Section */}
-      <View style={styles.topSection}>
-        <LinearGradient
-          colors={['#4ECDC4', '#2BCBBA', '#2193b0']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientBackground}
-        >
-          <View style={styles.patternContainer}>
-            <Ionicons name="moon" size={36} color="rgba(255,255,255,0.1)" style={[styles.floatingIcon, { top: '15%', left: '10%' }]} />
-            <Ionicons name="star" size={20} color="rgba(255,255,255,0.15)" style={[styles.floatingIcon, { top: '25%', right: '15%' }]} />
-            <Ionicons name="book" size={28} color="rgba(255,255,255,0.08)" style={[styles.floatingIcon, { top: '55%', left: '20%' }]} />
-            <Ionicons name="grid" size={24} color="rgba(255,255,255,0.08)" style={[styles.floatingIcon, { top: '45%', right: '8%' }]} />
-            
-            <View style={styles.heroGraphicContainer}>
-              <View style={styles.heroCircleOuter}>
-                <View style={styles.heroCircleInner}>
-                  <Image source={logo} style={styles.heroLogo} resizeMode="contain" />
-                </View>
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                  <ThemedText style={styles.verifiedText}>Trusted</ThemedText>
-                </View>
-              </View>
-            </View>
+    <View style={[styles.container, { paddingTop: topPadding }]}>
+      
+      {/* --- TOP HERO SECTION --- */}
+      <View style={styles.topHero}>
+        {/* Subtle decorative background icons to mimic the reference image */}
+        <Ionicons name="moon" size={32} color="rgba(255,255,255,0.15)" style={[styles.bgIcon, { top: '15%', left: '10%' }]} />
+        <Ionicons name="star" size={24} color="rgba(255,255,255,0.15)" style={[styles.bgIcon, { top: '25%', right: '15%' }]} />
+        <Ionicons name="book" size={36} color="rgba(255,255,255,0.1)" style={[styles.bgIcon, { bottom: '20%', left: '20%' }]} />
+        <Ionicons name="grid" size={28} color="rgba(255,255,255,0.1)" style={[styles.bgIcon, { bottom: '30%', right: '10%' }]} />
+
+        {/* Central Graphic */}
+        <View style={styles.graphicOuterRing}>
+          <View style={styles.graphicInnerCircle}>
+            {/* Using your actual logo instead of a generic icon for better branding */}
+            <Image source={logo} style={styles.logo} resizeMode="contain" />
           </View>
-        </LinearGradient>
+          
+          {/* "Trusted" / "Verified" Badge */}
+          <View style={styles.trustedBadge}>
+            <Ionicons name="checkmark-circle" size={14} color="#FFFFFF" />
+            <ThemedText style={styles.trustedText}>Verified</ThemedText>
+          </View>
+        </View>
       </View>
 
-      {/* 2. Bottom Section */}
-      <View style={styles.bottomSheet}>
-        <View style={styles.contentContainer}>
-          
-          <View style={styles.textBlock}>
-            <View style={styles.pillContainer}>
-              <ThemedText style={styles.pillText}>ILM CONNECT</ThemedText>
-            </View>
-            <ThemedText style={styles.mainTitle}>
-              Nurturing <ThemedText style={styles.highlightText}>Faith</ThemedText>{'\n'}
-              Through Knowledge
-            </ThemedText>
-            <ThemedText style={styles.subtitle}>
-              Connect with verified tutors for Quran, Arabic, and Islamic studies.
-            </ThemedText>
+      {/* --- BOTTOM SHEET SECTION --- */}
+      <View style={[styles.bottomSheet, { paddingBottom: bottomPadding + 32 }]}>
+        
+        {/* Brand Pill */}
+        <View style={styles.pill}>
+          <ThemedText style={styles.pillText}>ILM CONNECT</ThemedText>
+        </View>
+
+        {/* Headline */}
+        <ThemedText style={styles.headline}>
+          Nurturing <ThemedText style={styles.headlineHighlight}>Faith</ThemedText>{'\n'}
+          Through{'\n'}
+          Knowledge
+        </ThemedText>
+
+        {/* Subtitle */}
+        <ThemedText style={styles.subline}>
+          Connect with verified tutors for Quran, Arabic, and Islamic studies.
+        </ThemedText>
+
+        {/* Actions Area */}
+        <View style={styles.actionsContainer}>
+          <LingoButton
+            label="Get Started"
+            icon="arrow-forward"
+            onPress={() => router.push('/role-selection')}
+          />
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <ThemedText style={styles.dividerText}>or</ThemedText>
+            <View style={styles.dividerLine} />
           </View>
 
-          <View style={styles.actions}>
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => router.push('/role-selection')}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={['#1A202C', '#2D3748']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.primaryGradient}
-              >
-                <ThemedText style={styles.primaryBtnText}>Get Started</ThemedText>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <View style={styles.dividerContainer}>
-               <View style={styles.dividerLine} />
-               <ThemedText style={styles.dividerText}>or</ThemedText>
-               <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity 
-              style={styles.secondaryButton}
-              onPress={() => router.push('/login')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.secondaryBtnText}>Log In</ThemedText>
-            </TouchableOpacity>
-          </View>
-
+          {/* Secondary "Log In" Button */}
+          <TouchableOpacity 
+            style={styles.secondaryButton} 
+            onPress={() => router.push('/login')} 
+            activeOpacity={0.7}
+          >
+            <ThemedText style={styles.secondaryButtonText}>Log In</ThemedText>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 }
 
+// --------------------------------------------------------
+// STYLES
+// --------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-
-  /* Top Section */
-  topSection: {
-    height: height * 0.45,
-    width: '100%',
-  },
-  gradientBackground: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  patternContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  floatingIcon: {
-    position: 'absolute',
+    // Using a fallback primary color. If you have a specific gradient color in your theme, apply it here.
+    backgroundColor: LingoTheme.colors.primary || '#2DD4BF', 
   },
   
-  /* Hero Graphic */
-  heroGraphicContainer: {
+  // --- Top Hero ---
+  topHero: {
+    flex: 0.6,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -10,
+    position: 'relative',
   },
-  heroCircleOuter: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  heroCircleInner: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  heroLogo: {
-    width: 70,
-    height: 70,
-  },
-  verifiedBadge: {
+  bgIcon: {
     position: 'absolute',
-    bottom: -5,
-    right: -5,
-    backgroundColor: '#2BCBBA', 
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+  },
+  graphicOuterRing: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Semi-transparent ring
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  graphicInnerCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+  },
+  trustedBadge: {
+    position: 'absolute',
+    bottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#14B8A6', // Distinct trust color (teal/green)
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  verifiedText: {
-    color: '#fff',
-    fontSize: 11,
+  trustedText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: Fonts.rounded,
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
 
-  /* Bottom Sheet Section */
+  // --- Bottom Sheet ---
   bottomSheet: {
-    flex: 1,
-    marginTop: -30, 
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    paddingBottom: 20,
-    justifyContent: 'flex-start',
-    gap: 16,
-  },
-  textBlock: {
+    flex: 1.4,
+    backgroundColor: LingoTheme.colors.background,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    paddingHorizontal: 32,
+    paddingTop: 32,
     alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.05,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 24,
+      },
+    }),
   },
-  pillContainer: {
-    backgroundColor: '#E6FFFA',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    marginBottom: 12,
+  pill: {
+    backgroundColor: LingoTheme.colors.softPrimary || '#E6F9F6',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 24,
   },
   pillText: {
-    color: '#4ECDC4',
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  mainTitle: {
-    fontSize: 30,
     fontFamily: Fonts.rounded,
     fontWeight: '800',
-    color: '#1A202C',
+    color: LingoTheme.colors.primaryDark || '#0D9488',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  headline: {
+    fontSize: 36,
+    lineHeight: 44,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
     textAlign: 'center',
-    lineHeight: 38,
-    marginBottom: 8,
+    letterSpacing: -0.5,
+    marginBottom: 16,
   },
-  highlightText: {
-    color: '#4ECDC4',
+  headlineHighlight: {
+    color: LingoTheme.colors.primary || '#2DD4BF',
   },
-  subtitle: {
+  subline: {
     fontSize: 15,
-    color: '#718096',
+    lineHeight: 24,
+    color: LingoTheme.colors.muted,
+    fontWeight: '500',
     textAlign: 'center',
-    lineHeight: 22,
+    marginBottom: 24,
     paddingHorizontal: 10,
   },
-
-  /* Actions */
-  actions: {
+  
+  // --- Actions ---
+  actionsContainer: {
     width: '100%',
-    marginTop: 8,
+    gap: 16,
   },
-  primaryButton: {
-    width: '100%',
-    height: 54,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#1A202C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryGradient: {
-    flex: 1,
+  dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-  },
-  primaryBtnText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  
-  /* Divider */
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 12,
+    gap: 12,
+    paddingVertical: 4,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: LingoTheme.colors.border,
   },
   dividerText: {
-    marginHorizontal: 12,
-    color: '#A0AEC0',
-    fontSize: 13,
+    fontSize: 14,
+    color: LingoTheme.colors.muted,
     fontWeight: '500',
   },
-
   secondaryButton: {
     width: '100%',
-    height: 54,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 14,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#F8FAFC', // Very light grey/blue
     borderWidth: 1,
-    borderColor: '#EDF2F7', 
+    borderColor: LingoTheme.colors.border,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  secondaryBtnText: {
-    color: '#4A5568', 
-    fontSize: 17, 
+  secondaryButtonText: {
+    fontSize: 17,
+    fontFamily: Fonts.rounded,
     fontWeight: '700',
+    color: LingoTheme.colors.ink,
   },
 });

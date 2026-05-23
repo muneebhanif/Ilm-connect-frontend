@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useMemo } from 'react';
@@ -12,10 +12,6 @@ import { BookTeacherSkeleton } from '@/components/ui/dashboard-skeletons';
 import { DateTime } from 'luxon';
 import { useStripe } from '@/lib/stripe';
 import { useSafePadding } from '@/hooks/use-safe-padding';
-
-/* Safe Platform Resolve */
-const OS = typeof Platform !== 'undefined' ? Platform.OS : 'web';
-const isIOS = OS === 'ios';
 
 interface Teacher {
   id: string;
@@ -415,6 +411,9 @@ export default function BookTeacherScreen() {
 
   const currentPackage = packages.find(p => p.id === selectedPackage);
   const totalAmount = (currentPackage?.price || 0) * (selectedChildren.length || 1);
+  const footerBottomPadding = Platform.OS === 'android'
+    ? Math.max(bottomPadding + 12, 56)
+    : bottomPadding + 12;
 
   return (
     <View style={styles.container}>
@@ -432,24 +431,30 @@ export default function BookTeacherScreen() {
         </View>
         <View style={styles.statsRow}>
           <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>👧</ThemedText>
+            <View style={[styles.metricIconBox, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="people-outline" size={18} color="#4F46E5" />
+            </View>
             <ThemedText style={styles.pillValue}>{selectedChildren.length}</ThemedText>
             <ThemedText style={styles.pillLabel}>Children</ThemedText>
           </View>
           <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>💳</ThemedText>
+            <View style={[styles.metricIconBox, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="card-outline" size={18} color="#059669" />
+            </View>
             <ThemedText style={styles.pillValue}>${totalAmount.toFixed(0)}</ThemedText>
             <ThemedText style={styles.pillLabel}>Total</ThemedText>
           </View>
           <View style={styles.metricPill}>
-            <ThemedText style={styles.pillIcon}>📚</ThemedText>
-            <ThemedText style={styles.pillValue}>{selectedSubject || '—'}</ThemedText>
+            <View style={[styles.metricIconBox, { backgroundColor: '#FFF7ED' }]}>
+              <Ionicons name="book-outline" size={18} color="#EA580C" />
+            </View>
+            <ThemedText style={styles.pillValue} numberOfLines={1}>{selectedSubject || '-'}</ThemedText>
             <ThemedText style={styles.pillLabel}>Subject</ThemedText>
           </View>
         </View>
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: bottomPadding + 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: footerBottomPadding + 132 }} showsVerticalScrollIndicator={false}>
         
         <LinearGradient
           colors={['#ECFCD8', '#FFFFFF', '#F2E8FF']}
@@ -605,23 +610,25 @@ export default function BookTeacherScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: isIOS ? 34 : 20 }]}>
+      <View style={[styles.footer, { paddingBottom: footerBottomPadding }]}>
         {!!feedbackMessage && (
           <View style={styles.feedbackBanner}>
             <ThemedText style={styles.feedbackText}>{feedbackMessage}</ThemedText>
           </View>
         )}
-        <View style={styles.footerInfo}>
-          <ThemedText style={styles.totalLabel}>Total</ThemedText>
-          <ThemedText style={styles.totalValue}>${totalAmount.toFixed(2)}</ThemedText>
+        <View style={styles.footerActionRow}>
+          <View style={styles.footerInfo}>
+            <ThemedText style={styles.totalLabel}>Total</ThemedText>
+            <ThemedText style={styles.totalValue}>${totalAmount.toFixed(2)}</ThemedText>
+          </View>
+          <LingoButton
+            label={totalAmount > 0 ? `Pay $${totalAmount.toFixed(2)}` : 'Book free class'}
+            onPress={handleBooking}
+            loading={submitting || paymentLoading}
+            disabled={!selectedSubject || !selectedTime || selectedChildren.length === 0}
+            style={[styles.bookBtn, (submitting || paymentLoading || !selectedSubject || !selectedTime || selectedChildren.length === 0) && styles.btnDisabled]}
+          />
         </View>
-        <LingoButton
-          label={totalAmount > 0 ? `Pay $${totalAmount.toFixed(2)}` : 'Book free class'}
-          onPress={handleBooking}
-          loading={submitting || paymentLoading}
-          disabled={!selectedSubject || !selectedTime || selectedChildren.length === 0}
-          style={[styles.bookBtn, (submitting || paymentLoading || !selectedSubject || !selectedTime || selectedChildren.length === 0) && styles.btnDisabled]}
-        />
       </View>
     </View>
   );
@@ -656,8 +663,15 @@ const styles = StyleSheet.create({
     borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
     paddingVertical: 12, paddingHorizontal: 4,
   },
-  pillIcon: { fontSize: 18, marginBottom: 2 },
-  pillValue: { fontSize: 15, fontWeight: '800', color: '#3C3C3C' },
+  metricIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  pillValue: { fontSize: 15, fontWeight: '800', color: '#3C3C3C', maxWidth: '100%' },
   pillLabel: { fontSize: 10, fontWeight: '700', color: '#AFAFAF', textTransform: 'uppercase' },
   
   content: { paddingHorizontal: 20 },
@@ -776,13 +790,20 @@ const styles = StyleSheet.create({
   /* Footer */
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF',
-    borderTopWidth: 2, borderTopColor: LingoTheme.colors.border, flexDirection: 'row', alignItems: 'center',
-    padding: 20, shadowColor: '#000', shadowOffset: {width:0, height:-2}, shadowOpacity: 0.05, shadowRadius: 4, elevation: 10
+    borderTopWidth: 2, borderTopColor: LingoTheme.colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    shadowColor: '#000', shadowOffset: {width:0, height:-2}, shadowOpacity: 0.05, shadowRadius: 4, elevation: 10
   },
-  footerInfo: { flex: 1 },
+  footerActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  footerInfo: { minWidth: 96 },
   totalLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   totalValue: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  bookBtn: { minWidth: 180 },
+  bookBtn: { flex: 1, minWidth: 0 },
   btnDisabled: { backgroundColor: '#E5E7EB', shadowOpacity: 0 },
 
   errorText: { fontSize: 16, color: '#374151', marginVertical: 12 },

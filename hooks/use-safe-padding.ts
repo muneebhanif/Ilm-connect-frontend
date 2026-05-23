@@ -25,7 +25,7 @@ export function useSafePadding() {
 
   const bottomPadding = Platform.select({
     ios: Math.max(insets.bottom, 16),
-    android: 16,
+    android: Math.max(insets.bottom, 16),
     default: 16,
   });
 

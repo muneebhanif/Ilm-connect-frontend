@@ -20,7 +20,6 @@ export function NotificationStatusCard({
 }: Props) {
   const [status, setStatus] = useState<StatusType>('unknown');
   const [permissionStatus, setPermissionStatus] = useState<string>('undetermined');
-  const [pushToken, setPushToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
@@ -37,7 +36,6 @@ export function NotificationStatusCard({
       const permissions = await Notifications.getPermissionsAsync();
       const storedToken = await getStoredPushToken();
       setPermissionStatus(permissions.status);
-      setPushToken(storedToken);
       setStatus(permissions.status === 'granted' && !!storedToken ? 'enabled' : 'disabled');
     } catch (error) {
       console.warn('Failed to load notification status:', error);
@@ -83,7 +81,7 @@ export function NotificationStatusCard({
             : [{ text: 'OK' }]
         );
       } else if (result.token) {
-        Alert.alert('✅ Notifications enabled', 'You will now receive class reminders and updates on this device.', [{ text: 'OK' }]);
+        Alert.alert('Notifications enabled', 'You will now receive class reminders and updates on this device.', [{ text: 'OK' }]);
       }
 
       await refreshStatus();
@@ -123,7 +121,6 @@ export function NotificationStatusCard({
 
       <View style={styles.messageBox}>
         <ThemedText style={styles.messageText}>{helper}</ThemedText>
-        {!!pushToken && <ThemedText style={styles.tokenText}>Token saved on this device</ThemedText>}
       </View>
 
       <TouchableOpacity style={[styles.button, { backgroundColor: accent }]} onPress={handleEnable} activeOpacity={0.85} disabled={syncing || loading}>
@@ -205,13 +202,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: '#374151',
     fontWeight: '600',
-  },
-  tokenText: {
-    marginTop: 6,
-    fontSize: 11,
-    lineHeight: 16,
-    color: '#0D9488',
-    fontWeight: '700',
   },
   button: {
     marginTop: 14,

@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, Alert, RefreshControl, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Platform, Alert, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -35,7 +35,7 @@ interface ClassSession {
 export default function ClassesScreen() {
   const router = useRouter();
   const { user, signOut, refreshSession } = useAuth();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [allClasses, setAllClasses] = useState<ClassSession[]>([]);
@@ -239,11 +239,11 @@ export default function ClassesScreen() {
                   {classItem.courses?.teachers?.profiles?.full_name?.charAt(0) || 'T'}
                 </ThemedText>
              </View>
-             <View>
-                <ThemedText style={[styles.teacherName, isPast && styles.textPast]}>
+             <View style={styles.teacherCopy}>
+                <ThemedText style={[styles.teacherName, isPast && styles.textPast]} numberOfLines={1}>
                   {classItem.courses?.teachers?.profiles?.full_name || 'Teacher'}
                 </ThemedText>
-                <ThemedText style={[styles.subjectName, isPast && styles.textPast]}>
+                <ThemedText style={[styles.subjectName, isPast && styles.textPast]} numberOfLines={1}>
                   {classItem.courses?.title || 'Private Tutoring'}
                 </ThemedText>
              </View>
@@ -300,7 +300,7 @@ export default function ClassesScreen() {
                 Join via Student Account
               </ThemedText>
             </TouchableOpacity>
-            <ThemedText style={{ color: '#FFC800', marginTop: 10, textAlign: 'center', fontSize: 13, fontWeight: '700' }}>
+            <ThemedText style={styles.accessNote}>
               Live class access requires a student account.
             </ThemedText>
           </>
@@ -330,7 +330,7 @@ export default function ClassesScreen() {
   return (
     <View style={styles.container}>
       {/* ── Top Bar ── */}
-      <View style={[styles.header, { paddingTop: topPadding + 10 }]}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <View style={styles.topBar}>
           <ThemedText style={styles.topBarTitle}>My Classes</ThemedText>
         </View>
@@ -388,7 +388,10 @@ export default function ClassesScreen() {
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 132 : 112) },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -474,7 +477,7 @@ const styles = StyleSheet.create({
   topBarTitle: {
     fontSize: 28,
     fontWeight: '700',
-    letterSpacing: -0.5,
+    letterSpacing: 0,
     color: '#3C3C3C',
   },
   topBarSub: {
@@ -556,7 +559,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 140 : 120, // Massive padding for bottom nav
     gap: 16,
   },
 
@@ -578,13 +580,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 14,
   },
   teacherInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    flex: 1, // allows badge to naturally push right
+    flex: 1,
+    minWidth: 0,
   },
   avatar: {
     width: 48,
@@ -605,16 +609,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  teacherCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
   teacherName: {
     fontSize: 18,
     fontWeight: '800',
     color: '#3C3C3C',
     marginBottom: 2,
+    maxWidth: '100%',
   },
   subjectName: {
     fontSize: 14,
     color: '#777777',
     fontWeight: '600',
+    maxWidth: '100%',
   },
   textPast: {
     color: '#AFAFAF',
@@ -625,6 +635,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    flexShrink: 0,
   },
   statusConfirmed: {
     backgroundColor: '#E5F6FF', // Soft blue
@@ -654,21 +665,26 @@ const styles = StyleSheet.create({
   },
   detailsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     marginBottom: 20,
     backgroundColor: '#F7F7F7',
     padding: 12,
     borderRadius: 16,
+    gap: 10,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    minWidth: 88,
+    flexGrow: 1,
   },
   detailText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#3C3C3C',
+    flexShrink: 1,
   },
 
   /* Join Button - Flat grey tactile look for disabled state */
@@ -692,6 +708,13 @@ const styles = StyleSheet.create({
   },
   joinButtonTextDisabled: {
     color: '#AFAFAF',
+  },
+  accessNote: {
+    color: '#B7791F',
+    marginTop: 10,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   /* Rate Button - Tactile Soft Blue */

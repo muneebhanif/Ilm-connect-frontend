@@ -1,0 +1,206 @@
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+import { ThemedText } from '@/components/themed-text';
+import { LingoBadge, LingoButton, LingoCard } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
+import { useAuth } from '@/lib/auth-context';
+import { useSafePadding } from '@/hooks/use-safe-padding';
+import { SkeletonScreen } from '@/components/ui/skeleton';
+
+const logo = require('@/assets/images/logo.png');
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+  const { topPadding, bottomPadding } = useSafePadding();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+
+    const target = user.role === 'teacher'
+      ? '/(teacher)/teacher-dashboard'
+      : user.role === 'student'
+        ? '/(student)/dashboard'
+        : '/(parent)/dashboard';
+    router.replace(target);
+  }, [user, loading, router]);
+
+  if (loading) {
+    return <SkeletonScreen />;
+  }
+
+  if (user) return null;
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: topPadding + 12, paddingBottom: bottomPadding + 28 },
+        ]}
+      >
+        <View style={styles.brandRow}>
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
+          <View style={styles.brandCopy}>
+            <ThemedText style={styles.brandName}>IlmConnect</ThemedText>
+            <ThemedText style={styles.brandSub}>Quran, Arabic, and Islamic studies</ThemedText>
+          </View>
+        </View>
+
+        <LinearGradient
+          colors={[LingoTheme.colors.softPrimary, '#FFFFFF', LingoTheme.colors.softTeal]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <LingoBadge label="Trusted learning" icon="shield-checkmark-outline" tone="primary" />
+          <View style={styles.heroIcon}>
+            <Ionicons name="book-outline" size={32} color={LingoTheme.colors.primaryDark} />
+          </View>
+          <ThemedText style={styles.title}>Learn with verified teachers</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            Book live lessons, manage schedules, and keep every learner connected in one calm mobile experience.
+          </ThemedText>
+        </LinearGradient>
+
+        <LingoCard style={styles.valueCard}>
+          <View style={styles.valueRow}>
+            <Ionicons name="calendar-outline" size={20} color={LingoTheme.colors.primaryDark} />
+            <ThemedText style={styles.valueText}>Simple class booking and schedule tracking</ThemedText>
+          </View>
+          <View style={styles.valueRow}>
+            <Ionicons name="videocam-outline" size={20} color={LingoTheme.colors.teal} />
+            <ThemedText style={styles.valueText}>Live classroom access for teachers and students</ThemedText>
+          </View>
+          <View style={styles.valueRow}>
+            <Ionicons name="people-outline" size={20} color="#3B82F6" />
+            <ThemedText style={styles.valueText}>Parent tools for child profiles and progress</ThemedText>
+          </View>
+        </LingoCard>
+
+        <View style={styles.actions}>
+          <LingoButton
+            label="Get Started"
+            icon="arrow-forward"
+            onPress={() => router.push('/role-selection')}
+          />
+          <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')} activeOpacity={0.85}>
+            <ThemedText style={styles.loginButtonText}>Log in</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: LingoTheme.colors.background,
+  },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    gap: 18,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  logo: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+  },
+  brandCopy: {
+    flex: 1,
+  },
+  brandName: {
+    fontSize: 22,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  brandSub: {
+    fontSize: 13,
+    color: LingoTheme.colors.muted,
+    fontWeight: '600',
+  },
+  hero: {
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    alignItems: 'center',
+    ...LingoTheme.shadow.card,
+  },
+  heroIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderBottomWidth: 4,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 32,
+    lineHeight: 38,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: LingoTheme.colors.muted,
+    textAlign: 'center',
+  },
+  valueCard: {
+    gap: 14,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  valueText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: LingoTheme.colors.ink,
+    fontWeight: '600',
+  },
+  actions: {
+    gap: 12,
+    marginTop: 'auto',
+  },
+  loginButton: {
+    height: 54,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderBottomWidth: 4,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginButtonText: {
+    color: LingoTheme.colors.ink,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+});

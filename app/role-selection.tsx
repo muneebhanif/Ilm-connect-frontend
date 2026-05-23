@@ -1,215 +1,282 @@
-import { StyleSheet, View, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { LingoBadge, LingoCard } from '@/components/ui/lingo-mobile';
 import { Fonts, LingoTheme } from '@/constants/theme';
+import { useSafePadding } from '@/hooks/use-safe-padding';
 
-const roles = [
+const ROLES = [
   {
     title: "I'm a Parent",
-    description: 'Find trusted teachers, book classes, and guide your child with confidence.',
-    icon: 'people',
-    colors: ['#E6FFFA', '#F0FDFA'],
-    accent: '#14B8A6',
+    description: "Find trusted teachers, book classes, and support your child's learning journey.",
+    icon: 'people' as const, // Switched to solid icons for better visual weight
+    iconColor: '#0D9488',
+    iconBg: '#E6F9F6',
     route: '/signup-parent',
-    points: ['Browse verified teachers', 'Manage classes with ease', "Track your child's growth"],
   },
   {
     title: "I'm a Teacher",
-    description: 'Share your knowledge, build your profile, and teach students worldwide.',
-    icon: 'school',
-    colors: ['#FFF1F2', '#FFF7ED'],
-    accent: '#F97316',
+    description: 'Build your teaching profile, set your availability, and connect with students worldwide.',
+    icon: 'school' as const,
+    iconColor: '#EA580C',
+    iconBg: '#FFEDD5',
     route: '/signup-teacher',
-    points: ['Create your teaching profile', 'Set availability and rates', 'Grow your student base'],
   },
 ] as const;
 
 export default function RoleSelectionScreen() {
   const router = useRouter();
+  const { topPadding, bottomPadding } = useSafePadding();
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <LingoBadge label="Pick your path" icon="sparkles" />
-          <ThemedText style={styles.title}>Join IlmConnect your way</ThemedText>
+    <View style={[styles.container, { paddingTop: topPadding }]}>
+      
+      {/* --- TOP HEADER SECTION --- */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => router.back()} 
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        
+        <View style={styles.titleContainer}>
+          <ThemedText style={styles.title}>Join IlmConnect</ThemedText>
           <ThemedText style={styles.subtitle}>
-            Choose the role that fits you best and start with a simple, guided setup.
+            Choose how you will use the platform to get started.
           </ThemedText>
         </View>
+      </View>
 
-        <View style={styles.cardsContainer}>
-          {roles.map((role) => (
-            <TouchableOpacity key={role.title} activeOpacity={0.92} onPress={() => router.push(role.route as any)}>
-              <LinearGradient colors={role.colors as any} style={styles.roleWrap}>
-                <LingoCard style={styles.roleCard}>
-                  <View style={[styles.roleIcon, { backgroundColor: role.accent }]}>
-                    <Ionicons name={role.icon as keyof typeof Ionicons.glyphMap} size={26} color="#FFFFFF" />
+      {/* --- BOTTOM SHEET CONTENT --- */}
+      <View style={styles.bottomSheetContainer}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.bottomSheetContent, 
+            { paddingBottom: bottomPadding + 32 }
+          ]}
+        >
+          {/* Role Cards */}
+          <View style={styles.cards}>
+            {ROLES.map((role) => (
+              <TouchableOpacity
+                key={role.title}
+                activeOpacity={0.6}
+                onPress={() => router.push(role.route as any)}
+                style={styles.card}
+              >
+                <View style={styles.cardTop}>
+                  <View style={[styles.iconWrap, { backgroundColor: role.iconBg }]}>
+                    <Ionicons name={role.icon} size={24} color={role.iconColor} />
                   </View>
-                  <ThemedText style={styles.roleTitle}>{role.title}</ThemedText>
-                  <ThemedText style={styles.roleDescription}>{role.description}</ThemedText>
-
-                  <View style={styles.pointsList}>
-                    {role.points.map((point) => (
-                      <View key={point} style={styles.pointItem}>
-                        <Ionicons name="checkmark-circle" size={18} color={role.accent} />
-                        <ThemedText style={styles.pointText}>{point}</ThemedText>
-                      </View>
-                    ))}
+                  <View style={styles.cardArrow}>
+                    <Ionicons name="arrow-forward" size={20} color={LingoTheme.colors.ink} />
                   </View>
-
-                  <View style={styles.arrowRow}>
-                    <ThemedText style={[styles.ctaText, { color: role.accent }]}>Continue</ThemedText>
-                    <Ionicons name="arrow-forward-circle" size={28} color={role.accent} />
-                  </View>
-                </LingoCard>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <LingoCard style={styles.infoCard}>
-          <View style={styles.infoHeader}>
-            <Ionicons name="information-circle" size={22} color="#6366F1" />
-            <ThemedText style={styles.infoTitle}>Student accounts come from parents</ThemedText>
+                </View>
+                <ThemedText style={styles.cardTitle}>{role.title}</ThemedText>
+                <ThemedText style={styles.cardDesc}>{role.description}</ThemedText>
+              </TouchableOpacity>
+            ))}
           </View>
-          <ThemedText style={styles.infoText}>
-            Parents now create student login credentials from their dashboard, so students no longer need a separate sign-up form here.
-          </ThemedText>
-        </LingoCard>
 
-        <View style={styles.footer}>
-          <Ionicons name="shield-checkmark" size={18} color={LingoTheme.colors.muted} />
-          <ThemedText style={styles.footerText}>Safe sign-up, verified learning, and secure access.</ThemedText>
-        </View>
-      </ScrollView>
-    </ThemedView>
+          {/* Info Note for Students */}
+          <View style={styles.note}>
+            <View style={styles.noteIconWrap}>
+              <Ionicons name="information" size={20} color="#3B82F6" />
+            </View>
+            <ThemedText style={styles.noteText}>
+              <ThemedText style={{ fontWeight: '700', color: LingoTheme.colors.ink }}>Student accounts</ThemedText> are created by parents from their dashboard — no separate sign-up needed.
+            </ThemedText>
+          </View>
+
+          {/* Footer Action */}
+          <View style={styles.footer}>
+            <ThemedText style={styles.footerText}>Already have an account?</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/login')} activeOpacity={0.7}>
+              <ThemedText style={styles.footerLink}>Log in</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
+// --------------------------------------------------------
+// STYLES
+// --------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LingoTheme.colors.background,
+    backgroundColor: LingoTheme.colors.primary || '#2DD4BF', 
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 26,
-    paddingBottom: 40,
-    gap: 18,
+  
+  // --- Top Header ---
+  topHeader: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 32,
+    gap: 24,
   },
-  header: {
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  titleContainer: {
+    gap: 8,
   },
   title: {
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 32,
+    lineHeight: 38,
     fontFamily: Fonts.rounded,
     fontWeight: '800',
-    color: LingoTheme.colors.ink,
-    textAlign: 'center',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
-    color: LingoTheme.colors.muted,
-    textAlign: 'center',
-    maxWidth: 320,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    paddingRight: 20,
   },
-  cardsContainer: {
+
+  // --- Bottom Sheet ---
+  bottomSheetContainer: {
+    flex: 1,
+    backgroundColor: LingoTheme.colors.background,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 20,
+      },
+    }),
+  },
+  bottomSheetContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 36,
+  },
+
+  // --- Cards ---
+  cards: {
     gap: 16,
+    marginBottom: 24,
   },
-  infoCard: {
-    gap: 10,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: LingoTheme.colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: LingoTheme.colors.ink,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.04,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
-  infoHeader: {
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  infoTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: Fonts.rounded,
-    fontWeight: '800',
-    color: LingoTheme.colors.ink,
-  },
-  infoText: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: LingoTheme.colors.muted,
-  },
-  roleWrap: {
-    borderRadius: 28,
-    padding: 2,
-  },
-  roleCard: {
-    gap: 12,
-  },
-  roleIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  roleTitle: {
+  cardArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: LingoTheme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: LingoTheme.colors.border,
+  },
+  cardTitle: {
     fontSize: 22,
     fontFamily: Fonts.rounded,
     fontWeight: '800',
     color: LingoTheme.colors.ink,
+    marginBottom: 8,
   },
-  roleDescription: {
-    fontSize: 14,
-    lineHeight: 21,
+  cardDesc: {
+    fontSize: 15,
+    lineHeight: 22,
     color: LingoTheme.colors.muted,
+    fontWeight: '500',
   },
-  pointsList: {
-    gap: 10,
+
+  // --- Note ---
+  note: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#EFF6FF', // Soft blue
+    borderRadius: 20,
+    padding: 16,
+    gap: 12,
+    marginBottom: 32,
+  },
+  noteIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#DBEAFE', // Slightly darker blue
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
     marginTop: 2,
   },
-  pointItem: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
-  pointText: {
+  noteText: {
     flex: 1,
-    color: LingoTheme.colors.ink,
     fontSize: 14,
-    fontWeight: '600',
+    lineHeight: 22,
+    color: '#475569',
+    fontWeight: '500',
   },
-  arrowRow: {
-    marginTop: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  ctaText: {
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
+
+  // --- Footer ---
   footer: {
-    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
+    gap: 6,
+    marginTop: 'auto',
   },
   footerText: {
-    textAlign: 'center',
+    fontSize: 15,
     color: LingoTheme.colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontWeight: '600',
+  },
+  footerLink: {
+    fontSize: 15,
+    color: LingoTheme.colors.primaryDark || '#0D9488',
+    fontWeight: '800',
   },
 });

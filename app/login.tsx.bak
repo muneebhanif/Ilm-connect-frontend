@@ -1,0 +1,347 @@
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+
+import { ThemedText } from '@/components/themed-text';
+import { LingoBadge, LingoButton, LingoCard } from '@/components/ui/lingo-mobile';
+import { Fonts, LingoTheme } from '@/constants/theme';
+import { useAuth } from '@/lib/auth-context';
+import { useSafePadding } from '@/hooks/use-safe-padding';
+
+const logo = require('@/assets/images/logo.png');
+const LOGIN_STORAGE = {
+  REMEMBER_ME: 'login_remember_me',
+  REMEMBERED_EMAIL: 'login_remembered_email',
+  REMEMBERED_PASSWORD: 'login_remembered_password',
+};
+
+export default function LoginScreen() {
+  const { signIn } = useAuth();
+  const router = useRouter();
+  const { topPadding, bottomPadding } = useSafePadding();
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [savedRemember, savedEmail, savedPassword] = await Promise.all([
+          AsyncStorage.getItem(LOGIN_STORAGE.REMEMBER_ME),
+          AsyncStorage.getItem(LOGIN_STORAGE.REMEMBERED_EMAIL),
+          AsyncStorage.getItem(LOGIN_STORAGE.REMEMBERED_PASSWORD),
+        ]);
+
+        if (savedRemember === 'true') {
+          setRememberMe(true);
+          if (savedEmail) setEmail(savedEmail);
+          if (savedPassword) setPassword(savedPassword);
+        }
+      } catch (error) {
+        console.error('Failed to load remembered login', error);
+      }
+    })();
+  }, []);
+
+  const persistRememberedLogin = async (enabled: boolean, nextEmail?: string, nextPassword?: string) => {
+    if (!enabled) {
+      await Promise.all([
+        AsyncStorage.setItem(LOGIN_STORAGE.REMEMBER_ME, 'false'),
+        AsyncStorage.removeItem(LOGIN_STORAGE.REMEMBERED_EMAIL),
+        AsyncStorage.removeItem(LOGIN_STORAGE.REMEMBERED_PASSWORD),
+      ]);
+      return;
+    }
+
+    await Promise.all([
+      AsyncStorage.setItem(LOGIN_STORAGE.REMEMBER_ME, 'true'),
+      AsyncStorage.setItem(LOGIN_STORAGE.REMEMBERED_EMAIL, (nextEmail ?? email).trim()),
+      AsyncStorage.setItem(LOGIN_STORAGE.REMEMBERED_PASSWORD, nextPassword ?? password),
+    ]);
+  };
+
+  const handleRememberToggle = async () => {
+    const nextValue = !rememberMe;
+    setRememberMe(nextValue);
+
+    if (!nextValue) {
+      await persistRememberedLogin(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    setErrorMsg(null);
+    if (!email || !password) {
+      setErrorMsg('Please enter both email and password');
+      return;
+    }
+    setLoading(true);
+    try {
+      await signIn(email, password);
+      await persistRememberedLogin(rememberMe, email, password);
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderInput = (
+    label: string,
+    value: string,
+    setValue: (text: string) => void,
+    placeholder: string,
+    isPassword = false
+  ) => (
+    <View style={styles.inputContainer}>
+      <ThemedText style={styles.inputLabel}>{label}</ThemedText>
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor="#9CA3AF"
+          value={value}
+          onChangeText={setValue}
+          autoCapitalize="none"
+          keyboardType={isPassword ? 'default' : 'email-address'}
+          secureTextEntry={isPassword && !showPassword}
+        />
+        {isPassword && (
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.iconButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={LingoTheme.colors.muted}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        enabled={Platform.OS === 'ios'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: topPadding + 12, paddingBottom: bottomPadding + 32 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+        >
+          <View style={styles.header}>
+            <Image source={logo} style={styles.logoImage} resizeMode="contain" />
+            <LingoBadge label="Welcome back" icon="log-in-outline" tone="primary" />
+            <ThemedText style={styles.title}>Log in to IlmConnect</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Continue to your classes, messages, and learning dashboard.
+            </ThemedText>
+          </View>
+
+          <LingoCard style={styles.formCard}>
+            {renderInput('Email', email, setEmail, 'alina@example.com')}
+            {renderInput('Password', password, setPassword, 'Password', true)}
+
+            <View style={styles.optionsRow}>
+              <TouchableOpacity
+                style={styles.rememberMeContainer}
+                onPress={handleRememberToggle}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                </View>
+                <ThemedText style={styles.optionText}>Remember me</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/forgot-password' as any)}>
+                <ThemedText style={styles.forgotPasswordText}>Forgot password</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {errorMsg && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle-outline" size={18} color="#B91C1C" />
+                <ThemedText style={styles.errorText}>{errorMsg}</ThemedText>
+              </View>
+            )}
+
+            <LingoButton
+              label={loading ? 'Signing in...' : 'Sign in'}
+              icon="arrow-forward"
+              onPress={handleLogin}
+              loading={loading}
+            />
+          </LingoCard>
+
+          <View style={styles.footer}>
+            <ThemedText style={styles.footerText}>New to IlmConnect?</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/role-selection')} activeOpacity={0.8}>
+              <ThemedText style={styles.signUpLink}>Create an account</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: LingoTheme.colors.background,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    gap: 18,
+  },
+  header: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  logoImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+  },
+  title: {
+    fontSize: 30,
+    lineHeight: 36,
+    fontFamily: Fonts.rounded,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 15,
+    color: LingoTheme.colors.muted,
+    lineHeight: 22,
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  formCard: {
+    gap: 14,
+  },
+  inputContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+  },
+  inputLabel: {
+    fontSize: 11,
+    color: LingoTheme.colors.muted,
+    fontWeight: '700',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 34,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: LingoTheme.colors.ink,
+    paddingVertical: Platform.OS === 'android' ? 4 : 2,
+    paddingHorizontal: 0,
+    fontWeight: '500',
+  },
+  iconButton: {
+    padding: 4,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    backgroundColor: LingoTheme.colors.primary,
+    borderColor: LingoTheme.colors.primaryDark,
+  },
+  optionText: {
+    fontSize: 14,
+    color: LingoTheme.colors.ink,
+    fontWeight: '600',
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: LingoTheme.colors.primaryDark,
+    fontWeight: '800',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginTop: 'auto',
+  },
+  footerText: {
+    fontSize: 14,
+    color: LingoTheme.colors.muted,
+    fontWeight: '600',
+  },
+  signUpLink: {
+    fontSize: 14,
+    color: LingoTheme.colors.primaryDark,
+    fontWeight: '800',
+  },
+});

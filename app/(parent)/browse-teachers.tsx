@@ -1,4 +1,4 @@
-import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, Image, Platform, RefreshControl, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, Image, Platform, RefreshControl } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -13,13 +13,15 @@ import { SkeletonScreen } from '@/components/ui/skeleton';
 interface Teacher {
   id: string;
   bio: string;
-  subjects: string[];
-  hourly_rate: number;
-  rating: number;
+  subjects?: string[] | null;
+  hourly_rate?: number | null;
+  rating?: number | null;
   review_count?: number;
-  verification_status: string;
+  verification_status?: string | null;
   has_ijaazah?: boolean;
-  languages: string[];
+  languages?: string[] | null;
+  experience_years?: number | null;
+  years_experience?: number | null;
   gender: string;
   profiles: {
     full_name: string;
@@ -30,7 +32,7 @@ interface Teacher {
 
 export default function BrowseTeachersScreen() {
   const router = useRouter();
-  const { topPadding } = useSafePadding();
+  const { topPadding, bottomPadding } = useSafePadding();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string | null>('All');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -80,8 +82,9 @@ export default function BrowseTeachersScreen() {
   const filteredTeachers = teachers.filter(teacher => {
     if (!searchQuery) return true;
 
-    const matchesName = teacher.profiles.full_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSubject = teacher.subjects.some(s => 
+    const subjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+    const matchesName = (teacher.profiles?.full_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSubject = subjects.some(s =>
       s.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -92,7 +95,7 @@ export default function BrowseTeachersScreen() {
     <View style={[styles.container, { paddingTop: topPadding }]}>
       <ScrollView 
         style={styles.scrollView} 
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + (Platform.OS === 'ios' ? 120 : 104) }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl 
@@ -179,110 +182,152 @@ export default function BrowseTeachersScreen() {
               />
             </View>
           ) : (
-            filteredTeachers.map((teacher) => (
-              <TouchableOpacity 
-                key={teacher.id} 
-                style={styles.card}
-                activeOpacity={0.85}
-                onPress={() => router.push({ 
-                  pathname: '/teacher-profile/[id]',
-                  params: { id: teacher.id }
-                })}
-              >
-                <View style={styles.cardHeader}>
-                  <View style={styles.avatarContainer}>
-                    {teacher.profiles.avatar_url ? (
-                      <Image source={{ uri: teacher.profiles.avatar_url }} style={styles.avatarImage} />
-                    ) : (
-                      <LinearGradient
-                        colors={[LingoTheme.colors.teal, '#2BCBBA']}
-                        style={styles.avatarPlaceholder}
-                      >
-                        <ThemedText style={styles.avatarText}>
-                          {teacher.profiles.full_name.charAt(0)}
-                        </ThemedText>
-                      </LinearGradient>
-                    )}
-                    {(['verified', 'approved'].includes(String(teacher.verification_status || '').toLowerCase())) && (
-                      <View style={styles.verifiedBadge}>
-                        <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </View>
+            filteredTeachers.map((teacher) => {
+              const name = teacher.profiles?.full_name || 'Teacher';
+              const subjects = Array.isArray(teacher.subjects) ? teacher.subjects.filter(Boolean) : [];
+              const languages = Array.isArray(teacher.languages) ? teacher.languages.filter(Boolean) : [];
+              const verificationStatus = String(teacher.verification_status || '').toLowerCase();
+              const isVerified = ['verified', 'approved'].includes(verificationStatus);
+              const rating = Number(teacher.rating);
+              const hasRating = Number.isFinite(rating) && rating > 0;
+              const reviewCount = Number(teacher.review_count || 0);
+              const hourlyRate = Number(teacher.hourly_rate);
+              const hasHourlyRate = Number.isFinite(hourlyRate) && hourlyRate > 0;
+              const experienceYears = Number(teacher.experience_years ?? teacher.years_experience);
+              const hasExperience = Number.isFinite(experienceYears) && experienceYears > 0;
+              const hasFooter = hasHourlyRate || reviewCount > 0 || teacher.has_ijaazah || hasExperience;
 
-                  <View style={styles.headerInfo}>
-                    <View style={styles.nameRow}>
-                      <ThemedText style={styles.nameText} numberOfLines={1}>
-                        {teacher.profiles.full_name}
-                      </ThemedText>
-                      <View style={styles.ratingBadge}>
-                        <Ionicons name="star" size={14} color="#FFC800" />
-                        <ThemedText style={styles.ratingText}>
-                          {teacher.rating ? teacher.rating.toFixed(1) : 'New'}
-                        </ThemedText>
-                        {teacher.review_count ? (
-                          <ThemedText style={styles.reviewCount}>
-                            ({teacher.review_count})
+              return (
+                <TouchableOpacity
+                  key={teacher.id}
+                  style={styles.card}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({
+                    pathname: '/teacher-profile/[id]',
+                    params: { id: teacher.id }
+                  })}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={styles.avatarContainer}>
+                      {teacher.profiles?.avatar_url ? (
+                        <Image source={{ uri: teacher.profiles.avatar_url }} style={styles.avatarImage} />
+                      ) : (
+                        <LinearGradient
+                          colors={[LingoTheme.colors.teal, '#2BCBBA']}
+                          style={styles.avatarPlaceholder}
+                        >
+                          <ThemedText style={styles.avatarText}>
+                            {name.charAt(0)}
                           </ThemedText>
-                        ) : null}
-                      </View>
-                    </View>
-
-                    <ThemedText style={styles.subjectsText} numberOfLines={1}>
-                      {teacher.subjects.join(' • ')}
-                    </ThemedText>
-
-                    <View style={styles.metaRow}>
-                      <View style={styles.metaItem}>
-                         <Ionicons name="globe-outline" size={16} color="#777777" />
-                         <ThemedText style={styles.metaText}>{teacher.languages?.join(', ') || 'English'}</ThemedText>
-                      </View>
-                      {(['verified', 'approved'].includes(String(teacher.verification_status || '').toLowerCase())) && (
-                        <View style={styles.verifiedTag}>
-                           <Ionicons name="checkmark-circle" size={14} color="#58cc02" />
-                           <ThemedText style={[styles.metaText, { color: '#58cc02', fontWeight: '700' }]}>Verified Teacher</ThemedText>
+                        </LinearGradient>
+                      )}
+                      {isVerified && (
+                        <View style={styles.verifiedBadge}>
+                          <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
 
-                    {/* View Profile Button */}
-                    <TouchableOpacity 
-                      style={styles.viewProfileBtn}
-                      onPress={() => router.push({ 
-                        pathname: '/teacher-profile/[id]',
-                        params: { id: teacher.id }
-                      })}
-                      activeOpacity={0.8}
-                    >
-                      <ThemedText style={styles.viewProfileText}>View Profile</ThemedText>
-                      <Ionicons name="chevron-forward" size={16} color={LingoTheme.colors.primary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                    <View style={styles.headerInfo}>
+                      <View style={styles.nameRow}>
+                        <ThemedText style={styles.nameText} numberOfLines={1}>
+                          {name}
+                        </ThemedText>
+                        {hasRating && (
+                          <View style={styles.ratingBadge}>
+                            <Ionicons name="star" size={14} color="#FFC800" />
+                            <ThemedText style={styles.ratingText}>
+                              {rating.toFixed(1)}
+                            </ThemedText>
+                            {reviewCount > 0 ? (
+                              <ThemedText style={styles.reviewCount}>
+                                ({reviewCount})
+                              </ThemedText>
+                            ) : null}
+                          </View>
+                        )}
+                      </View>
 
-                <View style={styles.cardFooter}>
-                  <View style={styles.footerLeft}>
-                    <View style={styles.rateGroup}>
-                      <ThemedText style={styles.rateLabel}>HOURLY RATE</ThemedText>
-                      <View style={styles.rateValueRow}>
-                        <Ionicons name="cash-outline" size={16} color="#58cc02" />
-                        <ThemedText style={styles.rateValue}>${teacher.hourly_rate}/hour</ThemedText>
+                      {subjects.length > 0 && (
+                        <ThemedText style={styles.subjectsText} numberOfLines={2}>
+                          {subjects.join(' • ')}
+                        </ThemedText>
+                      )}
+
+                      <View style={styles.metaRow}>
+                        {languages.length > 0 && (
+                          <View style={styles.metaItem}>
+                            <Ionicons name="globe-outline" size={15} color="#777777" />
+                            <ThemedText style={styles.metaText} numberOfLines={1}>
+                              {languages.join(', ')}
+                            </ThemedText>
+                          </View>
+                        )}
+                        {isVerified && (
+                          <View style={styles.verifiedTag}>
+                            <Ionicons name="checkmark-circle" size={14} color="#58cc02" />
+                            <ThemedText style={styles.verifiedTagText}>Verified</ThemedText>
+                          </View>
+                        )}
                       </View>
-                    </View>
-                    <View style={styles.rateGroup}>
-                      <ThemedText style={styles.rateLabel}>EXPERIENCE</ThemedText>
-                      <View style={styles.rateValueRow}>
-                        <Ionicons name="ribbon-outline" size={16} color="#ce82ff" />
-                        <ThemedText style={styles.rateValue}>3+ years</ThemedText>
-                      </View>
+
+                      <TouchableOpacity
+                        style={styles.viewProfileBtn}
+                        onPress={() => router.push({
+                          pathname: '/teacher-profile/[id]',
+                          params: { id: teacher.id }
+                        })}
+                        activeOpacity={0.8}
+                      >
+                        <ThemedText style={styles.viewProfileText}>View Profile</ThemedText>
+                        <Ionicons name="chevron-forward" size={16} color={LingoTheme.colors.primary} />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <TouchableOpacity style={styles.heartButton} activeOpacity={0.7}>
-                    <Ionicons name="heart-outline" size={22} color="#AFAFAF" />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))
+
+                  {hasFooter && (
+                    <View style={styles.cardFooter}>
+                      {hasHourlyRate && (
+                        <View style={styles.rateGroup}>
+                          <ThemedText style={styles.rateLabel}>Hourly Rate</ThemedText>
+                          <View style={styles.rateValueRow}>
+                            <Ionicons name="cash-outline" size={16} color="#58cc02" />
+                            <ThemedText style={styles.rateValue}>${hourlyRate}/hour</ThemedText>
+                          </View>
+                        </View>
+                      )}
+                      {hasExperience && (
+                        <View style={styles.rateGroup}>
+                          <ThemedText style={styles.rateLabel}>Experience</ThemedText>
+                          <View style={styles.rateValueRow}>
+                            <Ionicons name="ribbon-outline" size={16} color="#ce82ff" />
+                            <ThemedText style={styles.rateValue}>{experienceYears}+ years</ThemedText>
+                          </View>
+                        </View>
+                      )}
+                      {reviewCount > 0 && (
+                        <View style={styles.rateGroup}>
+                          <ThemedText style={styles.rateLabel}>Reviews</ThemedText>
+                          <View style={styles.rateValueRow}>
+                            <Ionicons name="chatbubble-ellipses-outline" size={16} color="#3B82F6" />
+                            <ThemedText style={[styles.rateValue, { color: '#3B82F6' }]}>{reviewCount}</ThemedText>
+                          </View>
+                        </View>
+                      )}
+                      {teacher.has_ijaazah && (
+                        <View style={styles.rateGroup}>
+                          <ThemedText style={styles.rateLabel}>Credential</ThemedText>
+                          <View style={styles.rateValueRow}>
+                            <Ionicons name="shield-checkmark-outline" size={16} color="#0F766E" />
+                            <ThemedText style={[styles.rateValue, { color: '#0F766E' }]}>Ijaazah</ThemedText>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -299,7 +344,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'ios' ? 120 : 100, // Safe padding for bottom tabs
+    paddingBottom: 20,
   },
   headerPad: {
     paddingHorizontal: 16,
@@ -419,17 +464,17 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 2,
     borderColor: '#E5E5E5',
-    borderBottomWidth: 4, // 3D tactile border
+    borderBottomWidth: 4,
     padding: 20,
     marginBottom: 16,
   },
   cardHeader: {
     flexDirection: 'row',
-    marginBottom: 16,
+    gap: 14,
   },
   avatarContainer: {
-    marginRight: 16,
     position: 'relative',
+    flexShrink: 0,
   },
   avatarImage: {
     width: 68,
@@ -468,11 +513,13 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
     justifyContent: 'center',
+    minWidth: 0,
   },
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
     marginBottom: 4,
   },
   nameText: {
@@ -480,7 +527,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#3C3C3C',
     flex: 1,
-    marginRight: 8,
+    minWidth: 0,
   },
   ratingBadge: {
     flexDirection: 'row',
@@ -490,6 +537,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
+    flexShrink: 0,
   },
   ratingText: {
     fontSize: 13,
@@ -506,31 +554,40 @@ const styles = StyleSheet.create({
     color: '#777777',
     fontWeight: '600',
     marginBottom: 10,
+    lineHeight: 19,
   },
   metaRow: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  ijaazahTag: {
-    backgroundColor: '#FFF8E5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    maxWidth: '100%',
+    minWidth: 0,
   },
   metaText: {
     fontSize: 13,
     color: '#777777',
     fontWeight: '700',
+    flexShrink: 1,
   },
   verifiedTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: LingoTheme.colors.softPrimary,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  verifiedTagText: {
+    color: '#58cc02',
+    fontWeight: '800',
+    fontSize: 12,
   },
   viewProfileBtn: {
     flexDirection: 'row',
@@ -551,19 +608,17 @@ const styles = StyleSheet.create({
 
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    gap: 18,
     paddingTop: 16,
+    marginTop: 16,
     borderTopWidth: 2,
     borderTopColor: '#E5E5E5',
   },
-  footerLeft: {
-    flexDirection: 'row',
-    gap: 24,
-    flex: 1,
-  },
   rateGroup: {
     gap: 4,
+    minWidth: 96,
   },
   rateLabel: {
     fontSize: 10,
@@ -580,14 +635,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#58cc02',
-  },
-  heartButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
+import { LingoCard, LingoEmptyState } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { useSafePadding } from '@/hooks/use-safe-padding';
 import { DateTime } from 'luxon'; 
@@ -198,11 +198,22 @@ export default function ScheduleScreen() {
   };
 
   const isClassJoinable = (classItem: ClassSession) => {
-    // Teachers must be able to start scheduled sessions even if timezone data is missing
-    // or the stored UTC timestamp doesn't match the teacher's local expectation.
     if (classItem.status === 'cancelled' || classItem.status === 'completed') return false;
     if (classItem.live_status === 'ended') return false;
-    return true;
+
+    if (classItem.live_status === 'live') return true;
+
+    const startUtc = DateTime.fromISO(classItem.session_date, { zone: 'utc' });
+    if (!startUtc.isValid) return false;
+
+    const duration = typeof classItem.duration_minutes === 'number' && classItem.duration_minutes > 0
+      ? classItem.duration_minutes
+      : 60;
+    const nowUtc = DateTime.utc();
+    const earliestUtc = startUtc.minus({ minutes: 10 });
+    const endUtc = startUtc.plus({ minutes: duration });
+
+    return nowUtc >= earliestUtc && nowUtc <= endUtc;
   };
 
   const getJoinWindowDebug = (classItem: ClassSession) => {
@@ -228,6 +239,7 @@ export default function ScheduleScreen() {
     const isCompleted = classItem.status === 'completed' || classItem.live_status === 'ended';
     const isCancelled = classItem.status === 'cancelled';
     const isPrerecorded = classItem.delivery_mode === 'prerecorded';
+    const isActuallyLive = classItem.live_status === 'live';
 
     return (
       <View key={classItem.id} style={styles.timelineRow}>
@@ -243,7 +255,7 @@ export default function ScheduleScreen() {
           <View style={[styles.statusStrip, 
              isCancelled ? { backgroundColor: '#EF4444' } :
              isCompleted ? { backgroundColor: '#9CA3AF' } :
-             isJoinable ? { backgroundColor: '#10B981' } : 
+             isActuallyLive ? { backgroundColor: '#10B981' } :
              { backgroundColor: '#F59E0B' }
           ]} />
           
@@ -256,18 +268,19 @@ export default function ScheduleScreen() {
               <View style={[styles.statusBadge, 
                 isCancelled ? styles.badgeCancelled :
                 isCompleted ? styles.badgeCompleted :
-                isJoinable ? styles.badgeLive : 
+                isActuallyLive ? styles.badgeLive :
                 styles.badgeScheduled
               ]}>
                 <ThemedText style={[styles.statusText, 
                    isCancelled ? styles.textCancelled :
                    isCompleted ? styles.textCompleted :
-                   isJoinable ? styles.textLive : 
+                   isActuallyLive ? styles.textLive :
                    styles.textScheduled
                 ]}>
                   {isCancelled ? 'Cancelled' : 
                    isCompleted ? 'Completed' : 
-                   isJoinable ? 'Live Now' : 'Scheduled'}
+                   isActuallyLive ? 'Live Now' :
+                   isJoinable ? 'Ready' : 'Scheduled'}
                 </ThemedText>
               </View>
             </View>
@@ -455,12 +468,12 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
     justifyContent: 'center', alignItems: 'center',
   },
-  topBarTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5, color: '#111827' },
+  topBarTitle: { fontSize: 28, fontWeight: '700', letterSpacing: 0, color: '#111827' },
   topBarSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '400', marginTop: 1 },
   statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, paddingHorizontal: 2 },
   statChip: { flex: 1, alignItems: 'center', gap: 6 },
   statIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
-  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  pillValue: { fontSize: 22, fontWeight: '700', letterSpacing: 0 },
   pillLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   statDivider: { width: 1, height: 48, backgroundColor: '#E5E7EB' },
   tabsShell: {
@@ -626,14 +639,13 @@ const styles = StyleSheet.create({
 
   /* Footer Actions */
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 12,
     borderTopWidth: 1,
     borderTopColor: LingoTheme.colors.border,
     paddingTop: 12,
   },
   durationBadge: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -650,13 +662,17 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
   },
   secondaryActionButton: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 9,
     borderRadius: 12,
     backgroundColor: LingoTheme.colors.softTeal,
@@ -669,6 +685,8 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   actionButton: {
+    flex: 1,
+    minWidth: 0,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -678,12 +696,13 @@ const styles = StyleSheet.create({
   actionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     gap: 6,
   },
   actionText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFF',
   },
