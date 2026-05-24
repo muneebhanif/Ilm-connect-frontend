@@ -198,22 +198,11 @@ export default function ScheduleScreen() {
   };
 
   const isClassJoinable = (classItem: ClassSession) => {
+    // Teachers can start a class at any time — no time-window restriction
     if (classItem.status === 'cancelled' || classItem.status === 'completed') return false;
     if (classItem.live_status === 'ended') return false;
-
-    if (classItem.live_status === 'live') return true;
-
-    const startUtc = DateTime.fromISO(classItem.session_date, { zone: 'utc' });
-    if (!startUtc.isValid) return false;
-
-    const duration = typeof classItem.duration_minutes === 'number' && classItem.duration_minutes > 0
-      ? classItem.duration_minutes
-      : 60;
-    const nowUtc = DateTime.utc();
-    const earliestUtc = startUtc.minus({ minutes: 10 });
-    const endUtc = startUtc.plus({ minutes: duration });
-
-    return nowUtc >= earliestUtc && nowUtc <= endUtc;
+    // Always allow teachers to start/join
+    return true;
   };
 
   const getJoinWindowDebug = (classItem: ClassSession) => {

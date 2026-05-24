@@ -53,6 +53,8 @@ export const api = {
   teacherSchedule: (teacherId: string) => `${API_URL}/api/teachers/${teacherId}/schedule`,
   teacherStudents: (teacherId: string) => `${API_URL}/api/teachers/${teacherId}/students`,
   teacherNotifications: (teacherId: string) => `${API_URL}/api/teachers/${teacherId}/notifications`,
+  teacherMissedClasses: (teacherId: string) => `${API_URL}/api/teachers/${teacherId}/missed-classes`,
+  teacherRescheduleSession: (teacherId: string, sessionId: string) => `${API_URL}/api/teachers/${teacherId}/sessions/${sessionId}/reschedule`,
 
   // Student endpoints
   studentProfile: (profileId: string) => `${API_URL}/api/student/${profileId}/profile`,

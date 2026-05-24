@@ -422,12 +422,20 @@ export default function ClassRoomScreen() {
     applyNativeMediaQuality(engine);
 
     engine.addListener('onUserJoined', (_connection: any, remoteUid: number) => {
+      console.log('[Agora Native] Remote user joined:', remoteUid);
       addRemoteUid(remoteUid);
     });
     engine.addListener('onUserOffline', (_connection: any, remoteUid: number) => {
+      console.log('[Agora Native] Remote user left:', remoteUid);
       removeRemoteUid(remoteUid);
     });
     engine.addListener('onTokenPrivilegeWillExpire', () => { void renewToken(); });
+    engine.addListener('onError', (_err: any, msg: string) => {
+      console.warn('[Agora Native] Error:', msg);
+    });
+    engine.addListener('onJoinChannelSuccess', (_connection: any, elapsed: number) => {
+      console.log('[Agora Native] Joined channel successfully in', elapsed, 'ms');
+    });
 
     engine.enableVideo();
     engine.enableAudio();
