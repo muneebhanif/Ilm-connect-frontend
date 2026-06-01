@@ -437,6 +437,29 @@ export default function ClassRoomScreen() {
       console.log('[Agora Native] Joined channel successfully in', elapsed, 'ms');
     });
 
+    // Native data stream: receive chat messages from other participants
+    engine.addListener('onStreamMessage', (_connection: any, _remoteUid: number, _streamId: number, data: Uint8Array) => {
+      try {
+        let decoded = '';
+        if (typeof data === 'string') decoded = data;
+        else if (data instanceof Uint8Array) decoded = new TextDecoder().decode(data);
+        else if (data?.buffer) decoded = new TextDecoder().decode(new Uint8Array(data.buffer));
+        else decoded = String(data ?? '');
+        if (!decoded) return;
+        const msg = JSON.parse(decoded);
+        if (msg.type === 'chat') {
+          setChatMessages((prev) => [...prev, {
+            id: `${Date.now()}-${Math.random()}`,
+            senderName: msg.senderName || 'Participant',
+            text: msg.text,
+            at: msg.at || new Date().toISOString(),
+            mine: false,
+          }]);
+          setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
+        }
+      } catch {}
+    });
+
     engine.enableVideo();
     engine.enableAudio();
     engine.startPreview();
@@ -445,6 +468,12 @@ export default function ClassRoomScreen() {
     engine.joinChannel(token, channel, numericUid, {
       clientRoleType: ClientRoleType.ClientRoleBroadcaster,
     });
+
+    // Create native data stream for sending chat messages
+    try {
+      const nativeStreamId = engine.createDataStream({ ordered: true, reliable: true });
+      dataStreamIdRef.current = nativeStreamId;
+    } catch (e) { console.warn('[Agora Native] Failed to create data stream:', e); }
 
     setMicOn(true);
     setCameraOn(true);
@@ -633,15 +662,29 @@ export default function ClassRoomScreen() {
     setChatMessages((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, senderName, text, at: now, mine: true }]);
     setChatInput('');
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
-    const client = rtcClientRef.current;
-    if (client && isWeb) {
-      try {
-        if (dataStreamIdRef.current === null) await setupDataStream();
-        if (dataStreamIdRef.current === null) throw new Error('Chat stream not ready');
-        const payload = JSON.stringify({ type: 'chat', senderName, text, at: now });
-        try { await client.sendStreamMessage(dataStreamIdRef.current, payload); }
-        catch { if (typeof TextEncoder !== 'undefined') await client.sendStreamMessage(dataStreamIdRef.current, new TextEncoder().encode(payload)); }
-      } catch (e) { console.warn('Failed to send stream message:', e); }
+
+    const payload = JSON.stringify({ type: 'chat', senderName, text, at: now });
+
+    if (isWeb) {
+      // Web: use Agora web SDK data streams
+      const client = rtcClientRef.current;
+      if (client) {
+        try {
+          if (dataStreamIdRef.current === null) await setupDataStream();
+          if (dataStreamIdRef.current === null) throw new Error('Chat stream not ready');
+          try { await client.sendStreamMessage(dataStreamIdRef.current, payload); }
+          catch { if (typeof TextEncoder !== 'undefined') await client.sendStreamMessage(dataStreamIdRef.current, new TextEncoder().encode(payload)); }
+        } catch (e) { console.warn('Failed to send stream message:', e); }
+      }
+    } else {
+      // Native: use Agora native SDK data streams
+      const engine = nativeEngineRef.current;
+      if (engine && dataStreamIdRef.current !== null) {
+        try {
+          const encoded = new TextEncoder().encode(payload);
+          engine.sendStreamMessage(dataStreamIdRef.current, encoded, encoded.length);
+        } catch (e) { console.warn('[Agora Native] Failed to send chat:', e); }
+      }
     }
   };
 
@@ -1114,8 +1157,8 @@ export default function ClassRoomScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Chat Panel (Web only) ── */}
-      {isWeb && chatOpen && (
+      {/* ── Chat Panel ── */}
+      {chatOpen && (
         <View style={st.chatPanel}>
           <View style={st.chatHeader}>
             <ThemedText style={st.chatTitle}>Chat</ThemedText>
