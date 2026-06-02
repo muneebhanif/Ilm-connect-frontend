@@ -31,6 +31,16 @@ export default function ChatScreen() {
   const { id, name, avatar } = useLocalSearchParams();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const composerBottomPadding = Platform.select({
+    ios: Math.max(insets.bottom, 16) + 12,
+    android: Math.max(insets.bottom, 24) + 12,
+    default: 16,
+  });
+  const headerTopPadding = Platform.select({
+    ios: Math.max(insets.top, 44) + 6,
+    android: Math.max(insets.top, 24) + 10,
+    default: 18,
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -378,12 +388,12 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 8}
-      enabled={Platform.OS === 'ios'}
+      behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+      keyboardVerticalOffset={0}
+      enabled={Platform.OS !== 'web'}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerTopPadding }]}>
         <TouchableOpacity onPress={() => require('expo-router').router.back()} style={{ padding: 8 }}>
           <Ionicons name="arrow-back" size={22} color="#1F2937" />
         </TouchableOpacity>
@@ -419,7 +429,7 @@ export default function ChatScreen() {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesList}
+          contentContainerStyle={[styles.messagesList, { paddingBottom: composerBottomPadding + 8 }]}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
@@ -437,7 +447,7 @@ export default function ChatScreen() {
       )}
 
       {/* Input Area */}
-      <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+      <View style={[styles.inputWrapper, { paddingBottom: composerBottomPadding }]}>
         <View style={styles.inputContainer}>
           <TouchableOpacity 
             style={styles.attachButton}
@@ -501,7 +511,7 @@ export default function ChatScreen() {
             )}
           </View>
 
-          <View style={styles.uploadFooter}>
+          <View style={[styles.uploadFooter, { paddingBottom: composerBottomPadding + 8 }]}>
              <TextInput
               style={styles.uploadCaptionInput}
               placeholder="Add a caption..."

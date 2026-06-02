@@ -91,6 +91,9 @@ export default function ClassRoomScreen() {
   const lobbyBottomPadding = Platform.OS === 'android'
     ? Math.max(bottomPadding + 24, 64)
     : bottomPadding + 24;
+  const controlsChromeHeight = controlBottomPadding + (user?.role === 'teacher' ? 116 : 68);
+  const inCallTopOffset = topPadding + 58;
+  const videoOverlayBottom = controlsChromeHeight + 14;
 
   const [classDetails, setClassDetails] = useState<ClassDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,6 +130,21 @@ export default function ClassRoomScreen() {
 
   // Auto-detect 1:1 vs Group (FaceTime vs Zoom)
   const isOneToOne = remoteParticipants.length <= 1;
+
+  const playWebTrack = (track: any, elementId: string, attempt = 0) => {
+    if (!isWeb || !track) return;
+    const el = document.getElementById(elementId);
+    if (!el) {
+      if (attempt < 6) setTimeout(() => playWebTrack(track, elementId, attempt + 1), 80);
+      return;
+    }
+    try {
+      track.play(el);
+    } catch (err) {
+      if (attempt < 6) setTimeout(() => playWebTrack(track, elementId, attempt + 1), 80);
+      else console.warn('[Agora Web] Failed to play video track:', err);
+    }
+  };
 
   // ─── Orientation & Dimensions ──────────────────────────────
   useEffect(() => {
@@ -206,8 +224,7 @@ export default function ClassRoomScreen() {
     if (!vt) return;
     const t = setTimeout(() => {
       const elId = focusedUid === 'local' ? 'main-player' : 'local-player';
-      const el = document.getElementById(elId);
-      if (el) vt.play(el);
+      playWebTrack(vt, elId);
     }, 0);
     return () => clearTimeout(t);
   }, [joined, focusedUid]);
@@ -223,8 +240,7 @@ export default function ClassRoomScreen() {
         const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(participant.uid));
         if (!ru?.videoTrack) return;
         const elId = String(participant.uid) === String(focusedUid) ? 'main-player' : `remote-player-${participant.uid}`;
-        const el = document.getElementById(elId);
-        if (el) ru.videoTrack.play(el);
+        playWebTrack(ru.videoTrack, elId);
       });
     }, 0);
     return () => clearTimeout(t);
@@ -309,8 +325,7 @@ export default function ClassRoomScreen() {
     if (!client || !isWeb) return;
     const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(uid));
     if (!ru?.videoTrack) return;
-    const el = document.getElementById(`remote-player-${uid}`);
-    if (el) ru.videoTrack.play(el);
+    playWebTrack(ru.videoTrack, `remote-player-${uid}`);
   };
 
   const addRemoteUid = (uid: number) => {
@@ -518,15 +533,15 @@ export default function ClassRoomScreen() {
     const handleUserPublished = async (remoteUser: any, mediaType: string) => {
       try {
         if (client.connectionState !== 'CONNECTED') return;
-        upsertRemoteParticipant(remoteUser.uid, {
-          hasVideo: mediaType === 'video' ? true : Boolean(remoteUser.hasVideo),
-          hasAudio: mediaType === 'audio' ? true : Boolean(remoteUser.hasAudio),
-        });
         await client.subscribe(remoteUser, mediaType);
         if (mediaType === 'audio') {
           try { remoteUser.audioTrack?.setVolume?.(80); } catch {}
           remoteUser.audioTrack?.play();
         }
+        upsertRemoteParticipant(remoteUser.uid, {
+          hasVideo: mediaType === 'video' ? true : Boolean(remoteUser.hasVideo),
+          hasAudio: mediaType === 'audio' ? true : Boolean(remoteUser.hasAudio),
+        });
       } catch (subErr: any) {
         if (!String(subErr?.message || '').includes('not joined')) console.warn('Subscribe:', subErr);
       }
@@ -935,7 +950,7 @@ export default function ClassRoomScreen() {
               onPress={() => setFocusedUid('local')}
               style={{
                 position: 'absolute',
-                bottom: isLandscape ? 90 : 100,
+                bottom: videoOverlayBottom,
                 right: 16,
                 width: isLandscape ? 160 : 120,
                 height: isLandscape ? 120 : 160,
@@ -979,7 +994,7 @@ export default function ClassRoomScreen() {
             {filmstripParticipants.length > 0 && (
               <View style={{
                 position: 'absolute',
-                bottom: isLandscape ? 90 : 100,
+                bottom: videoOverlayBottom,
                 left: 16,
                 right: isLandscape ? 190 : 150,
                 height: 72,
@@ -1143,24 +1158,20 @@ export default function ClassRoomScreen() {
         <TouchableOpacity onPress={() => setChatOpen((v) => !v)} style={[st.ctrlBtn, chatOpen && st.ctrlBtnTeal]} activeOpacity={0.7}>
           <Ionicons name="chatbubble-ellipses" size={26} color="#FFF" />
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={user?.role === 'teacher' ? handleEndClass : goBackWithoutEnding}
-          style={st.endBtn}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={user?.role === 'teacher' ? 'call' : 'exit-outline'}
-            size={26}
-            color="#FFF"
-            style={user?.role === 'teacher' ? { transform: [{ rotate: '135deg' }] } : undefined}
-          />
+        <TouchableOpacity onPress={goBackWithoutEnding} style={st.leaveBtn} activeOpacity={0.8}>
+          <Ionicons name="exit-outline" size={26} color="#FFF" />
         </TouchableOpacity>
+        {user?.role === 'teacher' && (
+          <TouchableOpacity onPress={handleEndClass} style={st.endBtn} activeOpacity={0.8}>
+            <Ionicons name="call" size={26} color="#FFF" style={{ transform: [{ rotate: '135deg' }] }} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── Chat Panel ── */}
       {chatOpen && (
-        <View style={st.chatPanel}>
-          <View style={st.chatHeader}>
+        <View style={[st.chatPanel, { top: inCallTopOffset, bottom: controlsChromeHeight }]}>
+          <View style={[st.chatHeader, { paddingTop: 14 }]}>
             <ThemedText style={st.chatTitle}>Chat</ThemedText>
             <TouchableOpacity onPress={() => setChatOpen(false)} hitSlop={8}>
               <Ionicons name="close" size={22} color="#94A3B8" />
@@ -1461,8 +1472,10 @@ const st = StyleSheet.create({
 
   // Bottom controls
   bottomBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14,
-    paddingVertical: 12, paddingHorizontal: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingVertical: 12, paddingHorizontal: 12,
     paddingBottom: Platform.OS === 'ios' ? 36 : 20,
     backgroundColor: 'rgba(15,23,42,0.95)',
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)',
@@ -1482,6 +1495,13 @@ const st = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35, shadowRadius: 10,
     elevation: 6,
+  },
+  leaveBtn: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
 
   // Chat
