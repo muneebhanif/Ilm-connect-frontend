@@ -284,23 +284,28 @@ export default function ChildProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: topPadding }]}>
-        <LingoScreenHeader
-          title={`${displayName}'s profile`}
-          subtitle="View learning progress, classes, and portal access for this child account."
-          badge="Child profile"
-          icon="happy-outline"
-          onBack={() => router.back()}
-        >
-          <View style={styles.headerStats}>
-            <LingoStatPill icon="✅" value={String(progress.completedClasses)} label="Completed" tone="primary" />
-            <LingoStatPill icon="📚" value={String(progress.enrollments.length)} label="Courses" tone="teal" />
-            <LingoStatPill icon="🎯" value={`${progress.attendanceSummary.attendancePercentage}%`} label="Attendance" tone="gold" />
-          </View>
-        </LingoScreenHeader>
-      </View>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: bottomPadding + 24 }}
+      >
+        {/* HEADER MOVED INSIDE SCROLLVIEW */}
+        <View style={[styles.header, { paddingTop: topPadding }]}>
+          <LingoScreenHeader
+            title={`${displayName}'s profile`}
+            subtitle="View learning progress, classes, and portal access for this child account."
+            badge="Child profile"
+            icon="happy-outline"
+            onBack={() => router.back()}
+          >
+            <View style={styles.headerStats}>
+              <LingoStatPill icon="✅" value={String(progress.completedClasses)} label="Completed" tone="primary" />
+              <LingoStatPill icon="📚" value={String(progress.enrollments.length)} label="Courses" tone="teal" />
+              <LingoStatPill icon="🎯" value={`${progress.attendanceSummary.attendancePercentage}%`} label="Attendance" tone="gold" />
+            </View>
+          </LingoScreenHeader>
+        </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPadding + 24 }}>
         <View style={styles.section}>
           <LingoCard style={styles.profileCard}>
             <View style={styles.avatarContainer}>
