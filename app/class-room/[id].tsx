@@ -105,6 +105,7 @@ export default function ClassRoomScreen() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatTransportWarning, setChatTransportWarning] = useState<string | null>(null);
   const [remoteUids, setRemoteUids] = useState<number[]>([]);
   const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
   const [elapsed, setElapsed] = useState(0);
@@ -118,6 +119,8 @@ export default function ClassRoomScreen() {
   const localTracksRef = useRef<{ audioTrack?: any; videoTrack?: any }>({});
   const dataStreamIdRef = useRef<number | null>(null);
   const webContainerTrackKeysRef = useRef<Map<string, string>>(new Map());
+  const focusedUidRef = useRef<string | number>('local');
+  const remoteParticipantsRef = useRef<RemoteParticipant[]>([]);
 
   // Native-only ref
   const nativeEngineRef = useRef<any>(null);
@@ -129,12 +132,20 @@ export default function ClassRoomScreen() {
   const chatScrollRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    focusedUidRef.current = focusedUid;
+  }, [focusedUid]);
+
+  useEffect(() => {
+    remoteParticipantsRef.current = remoteParticipants;
+  }, [remoteParticipants]);
+
   const logAgora = (event: string, details: Record<string, any> = {}) => {
     console.log(`[Agora ${isWeb ? 'Web' : 'Native'}] ${event}`, {
       classId: id,
       localUserId: user?.id,
       role: user?.role,
-      focusedUid,
+      focusedUid: focusedUidRef.current,
       ...details,
     });
   };
@@ -143,7 +154,7 @@ export default function ClassRoomScreen() {
     if (!isWeb || !track) return;
     const el = document.getElementById(elementId);
     if (!el) {
-      if (attempt < 30) setTimeout(() => playWebTrack(track, elementId, trackKey, attempt + 1), 100);
+      if (attempt < 40) setTimeout(() => playWebTrack(track, elementId, trackKey, attempt + 1), 120);
       else logAgora('video track play failed', { elementId, trackKey, reason: 'missing container' });
       return;
     }
@@ -156,9 +167,38 @@ export default function ClassRoomScreen() {
       track.play(el, { fit: 'contain' });
       logAgora('video track play success', { elementId, trackKey });
     } catch (err) {
-      if (attempt < 30) setTimeout(() => playWebTrack(track, elementId, trackKey, attempt + 1), 100);
+      if (attempt < 40) setTimeout(() => playWebTrack(track, elementId, trackKey, attempt + 1), 120);
       else logAgora('video track play failure', { elementId, trackKey, error: (err as any)?.message || String(err) });
     }
+  };
+
+  const getRemoteWebElementId = (remoteUid: number | string) => {
+    const isOneToOneMode = remoteParticipantsRef.current.length <= 1;
+    const shouldUseMainStage = isOneToOneMode || String(focusedUidRef.current) === String(remoteUid);
+    return shouldUseMainStage ? 'main-player' : `remote-player-${remoteUid}`;
+  };
+
+  const playRemoteWebTrack = (uid: number | string, attempt = 0) => {
+    if (!isWeb) return;
+    const remoteUid = Number(uid) || uid;
+    const client = rtcClientRef.current;
+    const remoteUser = client?.remoteUsers?.find((u: any) => String(u.uid) === String(remoteUid));
+
+    if (!remoteUser?.videoTrack) {
+      if (attempt < 40) setTimeout(() => playRemoteWebTrack(remoteUid, attempt + 1), 120);
+      else logAgora('remote video track missing', { remoteUid });
+      return;
+    }
+
+    const elementId = getRemoteWebElementId(remoteUid);
+    const element = document.getElementById(elementId);
+    if (!element) {
+      if (attempt < 40) setTimeout(() => playRemoteWebTrack(remoteUid, attempt + 1), 120);
+      else logAgora('remote video container missing', { remoteUid, elementId });
+      return;
+    }
+
+    playWebTrack(remoteUser.videoTrack, elementId, `remote-${remoteUid}`);
   };
 
   // ─── Orientation & Dimensions ──────────────────────────────
@@ -238,25 +278,19 @@ export default function ClassRoomScreen() {
     const vt = localTracksRef.current.videoTrack;
     if (!vt) return;
     const t = setTimeout(() => {
-      const elId = focusedUid === 'local' ? 'main-player' : 'local-player';
+      const singleRemoteInCall = remoteParticipants.length === 1;
+      const elId = focusedUid === 'local' && !singleRemoteInCall ? 'main-player' : 'local-player';
       playWebTrack(vt, elId, 'local-camera');
     }, 0);
     return () => clearTimeout(t);
-  }, [joined, focusedUid]);
+  }, [joined, focusedUid, remoteParticipants.length]);
 
   // Web-only: play remote video (routes to main or grid based on focus)
   useEffect(() => {
     const videoParticipants = remoteParticipants.filter((p) => p.hasVideo);
     if (!isWeb || !joined || videoParticipants.length === 0) return;
     const t = setTimeout(() => {
-      videoParticipants.forEach((participant) => {
-        const client = rtcClientRef.current;
-        if (!client) return;
-        const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(participant.uid));
-        if (!ru?.videoTrack) return;
-        const elId = String(participant.uid) === String(focusedUid) ? 'main-player' : `remote-player-${participant.uid}`;
-        playWebTrack(ru.videoTrack, elId, `remote-${participant.uid}`);
-      });
+      videoParticipants.forEach((participant) => playRemoteWebTrack(participant.uid));
     }, 0);
     return () => clearTimeout(t);
   }, [remoteParticipants, joined, focusedUid]);
@@ -305,7 +339,7 @@ export default function ClassRoomScreen() {
         await rtcClientRef.current.leave();
       }
     } catch (e) { console.warn('Web cleanup warning:', e); }
-    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; webContainerTrackKeysRef.current.clear(); setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
+    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; webContainerTrackKeysRef.current.clear(); setChatTransportWarning(null); setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
   };
 
   const cleanupNativeAgora = async () => {
@@ -317,7 +351,7 @@ export default function ClassRoomScreen() {
         engine.release();
       }
     } catch (e) { console.warn('Native cleanup warning:', e); }
-    finally { nativeEngineRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
+    finally { nativeEngineRef.current = null; dataStreamIdRef.current = null; setChatTransportWarning(null); setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
   };
 
   // ─── Token Renewal ───────────────────────────────────────
@@ -347,11 +381,8 @@ export default function ClassRoomScreen() {
 
   // ─── Web-only helpers ────────────────────────────────────
   const renderRemoteVideo = (uid: string) => {
-    const client = rtcClientRef.current;
-    if (!client || !isWeb) return;
-    const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(uid));
-    if (!ru?.videoTrack) return;
-    playWebTrack(ru.videoTrack, `remote-player-${uid}`, `remote-${uid}`);
+    if (!isWeb) return;
+    playRemoteWebTrack(uid);
   };
 
   const addRemoteUid = (uid: number) => {
@@ -399,13 +430,26 @@ export default function ClassRoomScreen() {
     return false;
   };
 
-  const setupDataStream = async () => {
+  const setupDataStream = async (): Promise<number | null> => {
     const client = rtcClientRef.current;
-    if (!client || dataStreamIdRef.current !== null) return;
+    if (dataStreamIdRef.current !== null) return dataStreamIdRef.current;
+    if (!client) {
+      logAgora('data stream skipped', { reason: 'missing client' });
+      return null;
+    }
     try {
       const streamId = await client.createDataStream({ ordered: true, reliable: true });
       dataStreamIdRef.current = streamId;
-    } catch (e) { console.warn('Failed to create data stream:', e); }
+      setChatTransportWarning(null);
+      logAgora('data stream created', { streamId });
+      return streamId;
+    } catch (e) {
+      dataStreamIdRef.current = null;
+      setChatTransportWarning('Chat is connected locally, but delivery is not available yet.');
+      console.error('[Agora Web] DataStream creation failed:', e);
+      logAgora('data stream creation failed', { error: (e as any)?.message || String(e) });
+      return null;
+    }
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -539,6 +583,8 @@ export default function ClassRoomScreen() {
         if (!decoded) return;
         const msg = JSON.parse(decoded);
         if (msg.type === 'chat') {
+          logAgora('chat received via data stream', { remoteUid: _remoteUid, streamId: _streamId });
+          setChatTransportWarning(null);
           setChatMessages((prev) => [...prev, {
             id: `${Date.now()}-${Math.random()}`,
             senderName: msg.senderName || 'Participant',
@@ -567,7 +613,14 @@ export default function ClassRoomScreen() {
     try {
       const nativeStreamId = engine.createDataStream({ ordered: true, syncWithAudio: false });
       dataStreamIdRef.current = nativeStreamId;
-    } catch (e) { console.warn('[Agora Native] Failed to create data stream:', e); }
+      setChatTransportWarning(null);
+      logAgora('data stream created', { streamId: nativeStreamId });
+    } catch (e) {
+      dataStreamIdRef.current = null;
+      setChatTransportWarning('Chat is connected locally, but delivery is not available yet.');
+      console.warn('[Agora Native] Failed to create data stream:', e);
+      logAgora('data stream creation failed', { error: (e as any)?.message || String(e) });
+    }
 
     setMicOn(Boolean(channelOptions.publishMicrophoneTrack));
     setCameraOn(Boolean(channelOptions.publishCameraTrack));
@@ -595,6 +648,8 @@ export default function ClassRoomScreen() {
         if (!decoded) return;
         const msg = JSON.parse(decoded);
         if (msg.type === 'chat') {
+          logAgora('chat received via data stream', { remoteUid: _uid });
+          setChatTransportWarning(null);
           setChatMessages((prev) => [...prev, {
             id: `${Date.now()}-${Math.random()}`,
             senderName: msg.senderName || 'Participant',
@@ -634,10 +689,7 @@ export default function ClassRoomScreen() {
           hasAudio: mediaType === 'audio' ? true : Boolean(remoteUser.hasAudio),
         });
         if (mediaType === 'video') {
-          setTimeout(() => {
-            const focused = String(focusedUid) === String(remoteUser.uid);
-            playWebTrack(remoteUser.videoTrack, focused ? 'main-player' : `remote-player-${remoteUser.uid}`, `remote-${remoteUser.uid}`);
-          }, 0);
+          setTimeout(() => playRemoteWebTrack(remoteUser.uid), 0);
         }
       } catch (subErr: any) {
         const msg = String(subErr?.message || subErr || '');
@@ -788,7 +840,8 @@ export default function ClassRoomScreen() {
         logAgora('local video toggled', { enabled: nextCameraOn });
         setCameraOn(nextCameraOn);
         if (nextCameraOn) {
-          const elId = focusedUid === 'local' ? 'main-player' : 'local-player';
+          const singleRemoteInCall = remoteParticipantsRef.current.length === 1;
+          const elId = focusedUidRef.current === 'local' && !singleRemoteInCall ? 'main-player' : 'local-player';
           playWebTrack(t, elId, 'local-camera');
         }
       } catch (e) { console.warn('[Agora Web] Failed to toggle camera:', e); }
@@ -845,47 +898,64 @@ export default function ClassRoomScreen() {
     const payload = JSON.stringify({ type: 'chat', senderName, text, at: now });
 
     if (isWeb) {
-      // Web: use Agora web SDK data streams
       const client = rtcClientRef.current;
-      if (client) {
+      if (!client) {
+        setChatTransportWarning('Message saved locally. Chat is not connected to the live session.');
+        logAgora('chat send skipped', { reason: 'missing client' });
+        return;
+      }
+
+      try {
+        const streamId = dataStreamIdRef.current ?? await setupDataStream();
+        if (streamId === null) throw new Error('Chat stream not ready');
+
         try {
-          if (dataStreamIdRef.current === null) await setupDataStream();
-          if (dataStreamIdRef.current === null) throw new Error('Chat stream not ready');
-          try { await client.sendStreamMessage(dataStreamIdRef.current, payload); }
-          catch (e) {
-            console.warn('[Agora Web] String chat send failed, retrying encoded payload:', e);
-            if (typeof TextEncoder !== 'undefined') await client.sendStreamMessage(dataStreamIdRef.current, new TextEncoder().encode(payload));
-          }
-        } catch (e) { console.warn('Failed to send stream message:', e); }
+          const encoded = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(payload) : payload;
+          await client.sendStreamMessage(streamId, encoded);
+        } catch (encodedErr) {
+          console.warn('[Agora Web] Encoded chat send failed, retrying string payload:', encodedErr);
+          await client.sendStreamMessage(streamId, payload);
+        }
+
+        setChatTransportWarning(null);
+        logAgora('chat sent via data stream', { streamId });
+      } catch (e) {
+        setChatTransportWarning('Message saved locally, but it could not be delivered.');
+        console.warn('[Agora Web] Failed to send stream message:', e);
+        logAgora('chat send failed', { error: (e as any)?.message || String(e) });
       }
     } else {
-      // Native: use Agora native SDK data streams
       const engine = nativeEngineRef.current;
-      if (engine && dataStreamIdRef.current !== null) {
-        try {
-          const encoded = new TextEncoder().encode(payload);
-          engine.sendStreamMessage(dataStreamIdRef.current, encoded, encoded.length);
-        } catch (e) { console.warn('[Agora Native] Failed to send chat:', e); }
+      if (!engine || dataStreamIdRef.current === null) {
+        setChatTransportWarning('Message saved locally. Chat is not connected to the live session.');
+        logAgora('chat send skipped', { reason: !engine ? 'missing engine' : 'missing data stream' });
+        return;
+      }
+
+      try {
+        const encoded = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(payload) : payload;
+        const byteLength = typeof encoded === 'string' ? encoded.length : encoded.length;
+        engine.sendStreamMessage(dataStreamIdRef.current, encoded, byteLength);
+        setChatTransportWarning(null);
+        logAgora('chat sent via data stream', { streamId: dataStreamIdRef.current });
+      } catch (e) {
+        setChatTransportWarning('Message saved locally, but it could not be delivered.');
+        console.warn('[Agora Native] Failed to send chat:', e);
+        logAgora('chat send failed', { error: (e as any)?.message || String(e) });
       }
     }
   };
 
   // ─── RENDER HELPERS ──────────────────────────────────────
 
-  const isLocalFocused = focusedUid === 'local';
-  const focusedRemote = remoteParticipants.find((p) => String(p.uid) === String(focusedUid));
+  const primaryRemoteUid = isWeb && remoteParticipants.length === 1 ? remoteParticipants[0].uid : null;
+  const effectiveFocusedUid = primaryRemoteUid ?? focusedUid;
+  const isLocalFocused = effectiveFocusedUid === 'local';
+  const focusedRemote = remoteParticipants.find((p) => String(p.uid) === String(effectiveFocusedUid));
 
   const filmstripParticipants: (RemoteParticipant & { isLocal?: boolean })[] = [];
-  if (!isLocalFocused) {
-    filmstripParticipants.push({
-      uid: 'local' as any,
-      isLocal: true,
-      hasVideo: cameraOn,
-      hasAudio: micOn,
-    });
-  }
   remoteParticipants.forEach((p) => {
-    if (String(p.uid) !== String(focusedUid)) {
+    if (String(p.uid) !== String(effectiveFocusedUid)) {
       filmstripParticipants.push({ ...p, isLocal: false });
     }
   });
@@ -901,7 +971,7 @@ export default function ClassRoomScreen() {
               <ActivityIndicator size="large" color={LingoTheme.colors.primary} />
             </View>
             <ThemedText style={st.loadingTitle}>Preparing Classroom</ThemedText>
-            <ThemedText style={st.loadingSub}>Setting up your live session…</ThemedText>
+            <ThemedText style={st.loadingSub}>Setting up your live session...</ThemedText>
           </LingoCard>
         </View>
       </View>
@@ -963,9 +1033,12 @@ export default function ClassRoomScreen() {
                   </ThemedText>
                 </View>
                 <ThemedText style={st.previewName}>{user?.full_name || 'You'}</ThemedText>
-                <ThemedText style={st.previewRole}>
-                  {user?.role === 'teacher' ? '🎓 Teacher' : '📖 Student'}
-                </ThemedText>
+                <View style={st.previewRoleRow}>
+                  <Ionicons name={user?.role === 'teacher' ? 'school-outline' : 'person-outline'} size={13} color="#94A3B8" />
+                  <ThemedText style={st.previewRoleText}>
+                    {user?.role === 'teacher' ? 'Teacher' : 'Student'}
+                  </ThemedText>
+                </View>
               </LinearGradient>
 
               {/* Preview controls */}
@@ -1075,9 +1148,9 @@ export default function ClassRoomScreen() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     border: '2px solid rgba(255,255,255,0.08)',
                   }}>
-                    <span style={{ fontSize: 36, color: 'rgba(255,255,255,0.25)' }}>👤</span>
+                    <span style={{ fontSize: 32, color: 'rgba(255,255,255,0.25)', fontWeight: 700 }}>P</span>
                   </div>
-                  <span style={{ color: '#475569', fontSize: 15, fontWeight: '500' }}>Waiting for participant…</span>
+                  <span style={{ color: '#475569', fontSize: 15, fontWeight: '500' }}>Waiting for participant...</span>
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '5px 14px', borderRadius: 20,
@@ -1111,51 +1184,54 @@ export default function ClassRoomScreen() {
               ) : null}
             </div>
 
-            {/* Local PiP — draggable, tappable to swap */}
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => setFocusedUid('local')}
-              style={{
-                position: 'absolute',
-                bottom: videoOverlayBottom,
-                right: 16,
-                width: isLandscape ? 160 : 120,
-                height: isLandscape ? 120 : 160,
-                borderRadius: 14,
-                overflow: 'hidden',
-                borderWidth: 2,
-                borderColor: isLocalFocused ? 'rgba(78,205,196,0.8)' : 'rgba(78,205,196,0.4)',
-                backgroundColor: '#0F172A',
-                zIndex: 20,
-                elevation: 10,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.5,
-                shadowRadius: 10,
-              }}
-            >
-              <div id="local-player" style={{ width: '100%', height: '100%' }} />
-              <View style={{
-                position: 'absolute',
-                bottom: 0, left: 0, right: 0,
-                paddingVertical: 3, paddingHorizontal: 8,
-                backgroundColor: 'rgba(0,0,0,0.5)',
-              }}>
-                <ThemedText style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>You</ThemedText>
-              </View>
-              {!isLocalFocused && (
+            {!isLocalFocused && (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  if (!primaryRemoteUid) setFocusedUid('local');
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: videoOverlayBottom,
+                  right: 16,
+                  width: isLandscape ? 160 : 120,
+                  height: isLandscape ? 120 : 160,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  borderWidth: 2,
+                  borderColor: 'rgba(78,205,196,0.4)',
+                  backgroundColor: '#0F172A',
+                  zIndex: 20,
+                  elevation: 10,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 10,
+                }}
+              >
+                <div id="local-player" style={{ width: '100%', height: '100%' }} />
                 <View style={{
                   position: 'absolute',
-                  top: 4, right: 4,
-                  backgroundColor: 'rgba(20,184,166,0.8)',
-                  borderRadius: 8,
-                  paddingHorizontal: 5,
-                  paddingVertical: 2,
+                  bottom: 0, left: 0, right: 0,
+                  paddingVertical: 3, paddingHorizontal: 8,
+                  backgroundColor: 'rgba(0,0,0,0.5)',
                 }}>
-                  <ThemedText style={{ color: '#FFF', fontSize: 9, fontWeight: '600' }}>Tap</ThemedText>
+                  <ThemedText style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>You</ThemedText>
                 </View>
-              )}
-            </TouchableOpacity>
+                {!primaryRemoteUid && (
+                  <View style={{
+                    position: 'absolute',
+                    top: 4, right: 4,
+                    backgroundColor: 'rgba(20,184,166,0.8)',
+                    borderRadius: 8,
+                    paddingHorizontal: 5,
+                    paddingVertical: 2,
+                  }}>
+                    <ThemedText style={{ color: '#FFF', fontSize: 9, fontWeight: '600' }}>Tap</ThemedText>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
 
             {/* Bottom Filmstrip — tappable thumbnails */}
             {filmstripParticipants.length > 0 && (
@@ -1278,7 +1354,7 @@ export default function ClassRoomScreen() {
                 <View style={st.nativeWaitingCircle}>
                   <Ionicons name="person" size={40} color="rgba(255,255,255,0.2)" />
                 </View>
-                <ThemedText style={st.nativeWaitingText}>Waiting for participant…</ThemedText>
+                <ThemedText style={st.nativeWaitingText}>Waiting for participant...</ThemedText>
                 <View style={st.nativeConnectedBadge}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ECDC4' }} />
                   <ThemedText style={{ color: '#4ECDC4', fontSize: 12, fontWeight: '600' }}>Connected</ThemedText>
@@ -1383,10 +1459,16 @@ export default function ClassRoomScreen() {
               </View>
             ))}
           </ScrollView>
+          {!!chatTransportWarning && (
+            <View style={st.chatWarning}>
+              <Ionicons name="alert-circle-outline" size={16} color="#FBBF24" />
+              <ThemedText style={st.chatWarningText}>{chatTransportWarning}</ThemedText>
+            </View>
+          )}
           <View style={st.chatInputRow}>
             <TextInput
               style={st.chatInput}
-              placeholder="Type a message…"
+              placeholder="Type a message..."
               placeholderTextColor="#64748B"
               value={chatInput}
               onChangeText={setChatInput}
@@ -1453,7 +1535,8 @@ const st = StyleSheet.create({
   },
   previewInitial: { color: '#4ECDC4', fontSize: 28, fontWeight: '800' },
   previewName: { color: '#F1F5F9', fontSize: 17, fontWeight: '700', marginBottom: 3 },
-  previewRole: { color: '#94A3B8', fontSize: 13 },
+  previewRoleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  previewRoleText: { color: '#94A3B8', fontSize: 13 },
   previewCtrls: {
     position: 'absolute',
     bottom: 14, left: 0, right: 0,
@@ -1717,6 +1800,20 @@ const st = StyleSheet.create({
   bubbleSender: { color: '#4ECDC4', fontSize: 11, fontWeight: '700', marginBottom: 2 },
   bubbleText: { color: '#E2E8F0', fontSize: 14, lineHeight: 19 },
   bubbleTime: { fontSize: 10, color: '#475569', marginTop: 3, textAlign: 'right' },
+  chatWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 12,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: 'rgba(251,191,36,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
+  },
+  chatWarningText: { flex: 1, color: '#FCD34D', fontSize: 12, lineHeight: 16, fontWeight: '600' },
   chatInputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     padding: 12,

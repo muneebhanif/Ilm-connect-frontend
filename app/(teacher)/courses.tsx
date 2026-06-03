@@ -45,6 +45,26 @@ interface CourseLesson {
 
 const SUBJECTS = ['Quran Memorization', 'Tajweed', 'Arabic Language', 'Islamic Studies', 'Fiqh', 'Hadith', 'Seerah'];
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
+const COURSE_STATUS_PENDING_REVIEW = 'pending_review';
+
+const isPublishedStatus = (status?: string) => status === 'published';
+const isPendingReviewStatus = (status?: string) => status === COURSE_STATUS_PENDING_REVIEW || status === 'pending_approval' || status === 'pending';
+
+const getCourseStatusMeta = (status?: string) => {
+  if (isPublishedStatus(status)) {
+    return { label: 'Published', icon: 'checkmark-circle', backgroundColor: '#D1FAE5', color: '#065F46' };
+  }
+
+  if (isPendingReviewStatus(status)) {
+    return { label: 'In review', icon: 'hourglass-outline', backgroundColor: '#FEF3C7', color: '#92400E' };
+  }
+
+  if (status === 'archived') {
+    return { label: 'Archived', icon: 'archive-outline', backgroundColor: '#E5E7EB', color: '#374151' };
+  }
+
+  return { label: 'Draft', icon: 'time-outline', backgroundColor: '#FFEDD5', color: '#9A3412' };
+};
 
 const mapCourseErrorMessage = (message?: string) => {
   const normalized = String(message || '').toLowerCase();
@@ -62,7 +82,7 @@ const mapCourseErrorMessage = (message?: string) => {
   }
 
   if (normalized.includes('upload at least one video lesson')) {
-    return 'Please upload at least one video lesson before publishing.';
+    return 'Please upload at least one video lesson before submitting.';
   }
 
   if (normalized.includes('payload too large') || normalized.includes('entity too large') || normalized.includes('request entity too large')) {
@@ -75,6 +95,10 @@ const mapCourseErrorMessage = (message?: string) => {
 
   if (normalized.includes('failed to finalize upload')) {
     return 'The video uploaded, but saving the lesson failed. Please try again.';
+  }
+
+  if (normalized.includes('teacher_courses_status_check') || normalized.includes('violates check constraint')) {
+    return 'Course approval status is not enabled in the database yet. Run the pending-review course migration before submitting.';
   }
 
   return message || 'Something went wrong. Please try again.';
@@ -146,11 +170,21 @@ export default function TeacherCoursesScreen() {
     return uri.startsWith('file://') || uri.startsWith('content://') || uri.startsWith('blob:') || uri.startsWith('data:');
   };
 
-  const isCourseReadyToPublish = (course: Course) => !!course.thumbnail_url && Number(course.total_lessons || 0) > 0;
+  const getCourseLessonCount = (course: Course) => (
+    selectedCourse?.id === course.id
+      ? Math.max(Number(course.total_lessons || 0), lessons.length)
+      : Number(course.total_lessons || 0)
+  );
+
+  const isCourseReadyToPublish = (course: Course) => !!course.thumbnail_url && getCourseLessonCount(course) > 0;
 
   const publishedCount = courses.filter((course) => course.status === 'published').length;
-  const draftCount = courses.filter((course) => course.status !== 'published').length;
-  const needsSetupCount = courses.filter((course) => !isCourseReadyToPublish(course)).length;
+  const pendingReviewCount = courses.filter((course) => isPendingReviewStatus(course.status)).length;
+  const needsSetupCount = courses.filter((course) => !isPublishedStatus(course.status) && !isPendingReviewStatus(course.status) && !isCourseReadyToPublish(course)).length;
+  const selectedCourseLessonCount = selectedCourse ? getCourseLessonCount(selectedCourse) : lessons.length;
+  const selectedCourseReadyToSubmit = !!selectedCourse?.thumbnail_url && selectedCourseLessonCount > 0;
+  const selectedCoursePendingReview = isPendingReviewStatus(selectedCourse?.status);
+  const selectedCoursePublished = isPublishedStatus(selectedCourse?.status);
 
   const isVideoFile = (fileName: string, mimeType?: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
@@ -179,9 +213,17 @@ export default function TeacherCoursesScreen() {
       const response = await authFetch(api.courses.lessons(courseId, user.id));
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to load course content');
-      setLessons(data.lessons || []);
+      const nextLessons = data.lessons || [];
+      setLessons(nextLessons);
+      setSelectedCourse((current) => (
+        current?.id === courseId
+          ? { ...current, total_lessons: nextLessons.length }
+          : current
+      ));
+      return nextLessons;
     } catch (e: any) {
       setNotification({ type: 'error', message: e?.message || 'Failed to load course content' });
+      return [];
     } finally {
       setLoadingLessons(false);
     }
@@ -602,7 +644,7 @@ export default function TeacherCoursesScreen() {
       if (wasEditing) {
         setNotification({ type: 'success', message: 'Course details updated' });
       } else {
-        setNotification({ type: 'success', message: 'Draft created. Upload your first lesson before publishing.' });
+        setNotification({ type: 'success', message: 'Draft created. Upload your first lesson, then submit it for admin approval.' });
         await openContentModal(nextCourse);
       }
     } catch (e: any) {
@@ -615,14 +657,24 @@ export default function TeacherCoursesScreen() {
   const handlePublishCourse = async (course: Course) => {
     if (!user?.id) return;
 
+    if (isPublishedStatus(course.status)) {
+      setNotification({ type: 'success', message: 'This course is already published.' });
+      return;
+    }
+
+    if (isPendingReviewStatus(course.status)) {
+      setNotification({ type: 'success', message: 'This course is already waiting for admin approval.' });
+      return;
+    }
+
     if (!course.thumbnail_url) {
-      setNotification({ type: 'error', message: 'Upload a thumbnail before publishing this course' });
+      setNotification({ type: 'error', message: 'Upload a thumbnail before submitting this course for approval' });
       openEditModal(course);
       return;
     }
 
-    if ((course.total_lessons || 0) < 1) {
-      setNotification({ type: 'error', message: 'Upload at least one video lesson before publishing' });
+    if (getCourseLessonCount(course) < 1) {
+      setNotification({ type: 'error', message: 'Upload at least one video lesson before submitting for approval' });
       await openContentModal(course);
       return;
     }
@@ -634,17 +686,24 @@ export default function TeacherCoursesScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           teacher_id: user.id,
-          status: 'published',
+          status: COURSE_STATUS_PENDING_REVIEW,
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to publish course');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(mapCourseErrorMessage(data.error || 'Failed to submit course'));
 
-      setNotification({ type: 'success', message: 'Course published successfully' });
+      const nextCourse = data.course || { ...course, status: COURSE_STATUS_PENDING_REVIEW };
+      setCourses((prev) => prev.map((item) => (item.id === course.id ? { ...item, ...nextCourse } : item)));
+      setSelectedCourse((current) => (
+        current?.id === course.id
+          ? { ...current, ...nextCourse, total_lessons: getCourseLessonCount(course) }
+          : current
+      ));
+      setNotification({ type: 'success', message: 'Course submitted for admin approval' });
       await loadCourses('refresh');
     } catch (e: any) {
-      setNotification({ type: 'error', message: e?.message || 'Failed to publish course' });
+      setNotification({ type: 'error', message: mapCourseErrorMessage(e?.message || 'Failed to submit course') });
     } finally {
       setPublishingCourseId(null);
     }
@@ -733,11 +792,11 @@ export default function TeacherCoursesScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statChip}>
-              <View style={[styles.statIconBox, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="create" size={22} color="#8B5CF6" />
+              <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="hourglass-outline" size={22} color="#D97706" />
               </View>
-              <ThemedText style={[styles.statChipValue, { color: '#8B5CF6' }]}>{draftCount}</ThemedText>
-              <ThemedText style={styles.statChipLabel}>Drafts</ThemedText>
+              <ThemedText style={[styles.statChipValue, { color: '#D97706' }]}>{pendingReviewCount}</ThemedText>
+              <ThemedText style={styles.statChipLabel}>In review</ThemedText>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statChip}>
@@ -766,7 +825,13 @@ export default function TeacherCoursesScreen() {
               <LingoButton label="Create course" icon="add-circle-outline" onPress={openCreateModal} />
             </LingoCard>
           ) : (
-            courses.map((course) => (
+            courses.map((course) => {
+              const statusMeta = getCourseStatusMeta(course.status);
+              const courseReadyToSubmit = isCourseReadyToPublish(course);
+              const coursePendingReview = isPendingReviewStatus(course.status);
+              const coursePublished = isPublishedStatus(course.status);
+
+              return (
               <View key={course.id} style={styles.courseCard}>
                 <View style={styles.courseMediaWrap}>
                   {course.thumbnail_url ? (
@@ -779,10 +844,10 @@ export default function TeacherCoursesScreen() {
                       <ThemedText style={styles.courseThumbnailPlaceholderText}>Thumbnail required</ThemedText>
                     </LinearGradient>
                   )}
-                  <View style={[styles.statusBadge, course.status === 'published' ? styles.statusBadgePublished : styles.statusBadgeDraft]}>
-                    <Ionicons name={course.status === 'published' ? 'checkmark-circle' : 'time-outline'} size={12} color={course.status === 'published' ? '#065F46' : '#9A3412'} />
-                    <ThemedText style={[styles.statusBadgeText, course.status === 'published' ? styles.statusBadgeTextPublished : styles.statusBadgeTextDraft]}>
-                      {course.status === 'published' ? 'Published' : 'Draft'}
+                  <View style={[styles.statusBadge, { backgroundColor: statusMeta.backgroundColor }]}>
+                    <Ionicons name={statusMeta.icon as any} size={12} color={statusMeta.color} />
+                    <ThemedText style={[styles.statusBadgeText, { color: statusMeta.color }]}>
+                      {statusMeta.label}
                     </ThemedText>
                   </View>
                 </View>
@@ -821,9 +886,9 @@ export default function TeacherCoursesScreen() {
                   </View>
                 </View>
 
-                {!isCourseReadyToPublish(course) ? (
+                {!courseReadyToSubmit && !coursePendingReview && !coursePublished ? (
                   <ThemedText style={styles.requirementHint}>
-                    Add a thumbnail and at least one video lesson before publishing this course.
+                    Add a thumbnail and at least one video lesson before submitting this course for approval.
                   </ThemedText>
                 ) : null}
 
@@ -852,14 +917,19 @@ export default function TeacherCoursesScreen() {
                     </ThemedText>
                   </TouchableOpacity>
 
-                  {course.status === 'published' ? (
+                  {coursePublished ? (
                     <View style={styles.publishedPill}>
                       <Ionicons name="checkmark-circle" size={16} color="#059669" />
                       <ThemedText style={styles.publishedPillText}>Live</ThemedText>
                     </View>
+                  ) : coursePendingReview ? (
+                    <View style={styles.reviewPill}>
+                      <Ionicons name="hourglass-outline" size={16} color="#92400E" />
+                      <ThemedText style={styles.reviewPillText}>In review</ThemedText>
+                    </View>
                   ) : (
                     <TouchableOpacity
-                      style={[styles.publishButton, !isCourseReadyToPublish(course) && styles.publishButtonDisabled]}
+                      style={[styles.publishButton, !courseReadyToSubmit && styles.publishButtonDisabled]}
                       onPress={() => handlePublishCourse(course)}
                       activeOpacity={0.85}
                     >
@@ -867,8 +937,8 @@ export default function TeacherCoursesScreen() {
                         <ActivityIndicator size="small" color="#111827" />
                       ) : (
                         <>
-                          <Ionicons name="rocket-outline" size={16} color="#111827" />
-                          <ThemedText style={styles.publishButtonText}>Publish</ThemedText>
+                          <Ionicons name="send-outline" size={16} color="#111827" />
+                          <ThemedText style={styles.publishButtonText}>Submit</ThemedText>
                         </>
                       )}
                     </TouchableOpacity>
@@ -886,7 +956,8 @@ export default function TeacherCoursesScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            ))
+              );
+            })
           )}
         </View>
 
@@ -929,7 +1000,7 @@ export default function TeacherCoursesScreen() {
               </View>
 
               <View style={styles.publishChecklistCard}>
-                <ThemedText style={styles.publishChecklistTitle}>Publish checklist</ThemedText>
+                <ThemedText style={styles.publishChecklistTitle}>Approval checklist</ThemedText>
                 <View style={styles.publishChecklistRow}>
                   <View style={[styles.publishChecklistItem, selectedCourse?.thumbnail_url ? styles.publishChecklistDone : styles.publishChecklistPending]}>
                     <Ionicons name={selectedCourse?.thumbnail_url ? 'checkmark-circle' : 'ellipse-outline'} size={14} color={selectedCourse?.thumbnail_url ? '#065F46' : '#9A3412'} />
@@ -944,6 +1015,47 @@ export default function TeacherCoursesScreen() {
                     </ThemedText>
                   </View>
                 </View>
+
+                {selectedCoursePublished ? (
+                  <View style={styles.approvalStateBox}>
+                    <Ionicons name="checkmark-circle" size={18} color="#059669" />
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.approvalStateTitle}>Course is live</ThemedText>
+                      <ThemedText style={styles.approvalStateText}>This course is already published for parents and students.</ThemedText>
+                    </View>
+                  </View>
+                ) : selectedCoursePendingReview ? (
+                  <View style={styles.approvalStateBox}>
+                    <Ionicons name="hourglass-outline" size={18} color="#D97706" />
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.approvalStateTitle}>Waiting for admin approval</ThemedText>
+                      <ThemedText style={styles.approvalStateText}>Your uploaded content is saved and queued for review.</ThemedText>
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    {!selectedCourseReadyToSubmit ? (
+                      <ThemedText style={styles.approvalHintText}>
+                        Complete the checklist to submit this course to admin.
+                      </ThemedText>
+                    ) : null}
+                    <TouchableOpacity
+                      style={[styles.submitReviewButton, (!selectedCourseReadyToSubmit || publishingCourseId === selectedCourse?.id) && styles.submitReviewButtonDisabled]}
+                      onPress={() => selectedCourse && handlePublishCourse(selectedCourse)}
+                      disabled={!selectedCourseReadyToSubmit || publishingCourseId === selectedCourse?.id}
+                      activeOpacity={0.85}
+                    >
+                      {publishingCourseId === selectedCourse?.id ? (
+                        <ActivityIndicator size="small" color="#111827" />
+                      ) : (
+                        <>
+                          <Ionicons name="send-outline" size={17} color="#111827" />
+                          <ThemedText style={styles.submitReviewButtonText}>Submit for Admin Approval</ThemedText>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
 
               <ThemedText style={styles.inputLabel}>Lesson Title *</ThemedText>
@@ -1049,9 +1161,9 @@ export default function TeacherCoursesScreen() {
               <View style={styles.setupNotice}>
                 <Ionicons name="information-circle" size={20} color="#C2410C" />
                 <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.setupNoticeTitle}>Draft first, publish after setup</ThemedText>
+                  <ThemedText style={styles.setupNoticeTitle}>Draft first, submit after setup</ThemedText>
                   <ThemedText style={styles.setupNoticeText}>
-                    Thumbnail is required. Upload at least one video lesson before publishing your course.
+                    Thumbnail is required. Upload at least one video lesson before submitting your course for admin approval.
                   </ThemedText>
                 </View>
               </View>
@@ -1226,7 +1338,6 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#F59E0B', borderBottomWidth: 4,
     justifyContent: 'center', alignItems: 'center',
   },
-  statsRow: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
   metricPill: {
     flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF',
     borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', borderBottomWidth: 4,
@@ -1525,6 +1636,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
+  reviewPill: {
+    minWidth: 116,
+    borderRadius: 14,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  reviewPillText: {
+    color: '#92400E',
+    fontSize: 14,
+    fontWeight: '800',
+  },
   editActionButton: {
     flex: 1,
     flexDirection: 'row',
@@ -1675,6 +1802,53 @@ const styles = StyleSheet.create({
   },
   publishChecklistTextPending: {
     color: '#9A3412',
+  },
+  approvalStateBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  approvalStateTitle: {
+    color: '#111827',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  approvalStateText: {
+    color: '#6B7280',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  approvalHintText: {
+    color: '#92400E',
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 12,
+  },
+  submitReviewButton: {
+    marginTop: 12,
+    borderRadius: 14,
+    backgroundColor: '#FDE68A',
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitReviewButtonDisabled: {
+    opacity: 0.55,
+  },
+  submitReviewButtonText: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '800',
   },
   sectionLabel: {
     fontSize: 14,
