@@ -52,8 +52,8 @@ interface RemoteParticipant {
 }
 
 const applyNativeMediaQuality = (engine: any) => {
-  try { engine?.setAudioProfile?.(1, 1); } catch {}
-  try { engine?.setEnableSpeakerphone?.(true); } catch {}
+  try { engine?.setAudioProfile?.(1, 1); } catch (e) { console.warn('[Agora Native] Audio profile setup failed:', e); }
+  try { engine?.setEnableSpeakerphone?.(true); } catch (e) { console.warn('[Agora Native] Speaker setup failed:', e); }
   try {
     engine?.setVideoEncoderConfiguration?.({
       dimensions: { width: 1280, height: 720 },
@@ -64,7 +64,7 @@ const applyNativeMediaQuality = (engine: any) => {
       degradationPreference: 1,
       mirrorMode: 0,
     });
-  } catch {}
+  } catch (e) { console.warn('[Agora Native] Video encoder setup failed:', e); }
 };
 
 const createOptimizedWebTracks = async (AgoraRTC: any) => {
@@ -76,7 +76,7 @@ const createOptimizedWebTracks = async (AgoraRTC: any) => {
     encoderConfig: '720p_2',
     optimizationMode: 'detail',
   });
-  try { audioTrack.setVolume?.(85); } catch {}
+  try { audioTrack.setVolume?.(85); } catch (e) { console.warn('[Agora Web] Audio volume setup failed:', e); }
   return [audioTrack, videoTrack];
 };
 
@@ -117,6 +117,7 @@ export default function ClassRoomScreen() {
   const AgoraRTCRef = useRef<any>(null);
   const localTracksRef = useRef<{ audioTrack?: any; videoTrack?: any }>({});
   const dataStreamIdRef = useRef<number | null>(null);
+  const webContainerTrackKeysRef = useRef<Map<string, string>>(new Map());
 
   // Native-only ref
   const nativeEngineRef = useRef<any>(null);
@@ -128,21 +129,35 @@ export default function ClassRoomScreen() {
   const chatScrollRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Auto-detect 1:1 vs Group (FaceTime vs Zoom)
-  const isOneToOne = remoteParticipants.length <= 1;
+  const logAgora = (event: string, details: Record<string, any> = {}) => {
+    console.log(`[Agora ${isWeb ? 'Web' : 'Native'}] ${event}`, {
+      classId: id,
+      localUserId: user?.id,
+      role: user?.role,
+      focusedUid,
+      ...details,
+    });
+  };
 
-  const playWebTrack = (track: any, elementId: string, attempt = 0) => {
+  const playWebTrack = (track: any, elementId: string, trackKey = elementId, attempt = 0) => {
     if (!isWeb || !track) return;
     const el = document.getElementById(elementId);
     if (!el) {
-      if (attempt < 6) setTimeout(() => playWebTrack(track, elementId, attempt + 1), 80);
+      if (attempt < 30) setTimeout(() => playWebTrack(track, elementId, trackKey, attempt + 1), 100);
+      else logAgora('video track play failed', { elementId, trackKey, reason: 'missing container' });
       return;
     }
     try {
-      track.play(el);
+      const previousKey = webContainerTrackKeysRef.current.get(elementId);
+      if (previousKey !== trackKey) {
+        el.innerHTML = '';
+        webContainerTrackKeysRef.current.set(elementId, trackKey);
+      }
+      track.play(el, { fit: 'contain' });
+      logAgora('video track play success', { elementId, trackKey });
     } catch (err) {
-      if (attempt < 6) setTimeout(() => playWebTrack(track, elementId, attempt + 1), 80);
-      else console.warn('[Agora Web] Failed to play video track:', err);
+      if (attempt < 30) setTimeout(() => playWebTrack(track, elementId, trackKey, attempt + 1), 100);
+      else logAgora('video track play failure', { elementId, trackKey, error: (err as any)?.message || String(err) });
     }
   };
 
@@ -224,7 +239,7 @@ export default function ClassRoomScreen() {
     if (!vt) return;
     const t = setTimeout(() => {
       const elId = focusedUid === 'local' ? 'main-player' : 'local-player';
-      playWebTrack(vt, elId);
+      playWebTrack(vt, elId, 'local-camera');
     }, 0);
     return () => clearTimeout(t);
   }, [joined, focusedUid]);
@@ -240,7 +255,7 @@ export default function ClassRoomScreen() {
         const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(participant.uid));
         if (!ru?.videoTrack) return;
         const elId = String(participant.uid) === String(focusedUid) ? 'main-player' : `remote-player-${participant.uid}`;
-        playWebTrack(ru.videoTrack, elId);
+        playWebTrack(ru.videoTrack, elId, `remote-${participant.uid}`);
       });
     }, 0);
     return () => clearTimeout(t);
@@ -290,7 +305,7 @@ export default function ClassRoomScreen() {
         await rtcClientRef.current.leave();
       }
     } catch (e) { console.warn('Web cleanup warning:', e); }
-    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
+    finally { rtcClientRef.current = null; dataStreamIdRef.current = null; webContainerTrackKeysRef.current.clear(); setJoined(false); setRemoteUids([]); setRemoteParticipants([]); setFocusedUid('local'); }
   };
 
   const cleanupNativeAgora = async () => {
@@ -308,14 +323,25 @@ export default function ClassRoomScreen() {
   // ─── Token Renewal ───────────────────────────────────────
   const renewToken = async () => {
     if (!id || !user?.id) return;
-    const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
-    const agoraUid = hashStringToUid(user.id);
-    const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, agoraUid));
-    if (tr.error || !tr.data?.token) return;
-    if (isWeb && rtcClientRef.current) {
-      await rtcClientRef.current.renewToken(tr.data.token);
-    } else if (!isWeb && nativeEngineRef.current) {
-      nativeEngineRef.current.renewToken(tr.data.token);
+    try {
+      const role = user.role === 'teacher' ? 'HOST' : 'STUDENT';
+      const agoraUid = hashStringToUid(user.id);
+      const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, agoraUid));
+      if (tr.error || !tr.data?.token) return;
+      logAgora('token renewed', {
+        channelName: tr.data.channel,
+        localUid: tr.data.agoraUid || agoraUid,
+        tokenUid: tr.data.uid,
+        tokenAgoraUid: tr.data.agoraUid,
+        expiresAt: tr.data.expiresAt,
+      });
+      if (isWeb && rtcClientRef.current) {
+        await rtcClientRef.current.renewToken(tr.data.token);
+      } else if (!isWeb && nativeEngineRef.current) {
+        nativeEngineRef.current.renewToken(tr.data.token);
+      }
+    } catch (e) {
+      console.warn('[Agora] Token renewal failed:', e);
     }
   };
 
@@ -325,14 +351,16 @@ export default function ClassRoomScreen() {
     if (!client || !isWeb) return;
     const ru = client.remoteUsers?.find((u: any) => String(u.uid) === String(uid));
     if (!ru?.videoTrack) return;
-    playWebTrack(ru.videoTrack, `remote-player-${uid}`);
+    playWebTrack(ru.videoTrack, `remote-player-${uid}`, `remote-${uid}`);
   };
 
   const addRemoteUid = (uid: number) => {
     setRemoteUids((prev) => (prev.includes(uid) ? prev : [...prev, uid]));
     if (isWeb) setTimeout(() => renderRemoteVideo(String(uid)), 0);
   };
-  const removeRemoteUid = (uid: number) => setRemoteUids((prev) => prev.filter((x) => x !== uid));
+  const removeRemoteUid = (uid: number | string) => {
+    setRemoteUids((prev) => prev.filter((x) => String(x) !== String(uid)));
+  };
   const upsertRemoteParticipant = (uid: number | string, patch: Partial<RemoteParticipant> = {}) => {
     const normalizedUid = Number(uid) || uid;
     setRemoteParticipants((prev) => {
@@ -404,11 +432,21 @@ export default function ClassRoomScreen() {
       const tr = await authFetchJson<any>(api.agoraToken(id, user.id, role, agoraUid));
       if (tr.error || !tr.data?.token) throw new Error(tr.error || 'Failed to get Agora token');
       const { token, appId, channel, agoraUid: resolvedAgoraUid } = tr.data;
+      const joinUid = resolvedAgoraUid || agoraUid;
+
+      logAgora('token received', {
+        channelName: channel,
+        localUid: joinUid,
+        tokenUid: tr.data.uid,
+        tokenAgoraUid: resolvedAgoraUid,
+        requestedAgoraUid: agoraUid,
+        expiresAt: tr.data.expiresAt,
+      });
 
       if (isWeb) {
-        await joinWeb(appId, channel, token, resolvedAgoraUid || agoraUid);
+        await joinWeb(appId, channel, token, joinUid);
       } else {
-        await joinNative(appId, channel, token);
+        await joinNative(appId, channel, token, joinUid);
       }
 
       joinedRef.current = true;
@@ -424,11 +462,21 @@ export default function ClassRoomScreen() {
   };
 
   // ─── Native Agora Join ───────────────────────────────────
-  const joinNative = async (appId: string, channel: string, token: string) => {
+  const joinNative = async (appId: string, channel: string, token: string, joinUid: number) => {
     if (!createAgoraRtcEngine) throw new Error('Native Agora SDK not available. Please rebuild the app.');
 
     const engine = createAgoraRtcEngine();
     nativeEngineRef.current = engine;
+
+    const numericUid = Number(joinUid) || hashStringToUid(user!.id);
+    const channelOptions = {
+      channelProfile: ChannelProfileType.ChannelProfileCommunication,
+      clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+      autoSubscribeAudio: true,
+      autoSubscribeVideo: true,
+      publishCameraTrack: cameraOn,
+      publishMicrophoneTrack: micOn,
+    };
 
     engine.initialize({
       appId,
@@ -436,24 +484,52 @@ export default function ClassRoomScreen() {
     });
     applyNativeMediaQuality(engine);
 
+    logAgora('joining channel', {
+      channelName: channel,
+      localUid: numericUid,
+      publishCameraTrack: channelOptions.publishCameraTrack,
+      publishMicrophoneTrack: channelOptions.publishMicrophoneTrack,
+      autoSubscribeAudio: channelOptions.autoSubscribeAudio,
+      autoSubscribeVideo: channelOptions.autoSubscribeVideo,
+    });
+
     engine.addListener('onUserJoined', (_connection: any, remoteUid: number) => {
-      console.log('[Agora Native] Remote user joined:', remoteUid);
+      logAgora('remote user joined', { remoteUid });
       addRemoteUid(remoteUid);
+      upsertRemoteParticipant(remoteUid, { hasVideo: true, hasAudio: true });
     });
     engine.addListener('onUserOffline', (_connection: any, remoteUid: number) => {
-      console.log('[Agora Native] Remote user left:', remoteUid);
+      logAgora('remote user left', { remoteUid });
       removeRemoteUid(remoteUid);
+      removeRemoteParticipant(remoteUid);
+    });
+    engine.addListener('onUserMuteVideo', (_connection: any, remoteUid: number, muted: boolean) => {
+      logAgora('remote video mute changed', { remoteUid, muted });
+      addRemoteUid(remoteUid);
+      upsertRemoteParticipant(remoteUid, { hasVideo: !muted });
+    });
+    engine.addListener('onUserMuteAudio', (_connection: any, remoteUid: number, muted: boolean) => {
+      logAgora('remote audio mute changed', { remoteUid, muted });
+      addRemoteUid(remoteUid);
+      upsertRemoteParticipant(remoteUid, { hasAudio: !muted });
+    });
+    engine.addListener('onRemoteVideoStateChanged', (_connection: any, remoteUid: number, state: number, reason: number) => {
+      logAgora('remote video state changed', { remoteUid, state, reason });
+      addRemoteUid(remoteUid);
+      if (state === 0) upsertRemoteParticipant(remoteUid, { hasVideo: false });
+      if (state === 2) upsertRemoteParticipant(remoteUid, { hasVideo: true });
     });
     engine.addListener('onTokenPrivilegeWillExpire', () => { void renewToken(); });
     engine.addListener('onError', (_err: any, msg: string) => {
       console.warn('[Agora Native] Error:', msg);
     });
     engine.addListener('onJoinChannelSuccess', (_connection: any, elapsed: number) => {
-      console.log('[Agora Native] Joined channel successfully in', elapsed, 'ms');
+      logAgora('joined channel', { channelName: channel, localUid: numericUid, elapsedMs: elapsed });
+      try { engine.updateChannelMediaOptions(channelOptions); } catch (e) { console.warn('[Agora Native] updateChannelMediaOptions failed:', e); }
     });
 
     // Native data stream: receive chat messages from other participants
-    engine.addListener('onStreamMessage', (_connection: any, _remoteUid: number, _streamId: number, data: Uint8Array) => {
+    engine.addListener('onStreamMessage', (_connection: any, _remoteUid: number, _streamId: number, data: any) => {
       try {
         let decoded = '';
         if (typeof data === 'string') decoded = data;
@@ -472,26 +548,29 @@ export default function ClassRoomScreen() {
           }]);
           setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
         }
-      } catch {}
+      } catch (e) { console.warn('[Agora Native] Failed to parse stream message:', e); }
     });
 
-    engine.enableVideo();
-    engine.enableAudio();
-    engine.startPreview();
+    try {
+      engine.enableVideo();
+      engine.enableAudio();
+      if (cameraOn) engine.startPreview();
+      engine.muteLocalAudioStream(!micOn);
+      engine.muteLocalVideoStream(!cameraOn);
+    } catch (e) {
+      console.warn('[Agora Native] Local media setup failed:', e);
+    }
 
-    const numericUid = hashStringToUid(user!.id);
-    engine.joinChannel(token, channel, numericUid, {
-      clientRoleType: ClientRoleType.ClientRoleBroadcaster,
-    });
+    engine.joinChannel(token, channel, numericUid, channelOptions);
 
     // Create native data stream for sending chat messages
     try {
-      const nativeStreamId = engine.createDataStream({ ordered: true, reliable: true });
+      const nativeStreamId = engine.createDataStream({ ordered: true, syncWithAudio: false });
       dataStreamIdRef.current = nativeStreamId;
     } catch (e) { console.warn('[Agora Native] Failed to create data stream:', e); }
 
-    setMicOn(true);
-    setCameraOn(true);
+    setMicOn(Boolean(channelOptions.publishMicrophoneTrack));
+    setCameraOn(Boolean(channelOptions.publishCameraTrack));
   };
 
   // ─── Web Agora Join ──────────────────────────────────────
@@ -499,13 +578,11 @@ export default function ClassRoomScreen() {
     const AgoraModule = await import('agora-rtc-sdk-ng');
     const AgoraRTC: any = (AgoraModule as any).default || AgoraModule;
     AgoraRTCRef.current = AgoraRTC;
-    try { if (typeof AgoraRTC.disableLogUpload === 'function') AgoraRTC.disableLogUpload(); } catch {}
-    try { if (typeof AgoraRTC.setLogLevel === 'function') AgoraRTC.setLogLevel(4); } catch {}
+    try { if (typeof AgoraRTC.disableLogUpload === 'function') AgoraRTC.disableLogUpload(); } catch (e) { console.warn('[Agora Web] disableLogUpload failed:', e); }
+    try { if (typeof AgoraRTC.setLogLevel === 'function') AgoraRTC.setLogLevel(4); } catch (e) { console.warn('[Agora Web] setLogLevel failed:', e); }
 
     const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
     rtcClientRef.current = client;
-    await client.join(appId, String(channel), token, joinUid);
-    joinedRef.current = true;
 
     client.on('stream-message', (_uid: any, data: any) => {
       try {
@@ -530,23 +607,50 @@ export default function ClassRoomScreen() {
       } catch (e) { console.warn('Failed to parse stream message:', e); }
     });
 
-    const handleUserPublished = async (remoteUser: any, mediaType: string) => {
+    const handleUserPublished = async (remoteUser: any, mediaType: string, attempt = 0) => {
+      logAgora('user-published event', {
+        channelName: channel,
+        localUid: joinUid,
+        remoteUid: remoteUser?.uid,
+        mediaType,
+        connectionState: client.connectionState,
+        attempt,
+      });
       try {
-        if (client.connectionState !== 'CONNECTED') return;
+        if (client.connectionState !== 'CONNECTED') {
+          if (attempt < 20) {
+            setTimeout(() => { void handleUserPublished(remoteUser, mediaType, attempt + 1); }, 150);
+          }
+          return;
+        }
         await client.subscribe(remoteUser, mediaType);
+        logAgora('successful subscribe', { channelName: channel, localUid: joinUid, remoteUid: remoteUser.uid, mediaType });
         if (mediaType === 'audio') {
-          try { remoteUser.audioTrack?.setVolume?.(80); } catch {}
+          try { remoteUser.audioTrack?.setVolume?.(80); } catch (e) { console.warn('[Agora Web] Remote audio volume setup failed:', e); }
           remoteUser.audioTrack?.play();
         }
         upsertRemoteParticipant(remoteUser.uid, {
           hasVideo: mediaType === 'video' ? true : Boolean(remoteUser.hasVideo),
           hasAudio: mediaType === 'audio' ? true : Boolean(remoteUser.hasAudio),
         });
+        if (mediaType === 'video') {
+          setTimeout(() => {
+            const focused = String(focusedUid) === String(remoteUser.uid);
+            playWebTrack(remoteUser.videoTrack, focused ? 'main-player' : `remote-player-${remoteUser.uid}`, `remote-${remoteUser.uid}`);
+          }, 0);
+        }
       } catch (subErr: any) {
-        if (!String(subErr?.message || '').includes('not joined')) console.warn('Subscribe:', subErr);
+        const msg = String(subErr?.message || subErr || '');
+        logAgora('subscribe failed', { remoteUid: remoteUser?.uid, mediaType, attempt, error: msg });
+        if (attempt < 20 && (msg.includes('not joined') || msg.includes('INVALID_OPERATION') || msg.includes('cannot subscribe'))) {
+          setTimeout(() => { void handleUserPublished(remoteUser, mediaType, attempt + 1); }, 150);
+        } else if (!msg.includes('not joined')) {
+          console.warn('[Agora Web] Subscribe failed:', subErr);
+        }
       }
     };
     client.on('user-joined', (remoteUser: any) => {
+      logAgora('remote user joined', { remoteUid: remoteUser.uid, hasVideo: remoteUser.hasVideo, hasAudio: remoteUser.hasAudio });
       upsertRemoteParticipant(remoteUser.uid, {
         hasVideo: Boolean(remoteUser.hasVideo),
         hasAudio: Boolean(remoteUser.hasAudio),
@@ -554,6 +658,7 @@ export default function ClassRoomScreen() {
     });
     client.on('user-published', handleUserPublished);
     client.on('user-unpublished', (ru: any, mt: string) => {
+      logAgora('user-unpublished event', { remoteUid: ru.uid, mediaType: mt });
       if (mt === 'video') {
         upsertRemoteParticipant(ru.uid, { hasVideo: false, hasAudio: Boolean(ru.hasAudio) });
       }
@@ -561,11 +666,21 @@ export default function ClassRoomScreen() {
         upsertRemoteParticipant(ru.uid, { hasAudio: false, hasVideo: Boolean(ru.hasVideo) });
       }
     });
-    client.on('user-left', (ru: any) => removeRemoteParticipant(Number(ru.uid) || ru.uid));
+    client.on('user-left', (ru: any) => {
+      logAgora('remote user left', { remoteUid: ru.uid });
+      removeRemoteParticipant(Number(ru.uid) || ru.uid);
+      removeRemoteUid(Number(ru.uid) || ru.uid);
+    });
     client.on('token-privilege-will-expire', () => void renewToken());
     client.on('token-privilege-did-expire', () => void renewToken());
 
+    logAgora('joining channel', { channelName: channel, localUid: joinUid, tokenUid: joinUid });
+    await client.join(appId, String(channel), token, joinUid);
+    joinedRef.current = true;
+    logAgora('joined channel', { channelName: channel, localUid: joinUid, connectionState: client.connectionState });
+
     for (const ru of client.remoteUsers || []) {
+      logAgora('existing remote after join', { remoteUid: ru.uid, hasVideo: ru.hasVideo, hasAudio: ru.hasAudio });
       upsertRemoteParticipant(ru.uid, {
         hasVideo: Boolean(ru.hasVideo),
         hasAudio: Boolean(ru.hasAudio),
@@ -581,8 +696,12 @@ export default function ClassRoomScreen() {
         const [at, vt] = await createOptimizedWebTracks(AgoraRTC);
         localTracksRef.current = { audioTrack: at, videoTrack: vt };
         await client.publish([at, vt]);
+        logAgora('local tracks published', { channelName: channel, localUid: joinUid, audio: true, video: true });
         setMicOn(true); setCameraOn(true);
-      } catch { setMicOn(false); setCameraOn(false); }
+      } catch (e) {
+        logAgora('local publish failed', { channelName: channel, localUid: joinUid, error: (e as any)?.message || String(e) });
+        setMicOn(false); setCameraOn(false);
+      }
     }
 
     for (const ru of client.remoteUsers || []) {
@@ -611,7 +730,7 @@ export default function ClassRoomScreen() {
     if (!id || !user) return;
     if (user.role === 'teacher' && !hasEndedRef.current) {
       hasEndedRef.current = true;
-      try { await authFetch(api.endClass(id), { method: 'POST' }); } catch {}
+      try { await authFetch(api.endClass(id), { method: 'POST' }); } catch (e) { console.warn('End class request failed:', e); }
     }
     await cleanup();
     router.replace(user.role === 'teacher' ? '/(teacher)/schedule' : '/(student)/classes');
@@ -631,23 +750,68 @@ export default function ClassRoomScreen() {
 
   const toggleMic = async () => {
     if (isWeb) {
-      try { const t = localTracksRef.current.audioTrack; if (!t) return; await t.setEnabled(!micOn); setMicOn((v) => !v); } catch {}
+      try {
+        const t = localTracksRef.current.audioTrack;
+        if (!t) return;
+        const nextMicOn = !micOn;
+        await t.setEnabled(nextMicOn);
+        logAgora('local audio toggled', { enabled: nextMicOn });
+        setMicOn(nextMicOn);
+      } catch (e) { console.warn('[Agora Web] Failed to toggle mic:', e); }
     } else {
       const engine = nativeEngineRef.current;
       if (!engine) return;
-      engine.muteLocalAudioStream(micOn);
-      setMicOn((v) => !v);
+      const nextMicOn = !micOn;
+      engine.muteLocalAudioStream(!nextMicOn);
+      try {
+        engine.updateChannelMediaOptions({
+          channelProfile: ChannelProfileType.ChannelProfileCommunication,
+          clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+          autoSubscribeAudio: true,
+          autoSubscribeVideo: true,
+          publishCameraTrack: cameraOn,
+          publishMicrophoneTrack: nextMicOn,
+        });
+      } catch (e) { console.warn('[Agora Native] mic updateChannelMediaOptions failed:', e); }
+      logAgora('local audio toggled', { enabled: nextMicOn });
+      setMicOn(nextMicOn);
     }
   };
 
   const toggleCamera = async () => {
     if (isWeb) {
-      try { const t = localTracksRef.current.videoTrack; if (!t) return; await t.setEnabled(!cameraOn); setCameraOn((v) => !v); } catch {}
+      try {
+        const t = localTracksRef.current.videoTrack;
+        if (!t) return;
+        const nextCameraOn = !cameraOn;
+        await t.setEnabled(nextCameraOn);
+        logAgora('local video toggled', { enabled: nextCameraOn });
+        setCameraOn(nextCameraOn);
+        if (nextCameraOn) {
+          const elId = focusedUid === 'local' ? 'main-player' : 'local-player';
+          playWebTrack(t, elId, 'local-camera');
+        }
+      } catch (e) { console.warn('[Agora Web] Failed to toggle camera:', e); }
     } else {
       const engine = nativeEngineRef.current;
       if (!engine) return;
-      engine.muteLocalVideoStream(cameraOn);
-      setCameraOn((v) => !v);
+      const nextCameraOn = !cameraOn;
+      if (nextCameraOn) {
+        try { engine.enableLocalVideo(true); engine.startPreview(); } catch (e) { console.warn('[Agora Native] Failed to restart preview:', e); }
+      }
+      engine.muteLocalVideoStream(!nextCameraOn);
+      try {
+        engine.updateChannelMediaOptions({
+          channelProfile: ChannelProfileType.ChannelProfileCommunication,
+          clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+          autoSubscribeAudio: true,
+          autoSubscribeVideo: true,
+          publishCameraTrack: nextCameraOn,
+          publishMicrophoneTrack: micOn,
+        });
+      } catch (e) { console.warn('[Agora Native] camera updateChannelMediaOptions failed:', e); }
+      logAgora('local video toggled', { enabled: nextCameraOn });
+      setCameraOn(nextCameraOn);
     }
   };
 
@@ -662,7 +826,7 @@ export default function ClassRoomScreen() {
         const cur = vt.getTrackLabel ? vt.getTrackLabel() : '';
         const idx = cams.findIndex((c: any) => String(cur).includes(String(c.label)));
         await vt.setDevice(cams[(idx + 1) % cams.length].deviceId);
-      } catch {}
+      } catch (e) { console.warn('[Agora Web] Failed to switch camera:', e); }
     } else {
       const engine = nativeEngineRef.current;
       if (engine) engine.switchCamera();
@@ -688,7 +852,10 @@ export default function ClassRoomScreen() {
           if (dataStreamIdRef.current === null) await setupDataStream();
           if (dataStreamIdRef.current === null) throw new Error('Chat stream not ready');
           try { await client.sendStreamMessage(dataStreamIdRef.current, payload); }
-          catch { if (typeof TextEncoder !== 'undefined') await client.sendStreamMessage(dataStreamIdRef.current, new TextEncoder().encode(payload)); }
+          catch (e) {
+            console.warn('[Agora Web] String chat send failed, retrying encoded payload:', e);
+            if (typeof TextEncoder !== 'undefined') await client.sendStreamMessage(dataStreamIdRef.current, new TextEncoder().encode(payload));
+          }
         } catch (e) { console.warn('Failed to send stream message:', e); }
       }
     } else {
@@ -1072,26 +1239,39 @@ export default function ClassRoomScreen() {
             {/* Main Stage */}
             {remoteUids.length > 0 ? (
               <View style={st.nativeMainStage}>
-                {remoteUids.map((remoteUid) => (
-                  <TouchableOpacity
-                    key={remoteUid}
-                    activeOpacity={0.95}
-                    onPress={() => setFocusedUid(remoteUid)}
-                    style={[
-                      st.nativeRemoteTile,
-                      remoteUids.length === 1 ? st.nativeRemoteTileSingle : st.nativeRemoteTileSplit,
-                    ]}
-                  >
-                    <RtcSurfaceView
-                      style={st.nativeRemoteVideo}
-                      canvas={{ uid: remoteUid }}
-                    />
-                    {/* Label overlay */}
-                    <View style={st.nativeRemoteLabel}>
-                      <ThemedText style={st.nativeRemoteLabelText}>Participant {remoteUid}</ThemedText>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                {remoteUids.map((remoteUid) => {
+                  const participant = remoteParticipants.find((p) => String(p.uid) === String(remoteUid));
+                  const hasVideo = participant?.hasVideo !== false;
+                  return (
+                    <TouchableOpacity
+                      key={remoteUid}
+                      activeOpacity={0.95}
+                      onPress={() => setFocusedUid(remoteUid)}
+                      style={[
+                        st.nativeRemoteTile,
+                        remoteUids.length === 1 ? st.nativeRemoteTileSingle : st.nativeRemoteTileSplit,
+                      ]}
+                    >
+                      {hasVideo ? (
+                        <RtcSurfaceView
+                          style={st.nativeRemoteVideo}
+                          canvas={{ uid: remoteUid }}
+                        />
+                      ) : (
+                        <View style={st.nativeWaiting}>
+                          <View style={st.nativeWaitingCircle}>
+                            <Ionicons name="videocam-off" size={36} color="rgba(255,255,255,0.25)" />
+                          </View>
+                          <ThemedText style={st.nativeWaitingText}>Camera off</ThemedText>
+                        </View>
+                      )}
+                      {/* Label overlay */}
+                      <View style={st.nativeRemoteLabel}>
+                        <ThemedText style={st.nativeRemoteLabelText}>Participant {remoteUid}</ThemedText>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             ) : (
               <View style={st.nativeWaiting}>
