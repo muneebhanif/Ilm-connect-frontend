@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, TextInput, RefreshControl, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
@@ -281,6 +281,15 @@ export default function BrowseCoursesScreen() {
                     <ThemedText style={styles.lessonsText}>{course.total_lessons} lessons</ThemedText>
                   </View>
                 </View>
+                <View style={styles.courseActions}>
+                  <View style={styles.detailHint}>
+                    <ThemedText style={styles.detailHintText}>View details</ThemedText>
+                  </View>
+                  <View style={styles.enrollPill}>
+                    <ThemedText style={styles.enrollPillText}>Enroll in Course</ThemedText>
+                    <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+                  </View>
+                </View>
               </TouchableOpacity>
             ))
           )}
@@ -524,6 +533,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flexWrap: 'wrap',
+    marginBottom: 14,
   },
   levelBadge: {
     paddingHorizontal: 12,
@@ -553,5 +563,40 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#AFAFAF',
+  },
+  courseActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+    paddingTop: 14,
+  },
+  detailHint: {
+    minHeight: 42,
+    justifyContent: 'center',
+  },
+  detailHintText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  enrollPill: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: LingoTheme.colors.primary,
+    borderBottomWidth: 3,
+    borderBottomColor: LingoTheme.colors.primaryDark,
+  },
+  enrollPillText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

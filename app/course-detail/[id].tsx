@@ -1,11 +1,11 @@
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image, RefreshControl, Linking } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/config';
 import { useAuth } from '@/lib/auth-context';
-import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader, LingoStatPill } from '@/components/ui/lingo-mobile';
+import { LingoBadge, LingoButton, LingoCard, LingoEmptyState, LingoScreenHeader } from '@/components/ui/lingo-mobile';
 import { LingoTheme } from '@/constants/theme';
 import { SkeletonScreen } from '@/components/ui/skeleton';
 import { useSafePadding } from '@/hooks/use-safe-padding';
@@ -28,6 +28,18 @@ interface CourseDetail {
     avatar_url?: string;
     bio?: string;
   };
+  preview_lessons?: CoursePreviewLesson[];
+}
+
+interface CoursePreviewLesson {
+  id: string;
+  title: string;
+  description?: string;
+  content_type?: string;
+  content_url?: string | null;
+  duration_seconds?: number | null;
+  is_preview?: boolean;
+  sort_order?: number | null;
 }
 
 export default function CourseDetailScreen() {
@@ -59,15 +71,6 @@ export default function CourseDetailScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const getLevelColor = (lvl: string) => {
-    switch (lvl) {
-      case 'beginner': return '#10B981';
-      case 'intermediate': return '#F59E0B';
-      case 'advanced': return '#EF4444';
-      default: return '#6B7280';
     }
   };
 
@@ -112,6 +115,10 @@ export default function CourseDetailScreen() {
 
   const teacherId = course.teacher_id || course.profiles?.id;
   const isParent = user?.role === 'parent';
+  const previewLessons = Array.isArray(course.preview_lessons) ? course.preview_lessons : [];
+  const bookingPath = teacherId
+    ? `/book-teacher/${teacherId}?courseId=${encodeURIComponent(course.id)}&subject=${encodeURIComponent(course.subject || '')}&courseTitle=${encodeURIComponent(course.title || '')}`
+    : '';
 
   return (
     <View style={styles.container}>
@@ -143,8 +150,24 @@ export default function CourseDetailScreen() {
               />
             </View>
             <View style={styles.headerStats}>
-              <LingoStatPill icon="📚" value={String(course.total_lessons)} label="Lessons" tone="primary" />
-              <LingoStatPill icon="🎯" value={course.subject.split(' ')[0]} label="Subject" tone="teal" />
+              <View style={styles.metaPill}>
+                <View style={styles.metaIcon}>
+                  <Ionicons name="library-outline" size={18} color={LingoTheme.colors.primaryDark} />
+                </View>
+                <View>
+                  <ThemedText style={styles.metaValue}>{String(course.total_lessons)}</ThemedText>
+                  <ThemedText style={styles.metaLabel}>Lessons</ThemedText>
+                </View>
+              </View>
+              <View style={styles.metaPill}>
+                <View style={[styles.metaIcon, { backgroundColor: LingoTheme.colors.softTeal }]}>
+                  <Ionicons name={getSubjectIcon(course.subject) as any} size={18} color={LingoTheme.colors.teal} />
+                </View>
+                <View>
+                  <ThemedText style={styles.metaValue} numberOfLines={1}>{course.subject.split(' ')[0]}</ThemedText>
+                  <ThemedText style={styles.metaLabel}>Subject</ThemedText>
+                </View>
+              </View>
             </View>
           </LingoScreenHeader>
 
@@ -194,7 +217,42 @@ export default function CourseDetailScreen() {
         )}
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>What you'll learn</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Preview lessons</ThemedText>
+          <LingoCard style={styles.previewCard}>
+            {previewLessons.length === 0 ? (
+              <ThemedText style={styles.previewEmpty}>Preview lessons will appear after the instructor marks lessons as preview.</ThemedText>
+            ) : (
+              previewLessons.map((lesson, index) => (
+                <View key={lesson.id} style={[styles.previewRow, index > 0 && styles.previewRowBorder]}>
+                  <View style={[styles.previewIcon, lesson.is_preview && styles.previewIconOpen]}>
+                    <Ionicons name={lesson.is_preview ? 'play' : 'lock-closed'} size={16} color={lesson.is_preview ? '#FFFFFF' : LingoTheme.colors.muted} />
+                  </View>
+                  <View style={styles.previewBody}>
+                    <ThemedText style={styles.previewTitle} numberOfLines={1}>{lesson.title || `Lesson ${index + 1}`}</ThemedText>
+                    {lesson.description ? (
+                      <ThemedText style={styles.previewDesc} numberOfLines={2}>{lesson.description}</ThemedText>
+                    ) : null}
+                    {lesson.duration_seconds ? (
+                      <ThemedText style={styles.previewMeta}>{Math.max(1, Math.round(lesson.duration_seconds / 60))} min</ThemedText>
+                    ) : null}
+                  </View>
+                  {lesson.is_preview && lesson.content_url ? (
+                    <TouchableOpacity style={styles.previewButton} onPress={() => Linking.openURL(lesson.content_url!)} activeOpacity={0.85}>
+                      <ThemedText style={styles.previewButtonText}>Preview</ThemedText>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.lockedBadge}>
+                      <ThemedText style={styles.lockedBadgeText}>Locked</ThemedText>
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
+          </LingoCard>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>What you will learn</ThemedText>
           <LingoCard style={styles.learnCard}>
             <View style={styles.learnRow}>
               <Ionicons name="checkmark-circle" size={18} color={LingoTheme.colors.primary} />
@@ -235,9 +293,9 @@ export default function CourseDetailScreen() {
             </ThemedText>
           </View>
           <LingoButton
-            label="Book this teacher"
-            icon="calendar-outline"
-            onPress={() => router.push(`/book-teacher/${teacherId}` as any)}
+            label="Enroll in Course"
+            icon="school-outline"
+            onPress={() => router.push(bookingPath as any)}
             style={styles.bookButton}
           />
         </View>
@@ -277,6 +335,38 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'center',
     flexWrap: 'wrap',
+  },
+  metaPill: {
+    minWidth: 126,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: LingoTheme.colors.border,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  metaIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: LingoTheme.colors.softPrimary,
+  },
+  metaValue: {
+    maxWidth: 78,
+    fontSize: 16,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  metaLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: LingoTheme.colors.muted,
+    textTransform: 'uppercase',
   },
   section: {
     gap: 12,
@@ -330,6 +420,78 @@ const styles = StyleSheet.create({
   },
   learnCard: {
     gap: 14,
+  },
+  previewCard: {
+    paddingVertical: 6,
+  },
+  previewEmpty: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: LingoTheme.colors.muted,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  previewRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: LingoTheme.colors.border,
+  },
+  previewIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+  },
+  previewIconOpen: {
+    backgroundColor: LingoTheme.colors.primary,
+  },
+  previewBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  previewTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
+  previewDesc: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    color: LingoTheme.colors.muted,
+  },
+  previewMeta: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: LingoTheme.colors.teal,
+  },
+  previewButton: {
+    borderRadius: 14,
+    backgroundColor: LingoTheme.colors.softPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  previewButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: LingoTheme.colors.primaryDark,
+  },
+  lockedBadge: {
+    borderRadius: 14,
+    backgroundColor: LingoTheme.colors.surfaceAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  lockedBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
   },
   learnRow: {
     flexDirection: 'row',

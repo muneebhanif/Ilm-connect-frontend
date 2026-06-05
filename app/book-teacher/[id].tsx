@@ -38,7 +38,12 @@ interface Package {
 }
 
 export default function BookTeacherScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, subject, courseTitle, courseId } = useLocalSearchParams<{
+    id: string;
+    subject?: string;
+    courseTitle?: string;
+    courseId?: string;
+  }>();
   const router = useRouter();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { topPadding, bottomPadding } = useSafePadding();
@@ -60,6 +65,9 @@ export default function BookTeacherScreen() {
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<null | { message: string; session: any }>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const courseSubject = typeof subject === 'string' ? subject.trim() : '';
+  const selectedCourseTitle = typeof courseTitle === 'string' ? courseTitle.trim() : '';
+  const selectedCourseId = typeof courseId === 'string' ? courseId.trim() : '';
 
   // Subject options based on teacher's subjects
   const SUBJECT_OPTIONS = [
@@ -160,9 +168,11 @@ export default function BookTeacherScreen() {
         timezone: t.timezone,
       });
 
-      // Auto-select subject if teacher only teaches one (Arabic or Quran, not Both)
+      // Auto-select the course subject first, then fall back to a single teacher subject.
       const teacherSubjects = Array.isArray(t.subjects) ? t.subjects : [];
-      if (teacherSubjects.length === 1 && (teacherSubjects[0] === 'Arabic' || teacherSubjects[0] === 'Quran')) {
+      if (courseSubject) {
+        setSelectedSubject(courseSubject);
+      } else if (teacherSubjects.length === 1 && (teacherSubjects[0] === 'Arabic' || teacherSubjects[0] === 'Quran')) {
         setSelectedSubject(teacherSubjects[0]);
       }
 
@@ -261,6 +271,8 @@ export default function BookTeacherScreen() {
         durationMinutes: 60,
         packageType: selectedPackage,
         teacherTimezone: teacherTz,
+        courseId: selectedCourseId || undefined,
+        courseTitle: selectedCourseTitle || undefined,
       };
       console.log('Booking request payload:', bookingPayload);
 
@@ -473,6 +485,18 @@ export default function BookTeacherScreen() {
             <LingoBadge label={`$${teacher.hourly_rate}/hr`} icon="pricetag-outline" tone="teal" />
           </View>
         </LinearGradient>
+
+        {selectedCourseTitle ? (
+          <View style={styles.courseContext}>
+            <View style={styles.courseContextIcon}>
+              <Ionicons name="school-outline" size={18} color={LingoTheme.colors.primaryDark} />
+            </View>
+            <View style={styles.courseContextBody}>
+              <ThemedText style={styles.courseContextLabel}>Enrolling in</ThemedText>
+              <ThemedText style={styles.courseContextTitle} numberOfLines={2}>{selectedCourseTitle}</ThemedText>
+            </View>
+          </View>
+        ) : null}
 
         <LingoCard style={styles.section}>
           <ThemedText style={styles.sectionTitle}>1. Select Child</ThemedText>
@@ -689,6 +713,42 @@ const styles = StyleSheet.create({
   teacherInfo: { marginLeft: 16, flex: 1 },
   teacherName: { fontSize: 18, fontWeight: '800', color: LingoTheme.colors.ink },
   teacherSub: { fontSize: 13, color: LingoTheme.colors.muted, marginBottom: 6 },
+  courseContext: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: LingoTheme.colors.border,
+    borderBottomWidth: 4,
+    padding: 14,
+    marginBottom: 24,
+  },
+  courseContextIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: LingoTheme.colors.softPrimary,
+  },
+  courseContextBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  courseContextLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: LingoTheme.colors.muted,
+    textTransform: 'uppercase',
+  },
+  courseContextTitle: {
+    marginTop: 2,
+    fontSize: 15,
+    fontWeight: '800',
+    color: LingoTheme.colors.ink,
+  },
 
   /* Sections */
   section: { marginBottom: 24 },
